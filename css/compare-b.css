@@ -1,0 +1,35 @@
+/*
+ * 比較用 B案: A案に加えて「彩度」と「粒子質感」まで寄せる
+ *
+ * - 色をより鮮やかにする（原神の地図は現実よりずっと彩度が高い）
+ * - 等高帯のぼかしを強めにして、層感をさらに消す
+ * - 海岸線の影を強めにして、彫り込んだような厚みを出す
+ * - 地形全体にごく薄いノイズを重ね、塗りっぱなしでない質感を出す
+ */
+
+:root {
+  --land-0:  #F5EAC9;
+  --land-8:  #E4D98F;
+  --land-16: #C9D97A;
+  --land-24: #9FC466;
+  --land-32: #6FAE52;
+  --land-45: #4C9646;
+  --water:   #4FA3C7;
+}
+
+.band {
+  filter: blur(9px);
+}
+.band--0 {
+  filter: blur(5px);
+}
+
+#map-terrain {
+  filter: url(#grain);
+}
+
+.coast {
+  filter: url(#coast-emboss);
+  stroke: rgba(10, 30, 20, 0.4);
+  stroke-width: 1.4;
+}

@@ -1,0 +1,302 @@
+/*
+ * 車窓絶景ナビ ── 見た目の指定
+ *
+ * 色や大きさのうち、あちこちで使うものは :root にまとめてある。
+ * ここを直すと画面全体が一度に変わる。
+ */
+
+:root {
+  /* --- テーマの色（設計書 5.4）---
+     地図のアイコン・通知帯・成因カード・旅の記録で共通に使う。
+     色を見ればテーマがわかるようにするため、ここ以外で色を決めない。 */
+  --theme-terrain:     #3F5A2E;  /* 地形 */
+  --theme-terrain-sub: #8A6F3E;
+  --theme-farm:        #6F8F36;  /* 気候と農業 */
+  --theme-farm-sub:    #D99A2B;
+  --theme-industry:    #2E4A6B;  /* 産業と水運 */
+  --theme-industry-sub:#B8A88A;
+  --theme-sea:         #2A6E8F;  /* 海と空 */
+  --theme-sea-sub:     #7FC4D9;
+
+  /* --- 地形の濃淡（設計書 5.2）---
+     台地は濃く、低地は淡く、水域は青。等高線も数値も出さない。 */
+  --land-0:  #F3EBD8;  /* 低地・沖積地（銚子駅のあたり） */
+  --land-8:  #E7DFC3;
+  --land-16: #D7D6AC;
+  --land-24: #C2CB97;  /* 台地の上（キャベツ畑） */
+  --land-32: #A9BC80;
+  --land-45: #90AC6B;  /* 愛宕山まわり */
+  --water:   #9DC3D7;
+
+  /* --- 路線 --- */
+  --rail:    #4A4640;
+  --station: #FFFFFF;
+
+  /* --- 枠組み --- */
+  --panel:   rgba(255, 255, 255, 0.82);
+  --ink:     #2B2A28;
+  --ink-soft:#6B6862;
+
+  --radius:  14px;
+}
+
+/* ------------------------------------------------------------------
+   土台
+   ------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #24262B;
+  color: var(--ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+               "Noto Sans JP", "Meiryo", sans-serif;
+  /* 揺れる車内でも読めるように、文字は小さくしすぎない */
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * 画面。
+ * スマートフォンでは画面いっぱい。
+ * パソコンで見たときは、スマートフォンくらいの幅に収めて中央に置く。
+ */
+.screen {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  max-height: 932px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--water);
+}
+
+@media (min-height: 960px) {
+  .screen {
+    margin-top: 14px;
+    border-radius: 28px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* ------------------------------------------------------------------
+   地図
+   ------------------------------------------------------------------ */
+
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* --- 地形。低いほうから順に上へ重ねて塗る --- */
+.band {
+  stroke: none;
+}
+.band--0  { fill: var(--land-0); }
+.band--8  { fill: var(--land-8); }
+.band--16 { fill: var(--land-16); }
+.band--24 { fill: var(--land-24); }
+.band--32 { fill: var(--land-32); }
+.band--45 { fill: var(--land-45); }
+
+/* 海岸線。地形と海の境目をほんの少しだけ締める */
+.coast {
+  fill: none;
+  stroke: rgba(90, 110, 120, 0.35);
+  stroke-width: 1.4;
+}
+
+/* --- 線路 --- */
+.rail {
+  fill: none;
+  stroke: var(--rail);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 線路の下に敷く白い縁取り。地形の色が濃くても線路が見えるようにする */
+.rail--halo {
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 11;
+}
+
+/* --- 駅 --- */
+.station-dot {
+  fill: var(--station);
+  stroke: var(--rail);
+  stroke-width: 2.5;
+}
+
+.station-label {
+  font-size: 17px;
+  font-weight: 600;
+  fill: var(--ink);
+  paint-order: stroke;          /* 縁取りを文字の下に描く */
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+/* 起点と終点は少し目立たせる */
+.station-label--end {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+/* --- 絶景スポットのバッジ（設計書 5.3）--- */
+.spot {
+  cursor: pointer;
+  /* 絞り込みで消えるときになめらかに */
+  transition: opacity 0.25s ease;
+}
+
+.spot--hidden {
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* バッジが指している線路上の地点 */
+.spot-anchor {
+  fill: var(--rail);
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.8;
+}
+
+/* バッジと、その地点を結ぶ細い線 */
+.spot-leader {
+  stroke: var(--rail);
+  stroke-width: 1.8;
+  stroke-dasharray: 3 3;
+  opacity: 0.65;
+}
+
+/* ひし形のバッジ。中の絵はその絶景を表す */
+.spot-badge {
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 3;
+}
+
+.spot-glyph {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.spot-label {
+  font-size: 16px;
+  font-weight: 600;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------
+   地図の上に重なる枠組み
+   ------------------------------------------------------------------ */
+
+.bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  background: var(--panel);
+  /* 背景の地図をぼかして透かす。地図の色が枠組みに透ける（設計書 4 章） */
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+}
+
+.bar--top {
+  top: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.bar--bottom {
+  bottom: 10px;
+  padding: 12px 14px 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.line-name {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* --- 天候のひとこと ---
+   予報は「千葉県北東部」のような広い区分でしか手に入らないため、
+   「この地点はよく見える」とは書かない（設計書 4.1）。 */
+.weather {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/* --- テーマの絞り込み --- */
+.themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-chip {
+  /* 揺れる車内で押し間違えないよう、指で押せる大きさを確保する */
+  min-height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  border: 1.5px solid currentColor;
+  border-radius: 19px;
+  background: transparent;
+  color: var(--chip-color);
+
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+/* 選ばれているテーマは塗りつぶす */
+.theme-chip[aria-pressed="true"] {
+  background: var(--chip-color);
+  color: #FFFFFF;
+}
+
+/* 選ばれていないテーマは薄くする */
+.theme-chip[aria-pressed="false"] {
+  opacity: 0.45;
+}
+
+/* ひし形の目印。地図のバッジと同じ形にして、色とテーマを結びつける */
+.chip-diamond {
+  width: 9px;
+  height: 9px;
+  background: currentColor;
+  transform: rotate(45deg);
+  flex: none;
+}
