@@ -58,6 +58,26 @@ const STORAGE_KEY = 'choshi-navi/themes';
 /** 絶景スポットのひし形バッジの大きさ（中心から角まで） */
 const BADGE_SIZE = 17;
 
+/*
+ * 拡大の上限。初期表示（路線全体）の何倍まで寄れるか。
+ * 16 倍で、駅ひとつとその周り 300m ほどが画面いっぱいになる。
+ */
+const MAX_ZOOM = 16;
+
+/*
+ * 地形の陰影を薄れさせはじめる倍率と、消えきる倍率。
+ *
+ * 陰影の画像は 1 画素が約 3.9m。6 倍を超えたあたりから 1 画素が
+ * 画面の数画素まで引き伸ばされ、輪郭がにじみはじめる。
+ * にじんだ絵を見せるより、消して色だけにしたほうが気持ちがよい。
+ * 線路や駅は SVG なので、消えたあとも輪郭は鋭いまま残る。
+ */
+const HILLSHADE_FADE_FROM = 6;
+const HILLSHADE_FADE_TO = 10;
+
+/** 絶景スポットの名前を出しはじめる倍率（設計書 4.1「最初はアイコンだけ」） */
+const LABEL_ZOOM = 1.6;
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // ------------------------------------------------------------------
@@ -152,6 +172,15 @@ function headingAt(route, points, distanceAlong) {
 
 /** 地形の濃淡を敷く。低いほうから順に上へ重ねる。 */
 function drawTerrain(container, terrain) {
+  /*
+   * いちばん下に、陸のかたちが海へ落とす影を敷く。
+   * このあと帯を不透明で塗るので、陸の内側に入った影は隠れ、
+   * 海側にはみ出したぶんだけが縁として残り、陸が一段高く見える。
+   */
+  container.appendChild(
+    svg('path', { d: terrain.bands[0].path, 'fill-rule': 'evenodd', class: 'coast-shadow' })
+  );
+
   for (const band of terrain.bands) {
     container.appendChild(
       svg('path', {
@@ -234,7 +263,12 @@ function drawStations(container, route, project, points, placed) {
     const radius = isEnd ? 8 : 6;
     const fontSize = isEnd ? 19 : 17;
 
-    const group = svg('g');
+    /*
+     * data-ax / data-ay は「この印がどこを指しているか」。
+     * 拡大したときに、印そのものは画面上の大きさを変えず、
+     * この点を動かさないように縮める（scalable / applyScale を参照）。
+     */
+    const group = svg('g', { class: 'scalable', 'data-ax': p.x, 'data-ay': p.y });
     group.appendChild(svg('circle', { cx: p.x, cy: p.y, r: radius, class: 'station-dot' }));
     placed.push({ left: p.x - radius, right: p.x + radius, top: p.y - radius, bottom: p.y + radius });
 
@@ -279,10 +313,13 @@ function drawSpots(container, spots, route, project, points, placed) {
     const heading = headingAt(route, points, spot.distanceAlong);
     const theme = THEMES[spot.theme];
 
+    // data-ax / data-ay は線路上の指している地点。拡大してもここは動かない。
     const group = svg('g', {
-      class: 'spot',
+      class: 'spot scalable',
       'data-theme': spot.theme,
       'data-id': spot.id,
+      'data-ax': anchor.x,
+      'data-ay': anchor.y,
       tabindex: '0',
       role: 'button',
       'aria-label': `${spot.name}（${spot.location}・${spot.theme}）`,
@@ -392,12 +429,12 @@ function drawSpots(container, spots, route, project, points, placed) {
 // ------------------------------------------------------------------
 
 /**
- * 路線と、その名前やバッジがぜんぶ入るように、地図の見える範囲を合わせる。
+ * 路線と、その名前やバッジがぜんぶ入る四角を求める。
  *
  * 画面の形は端末によって違う（縦長のスマートフォン、横長のパソコン）。
  * そこで、収めたい四角を画面の形に合わせて広げてから当てはめる。
  */
-function fitMap(mapElement, contents, projection) {
+function fittedBox(mapElement, contents) {
   const padding = 16;
   let left = Math.min(...contents.map((c) => c.left)) - padding;
   let right = Math.max(...contents.map((c) => c.right)) + padding;
@@ -425,17 +462,181 @@ function fitMap(mapElement, contents, projection) {
     width = wanted;
   }
 
-  // 地形データのない外側まで映さないよう、できる範囲で内側に寄せる
-  if (width <= projection.width) {
-    if (left < 0) { right -= left; left = 0; }
-    if (right > projection.width) { left -= right - projection.width; right = projection.width; }
-  }
-  if (height <= projection.height) {
-    if (top < 0) { bottom -= top; top = 0; }
-    if (bottom > projection.height) { top -= bottom - projection.height; bottom = projection.height; }
+  return { left, top, width, height };
+}
+
+/**
+ * 地図の見える範囲を持ちまわる入れもの。
+ *
+ * 「左上がどこか」ではなく「まんなかがどこか（cx, cy）」と
+ * 「地図の 1 単位が画面の何画素にあたるか（unitsPerPixel）」で覚えておく。
+ * 拡大・縮小はまんなかを軸に考えるほうが素直に書けるため。
+ *
+ * unitsPerPixel が小さいほど拡大されている。初期表示のときの値を
+ * basisPerPixel として覚えておき、その比を「今の倍率」として使う。
+ */
+function createView(mapElement, projection, initialBox, onChange) {
+  const screen = () => mapElement.getBoundingClientRect();
+
+  const basisPerPixel = initialBox.width / screen().width;
+  let unitsPerPixel = basisPerPixel;
+  let cx = initialBox.left + initialBox.width / 2;
+  let cy = initialBox.top + initialBox.height / 2;
+
+  /** 今、初期表示の何倍まで寄っているか */
+  const zoom = () => basisPerPixel / unitsPerPixel;
+
+  function apply() {
+    const box = screen();
+    const width = unitsPerPixel * box.width;
+    const height = unitsPerPixel * box.height;
+
+    /*
+     * 地形データのない外側を映さない。
+     * 画面より地図のほうが小さいときは寄せようがないので、まんなかに置く。
+     */
+    let left = cx - width / 2;
+    let top = cy - height / 2;
+    left = width <= projection.width
+      ? Math.max(0, Math.min(projection.width - width, left))
+      : (projection.width - width) / 2;
+    top = height <= projection.height
+      ? Math.max(0, Math.min(projection.height - height, top))
+      : (projection.height - height) / 2;
+
+    cx = left + width / 2;
+    cy = top + height / 2;
+
+    mapElement.setAttribute(
+      'viewBox',
+      `${left.toFixed(1)} ${top.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`
+    );
+    onChange(unitsPerPixel / basisPerPixel, zoom());
   }
 
-  mapElement.setAttribute('viewBox', `${left.toFixed(1)} ${top.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`);
+  /** 画面上の一点を動かさないまま、倍率を変える */
+  function zoomAt(screenX, screenY, factor) {
+    const box = screen();
+    const before = unitsPerPixel;
+    const after = Math.min(basisPerPixel, Math.max(basisPerPixel / MAX_ZOOM, before / factor));
+    if (after === before) return;
+
+    // その画面位置が指している地図上の点。拡大の前後でここを動かさない。
+    const offsetX = screenX - box.left;
+    const offsetY = screenY - box.top;
+    const mapX = cx - before * box.width / 2 + offsetX * before;
+    const mapY = cy - before * box.height / 2 + offsetY * before;
+
+    cx = mapX - offsetX * after + after * box.width / 2;
+    cy = mapY - offsetY * after + after * box.height / 2;
+    unitsPerPixel = after;
+    apply();
+  }
+
+  /** 指やマウスの動きぶんだけ、地図をずらす */
+  function panBy(deltaScreenX, deltaScreenY) {
+    cx -= deltaScreenX * unitsPerPixel;
+    cy -= deltaScreenY * unitsPerPixel;
+    apply();
+  }
+
+  /** ある地点を、画面の見えている部分のまんなかへ寄せる（倍率は変えない） */
+  function centerOn(mapX, mapY, visibleTopRatio = 0.5) {
+    const box = screen();
+    // 下半分がカードで隠れるときは、その上の見えている範囲のまんなかへ
+    const wantedY = box.height * visibleTopRatio;
+    cx = mapX;
+    cy = mapY - (wantedY - box.height / 2) * unitsPerPixel;
+    apply();
+  }
+
+  function reset() {
+    unitsPerPixel = basisPerPixel;
+    cx = initialBox.left + initialBox.width / 2;
+    cy = initialBox.top + initialBox.height / 2;
+    apply();
+  }
+
+  return { apply, zoomAt, panBy, centerOn, reset, zoom };
+}
+
+/**
+ * 指・マウス・ホイールでの拡大縮小と移動をつなぐ。
+ *
+ * 指 1 本ならずらす、2 本ならその間隔の変化で拡大縮小する。
+ * ホイールは、指が使えないパソコン向け。
+ */
+function setUpGestures(mapElement, view, onTap) {
+  const active = new Map();
+  let previousSpread = 0;
+  let movedDistance = 0;
+  let tapTarget = null;
+
+  const spread = () => {
+    const [a, b] = [...active.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  const middle = () => {
+    const [a, b] = [...active.values()];
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
+
+  mapElement.addEventListener('pointerdown', (event) => {
+    mapElement.setPointerCapture(event.pointerId);
+    active.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (active.size === 1) {
+      movedDistance = 0;
+      // 指を離した場所が同じなら「押した」とみなすため、覚えておく
+      tapTarget = event.target.closest('.spot');
+    } else {
+      tapTarget = null;
+      if (active.size === 2) previousSpread = spread();
+    }
+  });
+
+  mapElement.addEventListener('pointermove', (event) => {
+    const previous = active.get(event.pointerId);
+    if (!previous) return;
+
+    const dx = event.clientX - previous.x;
+    const dy = event.clientY - previous.y;
+    active.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (active.size === 1) {
+      movedDistance += Math.hypot(dx, dy);
+      view.panBy(dx, dy);
+    } else if (active.size === 2) {
+      const now = spread();
+      if (previousSpread > 0 && now > 0) {
+        const center = middle();
+        view.zoomAt(center.x, center.y, now / previousSpread);
+      }
+      previousSpread = now;
+    }
+  });
+
+  function release(event) {
+    if (!active.has(event.pointerId)) return;
+    active.delete(event.pointerId);
+
+    // ほとんど動いていなければ、ずらしたのではなく押したのだと判断する
+    if (active.size === 0 && movedDistance < 6 && tapTarget) onTap(tapTarget);
+    if (active.size < 2) previousSpread = 0;
+    tapTarget = null;
+  }
+  mapElement.addEventListener('pointerup', release);
+  mapElement.addEventListener('pointercancel', release);
+
+  mapElement.addEventListener(
+    'wheel',
+    (event) => {
+      event.preventDefault();
+      // 1 回まわすぶんの変化量は端末差が大きいので、ゆるやかに効かせる
+      view.zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.002));
+    },
+    { passive: false }
+  );
 }
 
 // ------------------------------------------------------------------
@@ -555,7 +756,13 @@ async function main() {
     top: Math.min(...points.map((p) => p.y)),
     bottom: Math.max(...points.map((p) => p.y)),
   };
-  fitMap(mapElement, [{ left: railBox.left - 80, right: railBox.right + 80, top: railBox.top - 80, bottom: railBox.bottom + 80 }], terrain.projection);
+  const provisional = fittedBox(mapElement, [
+    { left: railBox.left - 80, right: railBox.right + 80, top: railBox.top - 80, bottom: railBox.bottom + 80 },
+  ]);
+  mapElement.setAttribute(
+    'viewBox',
+    `${provisional.left} ${provisional.top} ${provisional.width} ${provisional.height}`
+  );
 
   /*
    * 置いたものの場所を覚えておき、あとから置くものが重ならないようにする。
@@ -572,10 +779,58 @@ async function main() {
   const spotsLayer = document.getElementById('map-spots');
   drawSpots(spotsLayer, spotsFile.spots, route, project, points, placed);
 
-  // 駅名やバッジまで含めて、あらためて見える範囲を合わせ直す
-  const refit = () => fitMap(mapElement, [railBox, ...placed], terrain.projection);
-  refit();
-  window.addEventListener('resize', refit);
+  // --- ここから、拡大・縮小できるようにする ---
+
+  // 駅名やバッジまで含めた、初期表示の範囲
+  const initialBox = fittedBox(mapElement, [railBox, ...placed]);
+  const scalables = [...mapElement.querySelectorAll('.scalable')];
+  const hillshade = mapElement.querySelector('.hillshade');
+  const embossBlur = document.getElementById('coast-emboss-blur');
+  const embossOffset = document.getElementById('coast-emboss-offset');
+
+  /*
+   * 拡大したときに、文字・印・線の太さが画面上で大きくならないようにする。
+   *
+   * k は「初期表示に対して、地図の単位でどれだけ縮めるか」。
+   * 4 倍に拡大すると k = 1/4 になり、地図の単位では 1/4 の大きさになるが、
+   * 画面は 4 倍に引き伸ばされているので、見た目の大きさは変わらない。
+   * 初期表示では k = 1 なので、拡大縮小を足す前とまったく同じ見た目になる。
+   */
+  function onViewChange(k, zoom) {
+    for (const element of scalables) {
+      const x = element.getAttribute('data-ax');
+      const y = element.getAttribute('data-ay');
+      // 指している点を動かさないまま、その場で縮める
+      element.setAttribute('transform', `translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})`);
+    }
+
+    // 線の太さと文字の大きさは CSS 側で calc() を使って合わせる
+    mapElement.style.setProperty('--k', k);
+
+    // 陰影の絵は元データの細かさに限りがあるので、寄りすぎたら消す
+    if (hillshade) {
+      const fade = (zoom - HILLSHADE_FADE_FROM) / (HILLSHADE_FADE_TO - HILLSHADE_FADE_FROM);
+      hillshade.style.opacity = 0.85 * (1 - Math.min(1, Math.max(0, fade)));
+    }
+
+    // 陸が落とす影も、画面上の厚みが変わらないようにする
+    if (embossBlur) embossBlur.setAttribute('stdDeviation', (2.6 * k).toFixed(3));
+    if (embossOffset) embossOffset.setAttribute('dy', (2.6 * k).toFixed(3));
+
+    // 絶景スポットの名前は、寄ってから出す（設計書 4.1）
+    mapElement.classList.toggle('map--named', zoom >= LABEL_ZOOM);
+  }
+
+  const view = createView(mapElement, terrain.projection, initialBox, onViewChange);
+  view.apply();
+  window.addEventListener('resize', () => view.apply());
+
+  setUpGestures(mapElement, view, (spotElement) => {
+    // カードはこのあとの手順で足す
+    void spotElement;
+  });
+
+  document.getElementById('reset-view').addEventListener('click', () => view.reset());
 
   setUpThemeFilter(document.getElementById('themes'), spotsLayer.querySelectorAll('.spot'));
 
