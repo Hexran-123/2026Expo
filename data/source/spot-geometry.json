@@ -1,0 +1,84 @@
+{
+  "_comment": "tools/build-spot-geometry.js が計算した参考値。data/spots.json はこれを見て人が書く。",
+  "generatedAt": "2026-07-31",
+  "spots": [
+    {
+      "id": "S01",
+      "name": "ヤマサ醤油工場",
+      "location": "仲ノ町駅付近",
+      "theme": "産業と水運",
+      "lat": 35.72875,
+      "lon": 140.833157,
+      "distanceAlong": 482,
+      "sideDown": "右",
+      "sideUp": "左",
+      "method": "工業用地「(名前なし)」の重心（線路から 133m）から計算",
+      "certainty": "高"
+    },
+    {
+      "id": "S02",
+      "name": "遠くに見える海",
+      "location": "観音駅〜本銚子駅",
+      "theme": "海と空",
+      "lat": 35.73052,
+      "lon": 140.843835,
+      "distanceAlong": 1496,
+      "sideDown": "左",
+      "sideUp": "右",
+      "method": "いちばん近い海岸線（1727m 先）の向きから計算",
+      "certainty": "高"
+    },
+    {
+      "id": "S03",
+      "name": "森のトンネル",
+      "location": "本銚子駅",
+      "theme": "地形",
+      "lat": 35.730999,
+      "lon": 140.847813,
+      "distanceAlong": 1863,
+      "sideDown": "両",
+      "sideUp": "両",
+      "method": "切通しで線路の両側が樹木に覆われるため、左右の区別なし",
+      "certainty": "高"
+    },
+    {
+      "id": "S04",
+      "name": "キャベツ畑",
+      "location": "笠上黒生駅〜西海鹿島駅",
+      "theme": "気候と農業",
+      "lat": 35.726892,
+      "lon": 140.858429,
+      "distanceAlong": 2995,
+      "sideDown": "左",
+      "sideUp": "右",
+      "method": "農地の見えかた 左 62% : 右 38%（左 10 区画 / 右 14 区画）",
+      "certainty": "低（左右の差が小さい）"
+    },
+    {
+      "id": "S05",
+      "name": "ひまわり畑",
+      "location": "君ヶ浜駅〜犬吠駅",
+      "theme": "気候と農業",
+      "lat": 35.709904,
+      "lon": 140.860562,
+      "distanceAlong": 5157,
+      "sideDown": "両",
+      "sideUp": "両",
+      "method": "農地の見えかた 左 45% : 右 55%（左 35 区画 / 右 44 区画）",
+      "certainty": "中（線路の両側に畑が広がっている）"
+    },
+    {
+      "id": "S06",
+      "name": "河津桜・菜の花",
+      "location": "外川駅",
+      "theme": "気候と農業",
+      "lat": 35.699217,
+      "lon": 140.857081,
+      "distanceAlong": 6440,
+      "sideDown": "両",
+      "sideUp": "両",
+      "method": "2019 年に線路沿いへ植えられた並木のため、左右の区別なし",
+      "certainty": "低（植えられた範囲が地図データにないため、現地写真での確認が必要）"
+    }
+  ]
+}

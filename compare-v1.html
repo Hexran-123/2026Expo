@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>比較 第一版</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/compare-a.css">
+</head>
+<body>
+  <div class="screen">
+    <svg class="map" id="map" aria-label="比較 第一版">
+      <defs>
+        <filter id="coast-emboss" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1.6" stdDeviation="1.6" flood-color="#1B3A2E" flood-opacity="0.45"/>
+        </filter>
+      </defs>
+      <g id="map-terrain"></g>
+      <image id="hillshade" href="imagaes/hillshade-v1-raw.png" x="0" y="0" width="1000" height="1462"
+             preserveAspectRatio="none" style="mix-blend-mode:overlay; opacity:0.85"/>
+      <g id="map-route"></g>
+      <g id="map-stations"></g>
+      <g id="map-spots"></g>
+    </svg>
+    <header class="bar bar--top">
+      <h1 class="title">第一版（谷地の質感）</h1>
+      <p class="line-name">銚子電鉄</p>
+    </header>
+    <div class="bar bar--bottom">
+      <p class="weather" id="weather">天気を調べています…</p>
+      <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
+    </div>
+  </div>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Word 临时锁定文件（文档打开时自动生成，不是真实内容）
+~$*.docx
+~$*.doc
+~$*.xlsx
+~$*.pptx
+
+# OS 垃圾文件
+Thumbs.db
+desktop.ini
+.DS_Store

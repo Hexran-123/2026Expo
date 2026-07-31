@@ -1,0 +1,2897 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-07-31T03:28:30Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 1642794907,
+  "lat": 35.7310562,
+  "lon": 140.8478146,
+  "tags": {
+    "name": "本銚子",
+    "name:en": "Moto-Choshi",
+    "name:ja": "本銚子",
+    "name:ja-Hira": "もとちょうし",
+    "name:ja_rm": "Moto-Chōshi",
+    "name:ko": "모토초시",
+    "public_transport": "station",
+    "railway": "station",
+    "wheelchair": "yes",
+    "wikidata": "Q6917931",
+    "wikipedia": "ja:本銚子駅"
+  }
+},
+{
+  "type": "node",
+  "id": 2559434101,
+  "lat": 35.7294122,
+  "lon": 140.8273135,
+  "tags": {
+    "name": "銚子",
+    "name:en": "Chōshi",
+    "name:ja": "銚子",
+    "name:ja-Hira": "ちょうし",
+    "name:ja-Latn": "Chōshi",
+    "name:ko": "조시",
+    "name:zh": "铫子",
+    "operator": "東日本旅客鉄道",
+    "platforms": "4",
+    "public_transport": "station",
+    "railway": "station",
+    "source": "Bing, 2011/3/11",
+    "wheelchair": "yes",
+    "wikidata": "Q861084",
+    "wikipedia": "ja:銚子駅"
+  }
+},
+{
+  "type": "node",
+  "id": 2559434126,
+  "lat": 35.7395583,
+  "lon": 140.7952579,
+  "tags": {
+    "name": "松岸",
+    "name:en": "Matsugishi",
+    "name:ja": "松岸",
+    "name:ja-Hira": "まつぎし",
+    "name:ja_rm": "Matsugishi",
+    "name:ko": "마쓰기시",
+    "operator": "東日本旅客鉄道",
+    "platforms": "3",
+    "public_transport": "station",
+    "railway": "station",
+    "source": "bing",
+    "wheelchair": "no",
+    "wikidata": "Q5365309",
+    "wikipedia": "ja:松岸駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212900,
+  "lat": 35.7288796,
+  "lon": 140.8335069,
+  "tags": {
+    "name": "仲ノ町",
+    "name:en": "Nakanocho",
+    "name:ja": "仲ノ町",
+    "name:ja-Hira": "なかのちょう",
+    "name:ja-Latn": "Nakanochō",
+    "name:ko": "나카노초",
+    "operator": "銚子電気鉄道",
+    "public_transport": "station",
+    "railway": "station",
+    "ref": "CD02",
+    "train": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q6960280",
+    "wikipedia": "ja:仲ノ町駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212901,
+  "lat": 35.7135504,
+  "lon": 140.8605022,
+  "tags": {
+    "name": "君ヶ浜",
+    "name:en": "Kimigahama",
+    "name:ja": "君ヶ浜",
+    "name:ja-Hira": "きみがはま",
+    "name:ja_rm": "Kimigahama",
+    "name:ko": "기미가하마",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wheelchair": "no",
+    "wikidata": "Q6410125",
+    "wikipedia": "ja:君ヶ浜駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212902,
+  "lat": 35.6992536,
+  "lon": 140.8570250,
+  "tags": {
+    "name": "外川",
+    "name:en": "Tokawa",
+    "name:ja": "外川",
+    "name:ja-Hira": "とかわ",
+    "name:ja_rm": "Tokawa",
+    "name:ko": "도카와",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wikidata": "Q5697162",
+    "wikipedia": "ja:外川駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212903,
+  "lat": 35.7217916,
+  "lon": 140.8635436,
+  "tags": {
+    "name": "海鹿島",
+    "name:en": "Ashikajima",
+    "name:ja": "海鹿島",
+    "name:ja-Hira": "あしかじま",
+    "name:ja_rm": "Ashikajima",
+    "name:ko": "아시카지마",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wheelchair": "no",
+    "wikidata": "Q4805079",
+    "wikipedia": "ja:海鹿島駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212904,
+  "lat": 35.7062450,
+  "lon": 140.8611750,
+  "tags": {
+    "name": "犬吠",
+    "name:en": "Inubo",
+    "name:ja": "犬吠",
+    "name:ja-Hira": "いぬぼう",
+    "name:ja_rm": "Inubō",
+    "name:ko": "이누보",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q5696669",
+    "wikipedia": "ja:犬吠駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212905,
+  "lat": 35.7284288,
+  "lon": 140.8570855,
+  "tags": {
+    "addr:block_number": "6015",
+    "addr:city": "銚子市",
+    "addr:neighbourhood": "笠上町",
+    "addr:province": "千葉県",
+    "name": "笠上黒生",
+    "name:en": "Kasagami-Kurohae",
+    "name:ja": "笠上黒生",
+    "name:ja-Hira": "かさがみくろはね",
+    "name:ja_rm": "Kasagami-Kurohae",
+    "name:ko": "가사가미쿠로하에",
+    "public_transport": "station",
+    "railway": "station",
+    "ref": "CD05",
+    "start_date": "1925-07-01",
+    "train": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q6373952",
+    "wikipedia": "ja:笠上黒生駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212906,
+  "lat": 35.7254126,
+  "lon": 140.8598568,
+  "tags": {
+    "name": "西海鹿島",
+    "name:en": "Nishi-Ashikajima",
+    "name:ja": "西海鹿島",
+    "name:ja-Hira": "にしあしかじま",
+    "name:ja_rm": "Nishi-Ashikajima",
+    "name:ko": "니시아시카지마",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q11629100",
+    "wikipedia": "ja:西海鹿島駅"
+  }
+},
+{
+  "type": "node",
+  "id": 3100212907,
+  "lat": 35.7290391,
+  "lon": 140.8402233,
+  "tags": {
+    "name": "観音",
+    "name:en": "Kannon",
+    "name:ja": "観音",
+    "name:ja-Hira": "かんのん",
+    "name:ja_rm": "Kannon",
+    "name:ko": "간논",
+    "operator": "銚子電気鉄道",
+    "public_transport": "station",
+    "railway": "station",
+    "train": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q6364091",
+    "wikipedia": "ja:観音駅"
+  }
+},
+{
+  "type": "way",
+  "id": 151859862,
+  "bounds": {
+    "minlat": 35.7469535,
+    "minlon": 140.7742249,
+    "maxlat": 35.7526270,
+    "maxlon": 140.7808303
+  },
+  "nodes": [
+    1642146748,
+    1647003360,
+    1647003359,
+    1647003351,
+    1647003346,
+    1647003339,
+    1647003321
+  ],
+  "geometry": [
+    { "lat": 35.7526270, "lon": 140.7742249 },
+    { "lat": 35.7516630, "lon": 140.7753807 },
+    { "lat": 35.7499169, "lon": 140.7773858 },
+    { "lat": 35.7493650, "lon": 140.7779884 },
+    { "lat": 35.7481584, "lon": 140.7794305 },
+    { "lat": 35.7474196, "lon": 140.7802737 },
+    { "lat": 35.7469535, "lon": 140.7808303 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "85",
+    "name": "成田線",
+    "name:de": "Narita-Linie",
+    "name:en": "Narita Line",
+    "name:es": "Línea Narita",
+    "name:it": "Linea Narita",
+    "name:ja": "成田線",
+    "name:ja-Hira": "なりたせん",
+    "name:ja-Latn": "Narita-sen",
+    "name:ko": "나리타선",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 199907707,
+  "bounds": {
+    "minlat": 35.7292283,
+    "minlon": 140.8289726,
+    "maxlat": 35.7292782,
+    "maxlon": 140.8292233
+  },
+  "nodes": [
+    2098974559,
+    2098974555
+  ],
+  "geometry": [
+    { "lat": 35.7292782, "lon": 140.8289726 },
+    { "lat": 35.7292283, "lon": 140.8292233 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "railway": "rail",
+    "source": "Bing, 2011/3/11",
+    "usage": "main"
+  }
+},
+{
+  "type": "way",
+  "id": 199907708,
+  "bounds": {
+    "minlat": 35.7290849,
+    "minlon": 140.8278906,
+    "maxlat": 35.7293135,
+    "maxlon": 140.8298967
+  },
+  "nodes": [
+    1912854572,
+    2398518006,
+    2098974552,
+    243815188
+  ],
+  "geometry": [
+    { "lat": 35.7290849, "lon": 140.8298967 },
+    { "lat": 35.7291283, "lon": 140.8295081 },
+    { "lat": 35.7292000, "lon": 140.8289621 },
+    { "lat": 35.7293135, "lon": 140.8278906 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "source": "Bing, 2011/3/11",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907709,
+  "bounds": {
+    "minlat": 35.7293255,
+    "minlon": 140.8249419,
+    "maxlat": 35.7296255,
+    "maxlon": 140.8286493
+  },
+  "nodes": [
+    2098974594,
+    3135816189,
+    2098974592,
+    2098974593,
+    2098974591,
+    2098974590,
+    2098974586,
+    2099017807,
+    2098974576,
+    2098974572,
+    2098974564
+  ],
+  "geometry": [
+    { "lat": 35.7296255, "lon": 140.8249419 },
+    { "lat": 35.7296177, "lon": 140.8252233 },
+    { "lat": 35.7296129, "lon": 140.8254707 },
+    { "lat": 35.7296147, "lon": 140.8258537 },
+    { "lat": 35.7296092, "lon": 140.8260930 },
+    { "lat": 35.7295999, "lon": 140.8263552 },
+    { "lat": 35.7295592, "lon": 140.8268225 },
+    { "lat": 35.7295072, "lon": 140.8273212 },
+    { "lat": 35.7294531, "lon": 140.8278409 },
+    { "lat": 35.7294034, "lon": 140.8282710 },
+    { "lat": 35.7293255, "lon": 140.8286493 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ja_rm": "Sōbu Hon Sen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "source": "Bing, 2011/3/11",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 199907710,
+  "bounds": {
+    "minlat": 35.7292782,
+    "minlon": 140.8254977,
+    "maxlat": 35.7295721,
+    "maxlon": 140.8289726
+  },
+  "nodes": [
+    2098974588,
+    2098974589,
+    2098974587,
+    2098974585,
+    2098974580,
+    2099017806,
+    2098974573,
+    2098974570,
+    2098974564,
+    2098974559
+  ],
+  "geometry": [
+    { "lat": 35.7295698, "lon": 140.8254977 },
+    { "lat": 35.7295721, "lon": 140.8256850 },
+    { "lat": 35.7295666, "lon": 140.8259198 },
+    { "lat": 35.7295536, "lon": 140.8263050 },
+    { "lat": 35.7295166, "lon": 140.8268202 },
+    { "lat": 35.7294671, "lon": 140.8273159 },
+    { "lat": 35.7294149, "lon": 140.8278382 },
+    { "lat": 35.7293703, "lon": 140.8282647 },
+    { "lat": 35.7293255, "lon": 140.8286493 },
+    { "lat": 35.7292782, "lon": 140.8289726 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ja_rm": "Sōbu Hon Sen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "source": "Bing, 2011/3/11",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 199907711,
+  "bounds": {
+    "minlat": 35.7290849,
+    "minlon": 140.8282642,
+    "maxlat": 35.7293391,
+    "maxlon": 140.8298967
+  },
+  "nodes": [
+    1912855504,
+    2098974565,
+    2098974558,
+    2098974555,
+    1912854572
+  ],
+  "geometry": [
+    { "lat": 35.7293391, "lon": 140.8282642 },
+    { "lat": 35.7293268, "lon": 140.8283740 },
+    { "lat": 35.7292547, "lon": 140.8289680 },
+    { "lat": 35.7292283, "lon": 140.8292233 },
+    { "lat": 35.7290849, "lon": 140.8298967 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907712,
+  "bounds": {
+    "minlat": 35.7286920,
+    "minlon": 140.8333218,
+    "maxlat": 35.7287167,
+    "maxlon": 140.8340443
+  },
+  "nodes": [
+    2098974520,
+    2098974522,
+    2098974525,
+    3100212786
+  ],
+  "geometry": [
+    { "lat": 35.7286920, "lon": 140.8333218 },
+    { "lat": 35.7286998, "lon": 140.8336602 },
+    { "lat": 35.7287144, "lon": 140.8340034 },
+    { "lat": 35.7287167, "lon": 140.8340443 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "survey, 2012/10/08; Bing, 2011/3/11",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907713,
+  "bounds": {
+    "minlat": 35.7281791,
+    "minlon": 140.8565710,
+    "maxlat": 35.7287896,
+    "maxlon": 140.8570755
+  },
+  "nodes": [
+    2098974529,
+    2098974510,
+    2098974504
+  ],
+  "geometry": [
+    { "lat": 35.7287896, "lon": 140.8565710 },
+    { "lat": 35.7284639, "lon": 140.8567871 },
+    { "lat": 35.7281791, "lon": 140.8570755 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "service": "siding",
+    "source": "Bing, 2011/3/11",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907714,
+  "bounds": {
+    "minlat": 35.6989765,
+    "minlon": 140.8568475,
+    "maxlat": 35.6997841,
+    "maxlon": 140.8577043
+  },
+  "nodes": [
+    2098974479,
+    2098974477,
+    2098974469,
+    2098974468
+  ],
+  "geometry": [
+    { "lat": 35.6997841, "lon": 140.8577043 },
+    { "lat": 35.6996281, "lon": 140.8575654 },
+    { "lat": 35.6991157, "lon": 140.8570342 },
+    { "lat": 35.6989765, "lon": 140.8568475 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "service": "siding",
+    "source": "Bing, 2011/3/11",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907715,
+  "bounds": {
+    "minlat": 35.7286828,
+    "minlon": 140.8329958,
+    "maxlat": 35.7287873,
+    "maxlon": 140.8339919
+  },
+  "nodes": [
+    2098974519,
+    2098974518,
+    2098974520,
+    2098974527,
+    3100212788
+  ],
+  "geometry": [
+    { "lat": 35.7286869, "lon": 140.8329958 },
+    { "lat": 35.7286828, "lon": 140.8331783 },
+    { "lat": 35.7286920, "lon": 140.8333218 },
+    { "lat": 35.7287456, "lon": 140.8337054 },
+    { "lat": 35.7287873, "lon": 140.8339919 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "survey, 2012/10/08; Bing, 2011/3/11",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907716,
+  "bounds": {
+    "minlat": 35.7286869,
+    "minlon": 140.8323030,
+    "maxlat": 35.7289571,
+    "maxlon": 140.8342191
+  },
+  "nodes": [
+    1642012456,
+    2098974521,
+    2098974517,
+    2098974519,
+    2098974523,
+    2098974528,
+    2098974534,
+    2098974540
+  ],
+  "geometry": [
+    { "lat": 35.7287236, "lon": 140.8323030 },
+    { "lat": 35.7287035, "lon": 140.8324867 },
+    { "lat": 35.7286904, "lon": 140.8326528 },
+    { "lat": 35.7286869, "lon": 140.8329958 },
+    { "lat": 35.7287090, "lon": 140.8331686 },
+    { "lat": 35.7287587, "lon": 140.8334136 },
+    { "lat": 35.7288893, "lon": 140.8339914 },
+    { "lat": 35.7289571, "lon": 140.8342191 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "service": "siding",
+    "source": "survey, 2012/10/08;Bing, 2011/3/11",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 199907717,
+  "bounds": {
+    "minlat": 35.7278097,
+    "minlon": 140.8560141,
+    "maxlat": 35.7293748,
+    "maxlon": 140.8575299
+  },
+  "nodes": [
+    1642012542,
+    2098974550,
+    3100212844,
+    3100212833,
+    2098974529,
+    2098974514,
+    3100212779,
+    2098974507,
+    6393695635,
+    2098974502,
+    2098974500
+  ],
+  "geometry": [
+    { "lat": 35.7293748, "lon": 140.8560141 },
+    { "lat": 35.7291740, "lon": 140.8562014 },
+    { "lat": 35.7291001, "lon": 140.8562715 },
+    { "lat": 35.7289379, "lon": 140.8564242 },
+    { "lat": 35.7287896, "lon": 140.8565710 },
+    { "lat": 35.7285497, "lon": 140.8568099 },
+    { "lat": 35.7285361, "lon": 140.8568248 },
+    { "lat": 35.7283805, "lon": 140.8569765 },
+    { "lat": 35.7281944, "lon": 140.8571599 },
+    { "lat": 35.7281426, "lon": 140.8572110 },
+    { "lat": 35.7278097, "lon": 140.8575299 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "source": "Bing, 2011/3/11",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 221443347,
+  "bounds": {
+    "minlat": 35.7383566,
+    "minlon": 140.7933300,
+    "maxlat": 35.7402338,
+    "maxlon": 140.7977772
+  },
+  "nodes": [
+    2304738352,
+    12393046956,
+    12393046955,
+    9852694554,
+    2304738372,
+    12393046963,
+    2304738388
+  ],
+  "geometry": [
+    { "lat": 35.7383566, "lon": 140.7977772 },
+    { "lat": 35.7384297, "lon": 140.7975916 },
+    { "lat": 35.7385014, "lon": 140.7974172 },
+    { "lat": 35.7393911, "lon": 140.7952996 },
+    { "lat": 35.7397968, "lon": 140.7943262 },
+    { "lat": 35.7399198, "lon": 140.7940439 },
+    { "lat": 35.7402338, "lon": 140.7933300 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ja_rm": "Sōbu Hon Sen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 221443351,
+  "bounds": {
+    "minlat": 35.7386367,
+    "minlon": 140.7960261,
+    "maxlat": 35.7392005,
+    "maxlon": 140.7971875
+  },
+  "nodes": [
+    1647002848,
+    12393046987,
+    12393046986,
+    2304738364,
+    12393046978,
+    12393046977,
+    12393046989
+  ],
+  "geometry": [
+    { "lat": 35.7386367, "lon": 140.7971875 },
+    { "lat": 35.7386689, "lon": 140.7971189 },
+    { "lat": 35.7387000, "lon": 140.7970561 },
+    { "lat": 35.7387351, "lon": 140.7969934 },
+    { "lat": 35.7388995, "lon": 140.7966942 },
+    { "lat": 35.7389498, "lon": 140.7965898 },
+    { "lat": 35.7392005, "lon": 140.7960261 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard"
+  }
+},
+{
+  "type": "way",
+  "id": 221443353,
+  "bounds": {
+    "minlat": 35.7387351,
+    "minlon": 140.7961129,
+    "maxlat": 35.7392050,
+    "maxlon": 140.7969934
+  },
+  "nodes": [
+    12393046985,
+    12393046984,
+    12393046983,
+    12393046982,
+    12393046981,
+    12393046980,
+    12393046979,
+    2304738378,
+    2304738364
+  ],
+  "geometry": [
+    { "lat": 35.7392050, "lon": 140.7961129 },
+    { "lat": 35.7390564, "lon": 140.7964627 },
+    { "lat": 35.7390147, "lon": 140.7965500 },
+    { "lat": 35.7389742, "lon": 140.7966266 },
+    { "lat": 35.7389287, "lon": 140.7967041 },
+    { "lat": 35.7388817, "lon": 140.7967751 },
+    { "lat": 35.7388232, "lon": 140.7968566 },
+    { "lat": 35.7387830, "lon": 140.7969145 },
+    { "lat": 35.7387351, "lon": 140.7969934 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard"
+  }
+},
+{
+  "type": "way",
+  "id": 231460989,
+  "bounds": {
+    "minlat": 35.7297916,
+    "minlon": 140.8231377,
+    "maxlat": 35.7298204,
+    "maxlon": 140.8233606
+  },
+  "nodes": [
+    2398518071,
+    2398518070
+  ],
+  "geometry": [
+    { "lat": 35.7298204, "lon": 140.8231377 },
+    { "lat": 35.7297916, "lon": 140.8233606 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231460990,
+  "bounds": {
+    "minlat": 35.7293135,
+    "minlon": 140.8254977,
+    "maxlat": 35.7295698,
+    "maxlon": 140.8278906
+  },
+  "nodes": [
+    2098974588,
+    243815188
+  ],
+  "geometry": [
+    { "lat": 35.7295698, "lon": 140.8254977 },
+    { "lat": 35.7293135, "lon": 140.8278906 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "service": "yard",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231460996,
+  "bounds": {
+    "minlat": 35.7288723,
+    "minlon": 140.8252438,
+    "maxlat": 35.7295596,
+    "maxlon": 140.8298817
+  },
+  "nodes": [
+    2398517993,
+    2398517999,
+    2398518001,
+    2398518009,
+    2398518011,
+    2398518012,
+    2398518014,
+    2398518017,
+    2398518021,
+    2398518025,
+    2398518028,
+    2398518033
+  ],
+  "geometry": [
+    { "lat": 35.7288723, "lon": 140.8298817 },
+    { "lat": 35.7289794, "lon": 140.8290796 },
+    { "lat": 35.7290396, "lon": 140.8286638 },
+    { "lat": 35.7291753, "lon": 140.8274105 },
+    { "lat": 35.7292371, "lon": 140.8268090 },
+    { "lat": 35.7292778, "lon": 140.8265880 },
+    { "lat": 35.7293247, "lon": 140.8263699 },
+    { "lat": 35.7293850, "lon": 140.8260895 },
+    { "lat": 35.7294517, "lon": 140.8257796 },
+    { "lat": 35.7294978, "lon": 140.8255650 },
+    { "lat": 35.7295265, "lon": 140.8254016 },
+    { "lat": 35.7295596, "lon": 140.8252438 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 231460997,
+  "bounds": {
+    "minlat": 35.7298650,
+    "minlon": 140.8203840,
+    "maxlat": 35.7301545,
+    "maxlon": 140.8231270
+  },
+  "nodes": [
+    2398518086,
+    2398518075
+  ],
+  "geometry": [
+    { "lat": 35.7301545, "lon": 140.8203840 },
+    { "lat": 35.7298650, "lon": 140.8231270 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231460998,
+  "bounds": {
+    "minlat": 35.7296962,
+    "minlon": 140.8243412,
+    "maxlat": 35.7297263,
+    "maxlon": 140.8247126
+  },
+  "nodes": [
+    2398518062,
+    2398518064
+  ],
+  "geometry": [
+    { "lat": 35.7296962, "lon": 140.8247126 },
+    { "lat": 35.7297263, "lon": 140.8243412 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231460999,
+  "bounds": {
+    "minlat": 35.7298379,
+    "minlon": 140.8231270,
+    "maxlat": 35.7298650,
+    "maxlon": 140.8233758
+  },
+  "nodes": [
+    2398518075,
+    2398518073
+  ],
+  "geometry": [
+    { "lat": 35.7298650, "lon": 140.8231270 },
+    { "lat": 35.7298379, "lon": 140.8233758 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461000,
+  "bounds": {
+    "minlat": 35.7299057,
+    "minlon": 140.8203839,
+    "maxlat": 35.7301973,
+    "maxlon": 140.8231270
+  },
+  "nodes": [
+    2398518087,
+    2398518078
+  ],
+  "geometry": [
+    { "lat": 35.7301973, "lon": 140.8203839 },
+    { "lat": 35.7299057, "lon": 140.8231270 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461001,
+  "bounds": {
+    "minlat": 35.7298816,
+    "minlon": 140.8231270,
+    "maxlat": 35.7299057,
+    "maxlon": 140.8233758
+  },
+  "nodes": [
+    2398518078,
+    2398518076
+  ],
+  "geometry": [
+    { "lat": 35.7299057, "lon": 140.8231270 },
+    { "lat": 35.7298816, "lon": 140.8233758 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461002,
+  "bounds": {
+    "minlat": 35.7299253,
+    "minlon": 140.8231325,
+    "maxlat": 35.7299524,
+    "maxlon": 140.8233683
+  },
+  "nodes": [
+    2398518080,
+    2398518079
+  ],
+  "geometry": [
+    { "lat": 35.7299524, "lon": 140.8231325 },
+    { "lat": 35.7299253, "lon": 140.8233683 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461003,
+  "bounds": {
+    "minlat": 35.7297595,
+    "minlon": 140.8233758,
+    "maxlat": 35.7298379,
+    "maxlon": 140.8241778
+  },
+  "nodes": [
+    2398518073,
+    2398518069,
+    2398518066
+  ],
+  "geometry": [
+    { "lat": 35.7298379, "lon": 140.8233758 },
+    { "lat": 35.7297881, "lon": 140.8238603 },
+    { "lat": 35.7297595, "lon": 140.8241778 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461004,
+  "bounds": {
+    "minlat": 35.7298268,
+    "minlon": 140.8233758,
+    "maxlat": 35.7298816,
+    "maxlon": 140.8238570
+  },
+  "nodes": [
+    2398518076,
+    2398518074,
+    2398518072
+  ],
+  "geometry": [
+    { "lat": 35.7298816, "lon": 140.8233758 },
+    { "lat": 35.7298560, "lon": 140.8235781 },
+    { "lat": 35.7298268, "lon": 140.8238570 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461005,
+  "bounds": {
+    "minlat": 35.7289251,
+    "minlon": 140.8286638,
+    "maxlat": 35.7290396,
+    "maxlon": 140.8298832
+  },
+  "nodes": [
+    2398517998,
+    2398518000,
+    2398518001
+  ],
+  "geometry": [
+    { "lat": 35.7289251, "lon": 140.8298832 },
+    { "lat": 35.7290005, "lon": 140.8290830 },
+    { "lat": 35.7290396, "lon": 140.8286638 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 231461006,
+  "bounds": {
+    "minlat": 35.7291331,
+    "minlon": 140.8257796,
+    "maxlat": 35.7294517,
+    "maxlon": 140.8289775
+  },
+  "nodes": [
+    2398518004,
+    2398518008,
+    2398518018,
+    2398518021
+  ],
+  "geometry": [
+    { "lat": 35.7291331, "lon": 140.8289775 },
+    { "lat": 35.7291663, "lon": 140.8285969 },
+    { "lat": 35.7294255, "lon": 140.8260904 },
+    { "lat": 35.7294517, "lon": 140.8257796 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 231461007,
+  "bounds": {
+    "minlat": 35.7299524,
+    "minlon": 140.8205258,
+    "maxlat": 35.7302162,
+    "maxlon": 140.8231325
+  },
+  "nodes": [
+    2398518088,
+    2398518082,
+    2398518081,
+    2398518080
+  ],
+  "geometry": [
+    { "lat": 35.7302162, "lon": 140.8205258 },
+    { "lat": 35.7300308, "lon": 140.8223546 },
+    { "lat": 35.7300037, "lon": 140.8226405 },
+    { "lat": 35.7299524, "lon": 140.8231325 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461008,
+  "bounds": {
+    "minlat": 35.7291256,
+    "minlon": 140.8260895,
+    "maxlat": 35.7293850,
+    "maxlon": 140.8287065
+  },
+  "nodes": [
+    6341217693,
+    2398518007,
+    2398518015,
+    2398518017
+  ],
+  "geometry": [
+    { "lat": 35.7291256, "lon": 140.8287065 },
+    { "lat": 35.7291542, "lon": 140.8283927 },
+    { "lat": 35.7293562, "lon": 140.8264042 },
+    { "lat": 35.7293850, "lon": 140.8260895 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 231461009,
+  "bounds": {
+    "minlat": 35.7300037,
+    "minlon": 140.8205279,
+    "maxlat": 35.7302508,
+    "maxlon": 140.8226405
+  },
+  "nodes": [
+    2398518089,
+    2398518085,
+    2398518084,
+    2398518083,
+    2398518081
+  ],
+  "geometry": [
+    { "lat": 35.7302508, "lon": 140.8205279 },
+    { "lat": 35.7301046, "lon": 140.8219721 },
+    { "lat": 35.7300805, "lon": 140.8221708 },
+    { "lat": 35.7300534, "lon": 140.8223583 },
+    { "lat": 35.7300037, "lon": 140.8226405 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461012,
+  "bounds": {
+    "minlat": 35.7296504,
+    "minlon": 140.8233683,
+    "maxlat": 35.7299253,
+    "maxlon": 140.8247050
+  },
+  "nodes": [
+    2398518079,
+    2398518077,
+    2398518072,
+    2398518066,
+    2398518064,
+    2398518047
+  ],
+  "geometry": [
+    { "lat": 35.7299253, "lon": 140.8233683 },
+    { "lat": 35.7298861, "lon": 140.8235744 },
+    { "lat": 35.7298268, "lon": 140.8238570 },
+    { "lat": 35.7297595, "lon": 140.8241778 },
+    { "lat": 35.7297263, "lon": 140.8243412 },
+    { "lat": 35.7296504, "lon": 140.8247050 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 231461013,
+  "bounds": {
+    "minlat": 35.7291256,
+    "minlon": 140.8263699,
+    "maxlat": 35.7293247,
+    "maxlon": 140.8295081
+  },
+  "nodes": [
+    2398518006,
+    2398518005,
+    2398518004,
+    6341217693,
+    2398518003,
+    2398518013,
+    2398518014
+  ],
+  "geometry": [
+    { "lat": 35.7291283, "lon": 140.8295081 },
+    { "lat": 35.7291334, "lon": 140.8292451 },
+    { "lat": 35.7291331, "lon": 140.8289775 },
+    { "lat": 35.7291256, "lon": 140.8287065 },
+    { "lat": 35.7291271, "lon": 140.8283760 },
+    { "lat": 35.7292853, "lon": 140.8268219 },
+    { "lat": 35.7293247, "lon": 140.8263699 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 231461014,
+  "bounds": {
+    "minlat": 35.7291334,
+    "minlon": 140.8239033,
+    "maxlat": 35.7297346,
+    "maxlon": 140.8292451
+  },
+  "nodes": [
+    2398518005,
+    2398518010,
+    2398518024,
+    2398518029,
+    2398518033,
+    3135816187,
+    2398518035,
+    2398518054,
+    2398518063,
+    2398518065
+  ],
+  "geometry": [
+    { "lat": 35.7291334, "lon": 140.8292451 },
+    { "lat": 35.7291934, "lon": 140.8286006 },
+    { "lat": 35.7294918, "lon": 140.8257878 },
+    { "lat": 35.7295340, "lon": 140.8254703 },
+    { "lat": 35.7295596, "lon": 140.8252438 },
+    { "lat": 35.7295674, "lon": 140.8251759 },
+    { "lat": 35.7295988, "lon": 140.8249300 },
+    { "lat": 35.7296697, "lon": 140.8242449 },
+    { "lat": 35.7296968, "lon": 140.8240759 },
+    { "lat": 35.7297346, "lon": 140.8239033 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 233386599,
+  "bounds": {
+    "minlat": 35.7298204,
+    "minlon": 140.7988553,
+    "maxlat": 35.7379383,
+    "maxlon": 140.8231377
+  },
+  "nodes": [
+    12393046991,
+    8606458740,
+    1642146712,
+    8606458648,
+    9384764432,
+    9384764476,
+    3135943518,
+    1642146692,
+    1642146687,
+    1642146681,
+    1642146675,
+    1642146664,
+    1642146653,
+    1647002425,
+    8606458924,
+    2398518071
+  ],
+  "geometry": [
+    { "lat": 35.7379383, "lon": 140.7988553 },
+    { "lat": 35.7371027, "lon": 140.8008537 },
+    { "lat": 35.7366661, "lon": 140.8019082 },
+    { "lat": 35.7360350, "lon": 140.8034136 },
+    { "lat": 35.7342788, "lon": 140.8076022 },
+    { "lat": 35.7338328, "lon": 140.8086573 },
+    { "lat": 35.7314954, "lon": 140.8142405 },
+    { "lat": 35.7309710, "lon": 140.8154863 },
+    { "lat": 35.7307915, "lon": 140.8159280 },
+    { "lat": 35.7306776, "lon": 140.8162215 },
+    { "lat": 35.7306127, "lon": 140.8164542 },
+    { "lat": 35.7305087, "lon": 140.8169171 },
+    { "lat": 35.7304576, "lon": 140.8172490 },
+    { "lat": 35.7301413, "lon": 140.8202042 },
+    { "lat": 35.7301365, "lon": 140.8202489 },
+    { "lat": 35.7298204, "lon": 140.8231377 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 233386603,
+  "bounds": {
+    "minlat": 35.7287152,
+    "minlon": 140.8298967,
+    "maxlat": 35.7309992,
+    "maxlon": 140.8478002
+  },
+  "nodes": [
+    1912854572,
+    2098974549,
+    3100212842,
+    1912855120,
+    3100212795,
+    1642012479,
+    1642012456,
+    2098974524,
+    2098974526,
+    1642012461,
+    1642012468,
+    2098974540,
+    1642012514,
+    3100212843,
+    1642012519,
+    1642012521,
+    1642012533,
+    6021712565,
+    1642012520,
+    2098974547,
+    1642012507,
+    1642012505,
+    3100212826,
+    3100212808,
+    1642012490,
+    3100212805,
+    1642012498,
+    1642794904,
+    2098974543,
+    3100212839,
+    8326645319,
+    717334200,
+    8326645320,
+    3100212846,
+    5049963336,
+    3100212847,
+    3100212848,
+    1642012639,
+    1642012664,
+    1642012695,
+    6417646299,
+    1642012738,
+    1642012765,
+    443623264,
+    3100212857
+  ],
+  "geometry": [
+    { "lat": 35.7290849, "lon": 140.8298967 },
+    { "lat": 35.7290611, "lon": 140.8300757 },
+    { "lat": 35.7290399, "lon": 140.8302170 },
+    { "lat": 35.7289443, "lon": 140.8308382 },
+    { "lat": 35.7288205, "lon": 140.8315989 },
+    { "lat": 35.7288020, "lon": 140.8317334 },
+    { "lat": 35.7287236, "lon": 140.8323030 },
+    { "lat": 35.7287152, "lon": 140.8326590 },
+    { "lat": 35.7287247, "lon": 140.8328866 },
+    { "lat": 35.7287503, "lon": 140.8331567 },
+    { "lat": 35.7288149, "lon": 140.8335132 },
+    { "lat": 35.7289571, "lon": 140.8342191 },
+    { "lat": 35.7290270, "lon": 140.8345662 },
+    { "lat": 35.7290639, "lon": 140.8347723 },
+    { "lat": 35.7290923, "lon": 140.8349853 },
+    { "lat": 35.7291070, "lon": 140.8351986 },
+    { "lat": 35.7291181, "lon": 140.8355100 },
+    { "lat": 35.7291178, "lon": 140.8356339 },
+    { "lat": 35.7291102, "lon": 140.8358013 },
+    { "lat": 35.7290441, "lon": 140.8362993 },
+    { "lat": 35.7289920, "lon": 140.8368487 },
+    { "lat": 35.7289312, "lon": 140.8379757 },
+    { "lat": 35.7289312, "lon": 140.8381304 },
+    { "lat": 35.7288948, "lon": 140.8389259 },
+    { "lat": 35.7288747, "lon": 140.8394596 },
+    { "lat": 35.7288847, "lon": 140.8396912 },
+    { "lat": 35.7289122, "lon": 140.8399092 },
+    { "lat": 35.7289500, "lon": 140.8401264 },
+    { "lat": 35.7289935, "lon": 140.8402931 },
+    { "lat": 35.7290169, "lon": 140.8403794 },
+    { "lat": 35.7290271, "lon": 140.8404124 },
+    { "lat": 35.7290494, "lon": 140.8404840 },
+    { "lat": 35.7290705, "lon": 140.8405380 },
+    { "lat": 35.7292510, "lon": 140.8410011 },
+    { "lat": 35.7293156, "lon": 140.8411262 },
+    { "lat": 35.7295656, "lon": 140.8416618 },
+    { "lat": 35.7301992, "lon": 140.8430376 },
+    { "lat": 35.7304161, "lon": 140.8435103 },
+    { "lat": 35.7305898, "lon": 140.8440541 },
+    { "lat": 35.7307444, "lon": 140.8446373 },
+    { "lat": 35.7308755, "lon": 140.8451703 },
+    { "lat": 35.7309114, "lon": 140.8453005 },
+    { "lat": 35.7309742, "lon": 140.8457268 },
+    { "lat": 35.7309781, "lon": 140.8465451 },
+    { "lat": 35.7309992, "lon": 140.8478002 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 249319570,
+  "bounds": {
+    "minlat": 35.7402338,
+    "minlon": 140.7930469,
+    "maxlat": 35.7403612,
+    "maxlon": 140.7933300
+  },
+  "nodes": [
+    2559434806,
+    2304738388
+  ],
+  "geometry": [
+    { "lat": 35.7403612, "lon": 140.7930469 },
+    { "lat": 35.7402338, "lon": 140.7933300 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249319571,
+  "bounds": {
+    "minlat": 35.7403612,
+    "minlon": 140.7929692,
+    "maxlat": 35.7403940,
+    "maxlon": 140.7930469
+  },
+  "nodes": [
+    1641243596,
+    2559434806
+  ],
+  "geometry": [
+    { "lat": 35.7403940, "lon": 140.7929692 },
+    { "lat": 35.7403612, "lon": 140.7930469 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249319575,
+  "bounds": {
+    "minlat": 35.7381321,
+    "minlon": 140.7977772,
+    "maxlat": 35.7383566,
+    "maxlon": 140.7983919
+  },
+  "nodes": [
+    2304738352,
+    1642146746,
+    12393046957,
+    12393046958,
+    1642146745
+  ],
+  "geometry": [
+    { "lat": 35.7383566, "lon": 140.7977772 },
+    { "lat": 35.7383336, "lon": 140.7978429 },
+    { "lat": 35.7382676, "lon": 140.7980300 },
+    { "lat": 35.7382125, "lon": 140.7981857 },
+    { "lat": 35.7381321, "lon": 140.7983919 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249319576,
+  "bounds": {
+    "minlat": 35.7383566,
+    "minlon": 140.7933300,
+    "maxlat": 35.7402338,
+    "maxlon": 140.7977772
+  },
+  "nodes": [
+    2304738352,
+    12393046954,
+    1642794909,
+    12393046953,
+    12393046952,
+    2304738351,
+    9852694555,
+    12393046970,
+    1641243529,
+    1641243571,
+    12393046974,
+    12393046969,
+    12393046968,
+    2304738388
+  ],
+  "geometry": [
+    { "lat": 35.7383566, "lon": 140.7977772 },
+    { "lat": 35.7385753, "lon": 140.7971698 },
+    { "lat": 35.7386660, "lon": 140.7969108 },
+    { "lat": 35.7387832, "lon": 140.7965810 },
+    { "lat": 35.7388685, "lon": 140.7963466 },
+    { "lat": 35.7389564, "lon": 140.7961234 },
+    { "lat": 35.7393207, "lon": 140.7952450 },
+    { "lat": 35.7395275, "lon": 140.7947507 },
+    { "lat": 35.7395968, "lon": 140.7945963 },
+    { "lat": 35.7396798, "lon": 140.7944197 },
+    { "lat": 35.7399222, "lon": 140.7939511 },
+    { "lat": 35.7400480, "lon": 140.7937077 },
+    { "lat": 35.7401396, "lon": 140.7935318 },
+    { "lat": 35.7402338, "lon": 140.7933300 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ja_rm": "Sōbu Hon Sen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249319593,
+  "bounds": {
+    "minlat": 35.7401658,
+    "minlon": 140.7924641,
+    "maxlat": 35.7406509,
+    "maxlon": 140.7935839
+  },
+  "nodes": [
+    1647002963,
+    1647002928
+  ],
+  "geometry": [
+    { "lat": 35.7406509, "lon": 140.7924641 },
+    { "lat": 35.7401658, "lon": 140.7935839 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "85",
+    "name": "成田線",
+    "name:de": "Narita-Linie",
+    "name:en": "Narita Line",
+    "name:es": "Línea Narita",
+    "name:it": "Linea Narita",
+    "name:ja": "成田線",
+    "name:ja-Hira": "なりたせん",
+    "name:ja-Latn": "Narita-sen",
+    "name:ko": "나리타선",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249319597,
+  "bounds": {
+    "minlat": 35.7381321,
+    "minlon": 140.7935839,
+    "maxlat": 35.7401658,
+    "maxlon": 140.7983919
+  },
+  "nodes": [
+    1647002928,
+    1647002902,
+    1647002882,
+    8606458643,
+    1647002848,
+    12393046959,
+    3135898491,
+    1642146745
+  ],
+  "geometry": [
+    { "lat": 35.7401658, "lon": 140.7935839 },
+    { "lat": 35.7398750, "lon": 140.7942334 },
+    { "lat": 35.7397858, "lon": 140.7944422 },
+    { "lat": 35.7389259, "lon": 140.7964971 },
+    { "lat": 35.7386367, "lon": 140.7971875 },
+    { "lat": 35.7385603, "lon": 140.7973691 },
+    { "lat": 35.7383550, "lon": 140.7978574 },
+    { "lat": 35.7381321, "lon": 140.7983919 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "85",
+    "name": "成田線",
+    "name:de": "Narita-Linie",
+    "name:en": "Narita Line",
+    "name:es": "Línea Narita",
+    "name:it": "Linea Narita",
+    "name:ja": "成田線",
+    "name:ja-Hira": "なりたせん",
+    "name:ja-Latn": "Narita-sen",
+    "name:ko": "나리타선",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249320199,
+  "bounds": {
+    "minlat": 35.7403940,
+    "minlon": 140.7924641,
+    "maxlat": 35.7406509,
+    "maxlon": 140.7929692
+  },
+  "nodes": [
+    1647002963,
+    12393046964,
+    12393046965,
+    1641243596
+  ],
+  "geometry": [
+    { "lat": 35.7406509, "lon": 140.7924641 },
+    { "lat": 35.7405749, "lon": 140.7926258 },
+    { "lat": 35.7404490, "lon": 140.7928579 },
+    { "lat": 35.7403940, "lon": 140.7929692 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "crossover",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 249320204,
+  "bounds": {
+    "minlat": 35.7401658,
+    "minlon": 140.7930469,
+    "maxlat": 35.7403612,
+    "maxlon": 140.7935839
+  },
+  "nodes": [
+    2559434806,
+    12393046966,
+    12393046967,
+    1647002928
+  ],
+  "geometry": [
+    { "lat": 35.7403612, "lon": 140.7930469 },
+    { "lat": 35.7403030, "lon": 140.7931934 },
+    { "lat": 35.7402219, "lon": 140.7934349 },
+    { "lat": 35.7401658, "lon": 140.7935839 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "operator": "東日本旅客鉄道",
+    "railway": "rail",
+    "service": "crossover",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 305398807,
+  "bounds": {
+    "minlat": 35.7290392,
+    "minlon": 140.8302170,
+    "maxlat": 35.7290399,
+    "maxlon": 140.8305745
+  },
+  "nodes": [
+    3100212841,
+    3100212842
+  ],
+  "geometry": [
+    { "lat": 35.7290392, "lon": 140.8305745 },
+    { "lat": 35.7290399, "lon": 140.8302170 }
+  ],
+  "tags": {
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "siding"
+  }
+},
+{
+  "type": "way",
+  "id": 308295036,
+  "bounds": {
+    "minlat": 35.7468569,
+    "minlon": 140.7808303,
+    "maxlat": 35.7469535,
+    "maxlon": 140.7809365
+  },
+  "nodes": [
+    1647003321,
+    1647003312
+  ],
+  "geometry": [
+    { "lat": 35.7469535, "lon": 140.7808303 },
+    { "lat": 35.7468569, "lon": 140.7809365 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "maxspeed": "85",
+    "name": "成田線",
+    "name:de": "Narita-Linie",
+    "name:en": "Narita Line",
+    "name:es": "Línea Narita",
+    "name:it": "Linea Narita",
+    "name:ja": "成田線",
+    "name:ja-Hira": "なりたせん",
+    "name:ja-Latn": "Narita-sen",
+    "name:ko": "나리타선",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 308295037,
+  "bounds": {
+    "minlat": 35.7406509,
+    "minlon": 140.7809365,
+    "maxlat": 35.7468569,
+    "maxlon": 140.7924641
+  },
+  "nodes": [
+    1647003312,
+    1647003311,
+    1647003310,
+    1647003301,
+    1647003292,
+    1647003291,
+    4010449510,
+    1647003253,
+    1647003187,
+    1647003157,
+    1647003132,
+    1647003125,
+    1647003111,
+    1647003080,
+    9384901788,
+    1647003069,
+    1647003061,
+    1647003053,
+    1647003050,
+    1647003034,
+    1647003023,
+    1647003011,
+    1647003006,
+    3135937732,
+    1647002963
+  ],
+  "geometry": [
+    { "lat": 35.7468569, "lon": 140.7809365 },
+    { "lat": 35.7465801, "lon": 140.7812600 },
+    { "lat": 35.7461519, "lon": 140.7817600 },
+    { "lat": 35.7457783, "lon": 140.7821917 },
+    { "lat": 35.7453090, "lon": 140.7827327 },
+    { "lat": 35.7451177, "lon": 140.7829605 },
+    { "lat": 35.7449104, "lon": 140.7832225 },
+    { "lat": 35.7446245, "lon": 140.7836166 },
+    { "lat": 35.7444092, "lon": 140.7839480 },
+    { "lat": 35.7441985, "lon": 140.7842852 },
+    { "lat": 35.7439994, "lon": 140.7846207 },
+    { "lat": 35.7438172, "lon": 140.7849747 },
+    { "lat": 35.7435983, "lon": 140.7854337 },
+    { "lat": 35.7432064, "lon": 140.7863616 },
+    { "lat": 35.7430845, "lon": 140.7866554 },
+    { "lat": 35.7429843, "lon": 140.7868924 },
+    { "lat": 35.7427690, "lon": 140.7874083 },
+    { "lat": 35.7425572, "lon": 140.7878992 },
+    { "lat": 35.7423590, "lon": 140.7883765 },
+    { "lat": 35.7421540, "lon": 140.7888765 },
+    { "lat": 35.7419501, "lon": 140.7893617 },
+    { "lat": 35.7417406, "lon": 140.7898604 },
+    { "lat": 35.7415422, "lon": 140.7903295 },
+    { "lat": 35.7407796, "lon": 140.7921553 },
+    { "lat": 35.7406509, "lon": 140.7924641 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "85",
+    "name": "成田線",
+    "name:de": "Narita-Linie",
+    "name:en": "Narita Line",
+    "name:es": "Línea Narita",
+    "name:it": "Linea Narita",
+    "name:ja": "成田線",
+    "name:ja-Hira": "なりたせん",
+    "name:ja-Latn": "Narita-sen",
+    "name:ko": "나리타선",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway",
+    "operator:ja": "東日本旅客鉄道",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 308295069,
+  "bounds": {
+    "minlat": 35.7457043,
+    "minlon": 140.7798794,
+    "maxlat": 35.7458789,
+    "maxlon": 140.7802640
+  },
+  "nodes": [
+    1641243761,
+    1641243757
+  ],
+  "geometry": [
+    { "lat": 35.7458789, "lon": 140.7798794 },
+    { "lat": 35.7457043, "lon": 140.7802640 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 308295070,
+  "bounds": {
+    "minlat": 35.7403940,
+    "minlon": 140.7802640,
+    "maxlat": 35.7457043,
+    "maxlon": 140.7929692
+  },
+  "nodes": [
+    1641243757,
+    11244969819,
+    1641243747,
+    1641243745,
+    1641243734,
+    11244969820,
+    1641243706,
+    9384901787,
+    1641243627,
+    3135937731,
+    2304738356,
+    12393046975,
+    1641243596
+  ],
+  "geometry": [
+    { "lat": 35.7457043, "lon": 140.7802640 },
+    { "lat": 35.7451382, "lon": 140.7816501 },
+    { "lat": 35.7445473, "lon": 140.7830645 },
+    { "lat": 35.7441526, "lon": 140.7840250 },
+    { "lat": 35.7439183, "lon": 140.7845688 },
+    { "lat": 35.7437657, "lon": 140.7849378 },
+    { "lat": 35.7435628, "lon": 140.7854250 },
+    { "lat": 35.7430527, "lon": 140.7866349 },
+    { "lat": 35.7413049, "lon": 140.7908192 },
+    { "lat": 35.7407508, "lon": 140.7921366 },
+    { "lat": 35.7406367, "lon": 140.7924119 },
+    { "lat": 35.7405464, "lon": 140.7926240 },
+    { "lat": 35.7403940, "lon": 140.7929692 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 682677724,
+  "bounds": {
+    "minlat": 35.7293748,
+    "minlon": 140.8478002,
+    "maxlat": 35.7310465,
+    "maxlon": 140.8560141
+  },
+  "nodes": [
+    3100212857,
+    3100212858,
+    3100212861,
+    1642012779,
+    1642012818,
+    1642012786,
+    1642012754,
+    3100212855,
+    1642012729,
+    1642012686,
+    3100212852,
+    3100212849,
+    1642012594,
+    1642012582,
+    1642012568,
+    1642012545,
+    1642012542
+  ],
+  "geometry": [
+    { "lat": 35.7309992, "lon": 140.8478002 },
+    { "lat": 35.7310043, "lon": 140.8481116 },
+    { "lat": 35.7310138, "lon": 140.8483842 },
+    { "lat": 35.7310201, "lon": 140.8489389 },
+    { "lat": 35.7310465, "lon": 140.8506262 },
+    { "lat": 35.7310307, "lon": 140.8510079 },
+    { "lat": 35.7309856, "lon": 140.8514652 },
+    { "lat": 35.7309790, "lon": 140.8515379 },
+    { "lat": 35.7308928, "lon": 140.8519002 },
+    { "lat": 35.7308385, "lon": 140.8521008 },
+    { "lat": 35.7307693, "lon": 140.8523298 },
+    { "lat": 35.7302646, "lon": 140.8539633 },
+    { "lat": 35.7299998, "lon": 140.8547902 },
+    { "lat": 35.7298681, "lon": 140.8551245 },
+    { "lat": 35.7297330, "lon": 140.8554295 },
+    { "lat": 35.7295690, "lon": 140.8557120 },
+    { "lat": 35.7293748, "lon": 140.8560141 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 722366751,
+  "bounds": {
+    "minlat": 35.6988024,
+    "minlon": 140.8566874,
+    "maxlat": 35.7278097,
+    "maxlon": 140.8643789
+  },
+  "nodes": [
+    2098974500,
+    3100212763,
+    3100212760,
+    1642794905,
+    3100212746,
+    5098256623,
+    6433987239,
+    3100212742,
+    1642794910,
+    1642012372,
+    2098974490,
+    1642012350,
+    2098974489,
+    1642012298,
+    2098974488,
+    1642012227,
+    2098974487,
+    3100212737,
+    3100212736,
+    1642012190,
+    1642012169,
+    3100212735,
+    1642012154,
+    3100212734,
+    3100212733,
+    3100212732,
+    1642012121,
+    3100212731,
+    1642012079,
+    3100212730,
+    1642012055,
+    3100212729,
+    1642012046,
+    3100212728,
+    1642012041,
+    1642011996,
+    1642794906,
+    3100212720,
+    3100212717,
+    1642011981,
+    1642011907,
+    1642011875,
+    5995341389,
+    1642011873,
+    3100212716,
+    3100212715,
+    1642011587,
+    1642011378,
+    1642011309,
+    3100212707,
+    1642011265,
+    1642011242,
+    3100212700,
+    3100212699,
+    1642011098,
+    5098243105,
+    1642010988,
+    1642010975,
+    1642010969,
+    3100212697,
+    5049979541,
+    1642010958,
+    3100212696,
+    3100212695,
+    1642010940,
+    3100212694,
+    2098974479,
+    2098974478,
+    2098974470,
+    2098974468,
+    2098974467
+  ],
+  "geometry": [
+    { "lat": 35.7278097, "lon": 140.8575299 },
+    { "lat": 35.7258321, "lon": 140.8594684 },
+    { "lat": 35.7257274, "lon": 140.8595827 },
+    { "lat": 35.7254909, "lon": 140.8598140 },
+    { "lat": 35.7253183, "lon": 140.8599960 },
+    { "lat": 35.7246779, "lon": 140.8606207 },
+    { "lat": 35.7233229, "lon": 140.8619479 },
+    { "lat": 35.7220361, "lon": 140.8631940 },
+    { "lat": 35.7217551, "lon": 140.8634689 },
+    { "lat": 35.7216614, "lon": 140.8635612 },
+    { "lat": 35.7214554, "lon": 140.8637630 },
+    { "lat": 35.7212363, "lon": 140.8639358 },
+    { "lat": 35.7210605, "lon": 140.8640515 },
+    { "lat": 35.7208814, "lon": 140.8641504 },
+    { "lat": 35.7206192, "lon": 140.8642583 },
+    { "lat": 35.7203802, "lon": 140.8643268 },
+    { "lat": 35.7201139, "lon": 140.8643691 },
+    { "lat": 35.7198709, "lon": 140.8643789 },
+    { "lat": 35.7197171, "lon": 140.8643728 },
+    { "lat": 35.7194600, "lon": 140.8643363 },
+    { "lat": 35.7192268, "lon": 140.8642751 },
+    { "lat": 35.7188940, "lon": 140.8641425 },
+    { "lat": 35.7186371, "lon": 140.8639917 },
+    { "lat": 35.7183250, "lon": 140.8637594 },
+    { "lat": 35.7180110, "lon": 140.8634798 },
+    { "lat": 35.7168641, "lon": 140.8623995 },
+    { "lat": 35.7158469, "lon": 140.8615051 },
+    { "lat": 35.7156919, "lon": 140.8613570 },
+    { "lat": 35.7155479, "lon": 140.8612296 },
+    { "lat": 35.7153854, "lon": 140.8611041 },
+    { "lat": 35.7152057, "lon": 140.8609826 },
+    { "lat": 35.7150300, "lon": 140.8608768 },
+    { "lat": 35.7148153, "lon": 140.8607810 },
+    { "lat": 35.7145098, "lon": 140.8606598 },
+    { "lat": 35.7142440, "lon": 140.8605825 },
+    { "lat": 35.7138836, "lon": 140.8605102 },
+    { "lat": 35.7136287, "lon": 140.8604770 },
+    { "lat": 35.7134642, "lon": 140.8604584 },
+    { "lat": 35.7133829, "lon": 140.8604504 },
+    { "lat": 35.7126037, "lon": 140.8603554 },
+    { "lat": 35.7123501, "lon": 140.8603346 },
+    { "lat": 35.7121518, "lon": 140.8603168 },
+    { "lat": 35.7118669, "lon": 140.8603199 },
+    { "lat": 35.7116894, "lon": 140.8603240 },
+    { "lat": 35.7107550, "lon": 140.8604452 },
+    { "lat": 35.7090706, "lon": 140.8606759 },
+    { "lat": 35.7075924, "lon": 140.8608733 },
+    { "lat": 35.7068248, "lon": 140.8609773 },
+    { "lat": 35.7063051, "lon": 140.8609954 },
+    { "lat": 35.7061042, "lon": 140.8609804 },
+    { "lat": 35.7059497, "lon": 140.8609585 },
+    { "lat": 35.7057067, "lon": 140.8609129 },
+    { "lat": 35.7054202, "lon": 140.8608304 },
+    { "lat": 35.7042017, "lon": 140.8604534 },
+    { "lat": 35.7026797, "lon": 140.8600036 },
+    { "lat": 35.7023442, "lon": 140.8598953 },
+    { "lat": 35.7021657, "lon": 140.8598277 },
+    { "lat": 35.7018929, "lon": 140.8597042 },
+    { "lat": 35.7015740, "lon": 140.8595233 },
+    { "lat": 35.7014133, "lon": 140.8594255 },
+    { "lat": 35.7013381, "lon": 140.8593592 },
+    { "lat": 35.7012815, "lon": 140.8593151 },
+    { "lat": 35.7011001, "lon": 140.8591545 },
+    { "lat": 35.7009360, "lon": 140.8589960 },
+    { "lat": 35.7007069, "lon": 140.8587432 },
+    { "lat": 35.6998738, "lon": 140.8577946 },
+    { "lat": 35.6997841, "lon": 140.8577043 },
+    { "lat": 35.6996496, "lon": 140.8575467 },
+    { "lat": 35.6992137, "lon": 140.8570768 },
+    { "lat": 35.6989765, "lon": 140.8568475 },
+    { "lat": 35.6988024, "lon": 140.8566874 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 856165750,
+  "bounds": {
+    "minlat": 35.7278097,
+    "minlon": 140.8560141,
+    "maxlat": 35.7293748,
+    "maxlon": 140.8575299
+  },
+  "nodes": [
+    1642012542,
+    2098974551,
+    3100212845,
+    3100212828,
+    3100212793,
+    1642012449,
+    3100212781,
+    1642794908,
+    1642012444,
+    6393695636,
+    2098974501,
+    2098974500
+  ],
+  "geometry": [
+    { "lat": 35.7293748, "lon": 140.8560141 },
+    { "lat": 35.7292048, "lon": 140.8562236 },
+    { "lat": 35.7291373, "lon": 140.8562821 },
+    { "lat": 35.7289315, "lon": 140.8564946 },
+    { "lat": 35.7288219, "lon": 140.8565974 },
+    { "lat": 35.7285764, "lon": 140.8568287 },
+    { "lat": 35.7285529, "lon": 140.8568498 },
+    { "lat": 35.7284001, "lon": 140.8570070 },
+    { "lat": 35.7282207, "lon": 140.8571787 },
+    { "lat": 35.7282136, "lon": 140.8571858 },
+    { "lat": 35.7281562, "lon": 140.8572429 },
+    { "lat": 35.7278097, "lon": 140.8575299 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "40",
+    "name": "銚子電気鉄道線",
+    "name:en": "Choshi Electric Railway Line",
+    "name:ja": "銚子電気鉄道線",
+    "name:ja-Hira": "ちょうしでんきてつどうせん",
+    "name:ja_rm": "Chōshi Denki Tetsudō Sen",
+    "operator": "銚子電気鉄道",
+    "railway": "rail",
+    "usage": "branch",
+    "voltage": "600"
+  }
+},
+{
+  "type": "way",
+  "id": 1074135852,
+  "bounds": {
+    "minlat": 35.7296504,
+    "minlon": 140.8233606,
+    "maxlat": 35.7297916,
+    "maxlon": 140.8247050
+  },
+  "nodes": [
+    2398518070,
+    2398518065,
+    2398518047
+  ],
+  "geometry": [
+    { "lat": 35.7297916, "lon": 140.8233606 },
+    { "lat": 35.7297346, "lon": 140.8239033 },
+    { "lat": 35.7296504, "lon": 140.8247050 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 1074135853,
+  "bounds": {
+    "minlat": 35.7295698,
+    "minlon": 140.8249419,
+    "maxlat": 35.7296255,
+    "maxlon": 140.8254977
+  },
+  "nodes": [
+    2098974594,
+    3135816188,
+    2098974588
+  ],
+  "geometry": [
+    { "lat": 35.7296255, "lon": 140.8249419 },
+    { "lat": 35.7295982, "lon": 140.8252039 },
+    { "lat": 35.7295698, "lon": 140.8254977 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 1074135854,
+  "bounds": {
+    "minlat": 35.7296255,
+    "minlon": 140.8247050,
+    "maxlat": 35.7296504,
+    "maxlon": 140.8249419
+  },
+  "nodes": [
+    2398518047,
+    2098974594
+  ],
+  "geometry": [
+    { "lat": 35.7296504, "lon": 140.8247050 },
+    { "lat": 35.7296255, "lon": 140.8249419 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756727,
+  "bounds": {
+    "minlat": 35.7384821,
+    "minlon": 140.7973691,
+    "maxlat": 35.7385603,
+    "maxlon": 140.7976214
+  },
+  "nodes": [
+    12393046959,
+    12393046960,
+    12393046961,
+    12393046962
+  ],
+  "geometry": [
+    { "lat": 35.7385603, "lon": 140.7973691 },
+    { "lat": 35.7385295, "lon": 140.7974519 },
+    { "lat": 35.7385045, "lon": 140.7975355 },
+    { "lat": 35.7384821, "lon": 140.7976214 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "siding"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756728,
+  "bounds": {
+    "minlat": 35.7399222,
+    "minlon": 140.7936195,
+    "maxlat": 35.7400596,
+    "maxlon": 140.7939511
+  },
+  "nodes": [
+    12393046971,
+    12393046972,
+    12393046973,
+    12393046974
+  ],
+  "geometry": [
+    { "lat": 35.7400596, "lon": 140.7936195 },
+    { "lat": 35.7399700, "lon": 140.7938433 },
+    { "lat": 35.7399485, "lon": 140.7938952 },
+    { "lat": 35.7399222, "lon": 140.7939511 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "siding"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756729,
+  "bounds": {
+    "minlat": 35.7392872,
+    "minlon": 140.7955442,
+    "maxlat": 35.7394149,
+    "maxlon": 140.7958314
+  },
+  "nodes": [
+    12393046988,
+    12393046976
+  ],
+  "geometry": [
+    { "lat": 35.7392872, "lon": 140.7958314 },
+    { "lat": 35.7394149, "lon": 140.7955442 }
+  ],
+  "tags": {
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756730,
+  "bounds": {
+    "minlat": 35.7392005,
+    "minlon": 140.7958314,
+    "maxlat": 35.7392872,
+    "maxlon": 140.7960261
+  },
+  "nodes": [
+    12393046989,
+    12393046988
+  ],
+  "geometry": [
+    { "lat": 35.7392005, "lon": 140.7960261 },
+    { "lat": 35.7392872, "lon": 140.7958314 }
+  ],
+  "tags": {
+    "covered": "yes",
+    "electrified": "no",
+    "gauge": "1067",
+    "railway": "rail",
+    "service": "yard"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756731,
+  "bounds": {
+    "minlat": 35.7379497,
+    "minlon": 140.7983919,
+    "maxlat": 35.7381321,
+    "maxlon": 140.7988280
+  },
+  "nodes": [
+    1642146745,
+    12393046990
+  ],
+  "geometry": [
+    { "lat": 35.7381321, "lon": 140.7983919 },
+    { "lat": 35.7379497, "lon": 140.7988280 }
+  ],
+  "tags": {
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+},
+{
+  "type": "way",
+  "id": 1339756732,
+  "bounds": {
+    "minlat": 35.7379383,
+    "minlon": 140.7988280,
+    "maxlat": 35.7379497,
+    "maxlon": 140.7988553
+  },
+  "nodes": [
+    12393046990,
+    12393046991
+  ],
+  "geometry": [
+    { "lat": 35.7379497, "lon": 140.7988280 },
+    { "lat": 35.7379383, "lon": 140.7988553 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "electrified": "contact_line",
+    "frequency": "0",
+    "gauge": "1067",
+    "layer": "1",
+    "maxspeed": "95",
+    "name": "総武本線",
+    "name:de": "Sōbu-Hauptlinie",
+    "name:en": "Sōbu Main Line",
+    "name:es": "Línea Sōbu",
+    "name:fr": "Ligne principale Sōbu",
+    "name:it": "Linea principale Sōbu",
+    "name:ja": "総武本線",
+    "name:ja-Hira": "そうぶほんせん",
+    "name:ja-Latn": "Sōbu-honsen",
+    "name:ko": "소부 본선",
+    "name:zh": "总武本线",
+    "name:zh-Hans": "总武本线",
+    "name:zh-Hant": "總武本線",
+    "operator": "東日本旅客鉄道",
+    "operator:en": "East Japan Railway Company",
+    "operator:ja": "東日本旅客鉄道",
+    "operator:ja-Latn": "Higashi-Nihon Ryokaku Tetsudō",
+    "railway": "rail",
+    "usage": "main",
+    "voltage": "1500"
+  }
+}
+
+  ]
+}

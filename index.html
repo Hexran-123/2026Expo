@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <!-- スマートフォンで見たときに、画面の幅に合わせて表示するための指定 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>車窓絶景ナビ｜銚子電鉄</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!--
+    画面全体。地図が背景いっぱいに広がり、
+    その上に半透明の白い枠組みが重なる（設計書 4 章）。
+  -->
+  <div class="screen">
+
+    <!-- 地図。中身は js/main.js が作る -->
+    <svg class="map" id="map" aria-label="銚子電鉄の路線と絶景スポットの地図">
+      <g id="map-terrain"></g>
+      <g id="map-route"></g>
+      <g id="map-stations"></g>
+      <g id="map-spots"></g>
+    </svg>
+
+    <!-- 上の帯: 作品名と路線名 -->
+    <header class="bar bar--top">
+      <h1 class="title">車窓絶景ナビ</h1>
+      <p class="line-name">銚子電鉄</p>
+    </header>
+
+    <!-- 下の帯: 天候のひとことと、テーマの絞り込み -->
+    <div class="bar bar--bottom">
+      <p class="weather" id="weather">天気を調べています…</p>
+
+      <!-- テーマの絞り込みボタン。中身は js/main.js が作る -->
+      <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
+    </div>
+
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
