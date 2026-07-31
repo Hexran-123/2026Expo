@@ -165,6 +165,20 @@ function drawTerrain(container, terrain) {
 
   // 海と陸の境目を、いちばん低い段階の輪でなぞる
   container.appendChild(svg('path', { d: terrain.bands[0].path, class: 'coast' }));
+
+  // 地形の陰影（国土地理院の陰影起伏図タイルを貼り合わせたもの。tools/fetch-hillshade.js）。
+  // 色の帯の上に重ねて立体感を出す。海の部分は透明なので、下の水色がそのまま透ける。
+  container.appendChild(
+    svg('image', {
+      href: 'data/terrain-hillshade.png',
+      x: 0,
+      y: 0,
+      width: terrain.projection.width,
+      height: terrain.projection.height,
+      preserveAspectRatio: 'none',
+      class: 'hillshade',
+    })
+  );
 }
 
 /** 線路を引く */
