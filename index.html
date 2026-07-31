@@ -17,11 +17,42 @@
 
     <!-- 地図。中身は js/main.js が作る -->
     <svg class="map" id="map" aria-label="銚子電鉄の路線と絶景スポットの地図">
+      <defs>
+        <!--
+          陸のかたちが海に落とす影。陸が海より一段高いように見せる。
+
+          影だけを出し、元の図形は出さない（最後の feComposite で、
+          流し込んだ色を影の形に切り抜いている）。こうしないと、
+          この下に敷く陸の色とふちが二重になってしまう。
+
+          拡大しても影の厚みが画面上で変わらないよう、
+          ぼかし幅とずらし幅は js/main.js が倍率に合わせて書き換える。
+        -->
+        <filter id="coast-emboss" x="-2%" y="-2%" width="104%" height="104%">
+          <feGaussianBlur id="coast-emboss-blur" in="SourceAlpha" stdDeviation="2.6"/>
+          <feOffset id="coast-emboss-offset" dy="2.6" result="shadow"/>
+          <feFlood flood-color="#17332A" flood-opacity="0.55"/>
+          <feComposite in2="shadow" operator="in"/>
+        </filter>
+      </defs>
       <g id="map-terrain"></g>
       <g id="map-route"></g>
       <g id="map-stations"></g>
       <g id="map-spots"></g>
     </svg>
+
+    <!--
+      初期表示に戻すボタン。
+      乗車前は位置情報を使わないので、これは「現在位置へ」ではなく
+      「路線全体の見え方に戻す」ボタン（車上モードで本来の意味になる）。
+    -->
+    <button type="button" class="reset-view" id="reset-view" aria-label="路線全体に戻す">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.4"/>
+        <path d="M12 2.6v3.2M12 18.2v3.2M2.6 12h3.2M18.2 12h3.2"/>
+        <circle cx="12" cy="12" r="7.4"/>
+      </svg>
+    </button>
 
     <!-- 上の帯: 作品名と路線名 -->
     <header class="bar bar--top">

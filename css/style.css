@@ -94,6 +94,18 @@ body {
   width: 100%;
   height: 100%;
   display: block;
+
+  /*
+   * 拡大しても線や文字が画面上で太くならないようにするための倍率。
+   * js/main.js が拡大縮小のたびに書き換える。初期表示では 1。
+   *
+   * 駅や絶景スポットは .scalable のまとまりごと縮めているので、
+   * ここで calc() を使うのは、そのまとまりの外にあるもの（線路・海岸線）だけ。
+   */
+  --k: 1;
+
+  /* 指の動きをブラウザの標準の拡大縮小に取られないようにする */
+  touch-action: none;
 }
 
 /* --- 地形。低いほうから順に上へ重ねて塗る --- */
@@ -111,7 +123,16 @@ body {
 .coast {
   fill: none;
   stroke: rgba(90, 110, 120, 0.35);
-  stroke-width: 1.4;
+  stroke-width: calc(1.4px * var(--k));
+}
+
+/*
+ * 陸のかたちが海に落とす影。地形の帯より下に敷く。
+ * 塗りの色は使われない（フィルターが形＝不透明度だけを見て影を作る）。
+ */
+.coast-shadow {
+  fill: #000000;
+  filter: url(#coast-emboss);
 }
 
 /* 地形の陰影（国土地理院 陰影起伏図）。色の帯の上に重ねて立体感を出す */
@@ -125,7 +146,7 @@ body {
 .rail {
   fill: none;
   stroke: var(--rail);
-  stroke-width: 5;
+  stroke-width: calc(5px * var(--k));
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -133,7 +154,7 @@ body {
 /* 線路の下に敷く白い縁取り。地形の色が濃くても線路が見えるようにする */
 .rail--halo {
   stroke: rgba(255, 255, 255, 0.75);
-  stroke-width: 11;
+  stroke-width: calc(11px * var(--k));
 }
 
 /* --- 駅 --- */
@@ -200,6 +221,14 @@ body {
   stroke-linejoin: round;
 }
 
+/*
+ * 絶景スポットの名前。
+ *
+ * 路線全体を見ているあいだは出さない（設計書 4.1「最初は路線と
+ * 絶景スポットのアイコンだけを出す」）。少し寄ると出る。
+ * 透明度を 0 にして隠すのは、隠しているあいだも文字の幅を測れるようにするため
+ * （幅がわからないと、バッジの置き場所を決められない）。
+ */
 .spot-label {
   font-size: 16px;
   font-weight: 600;
@@ -208,6 +237,53 @@ body {
   stroke: rgba(255, 255, 255, 0.92);
   stroke-width: 4;
   stroke-linejoin: round;
+
+  opacity: 0;
+}
+
+.map--named .spot-label {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------
+   初期表示に戻すボタン
+   ------------------------------------------------------------------ */
+
+.reset-view {
+  position: absolute;
+  right: 14px;
+  /* 下の帯（天候とテーマの絞り込み）の少し上に置く */
+  bottom: 132px;
+
+  width: 44px;   /* 揺れる車内でも押せる大きさ */
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 50%;
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.reset-view:active {
+  transform: scale(0.94);
+}
+
+.reset-view svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 
 /* ------------------------------------------------------------------
