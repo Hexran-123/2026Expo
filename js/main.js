@@ -419,6 +419,22 @@ function drawSpots(container, spots, route, project, points, placed) {
     label.setAttribute('x', (chosen.goesRight ? chosen.cx + BADGE_SIZE + 9 : chosen.cx - BADGE_SIZE - 9).toFixed(1));
     label.setAttribute('y', (chosen.cy + 6).toFixed(1));
     label.setAttribute('text-anchor', chosen.goesRight ? 'start' : 'end');
+
+    /*
+     * 押すためだけの、見えない丸。いちばん上に置く。
+     *
+     * ひし形は角が細く、指で押すには小さい。名前を出していないあいだは
+     * なおさら的が小さくなるので、バッジのまわりに余裕をもたせる。
+     * （揺れる車内で押し間違えないため ── 設計書 4 章）
+     */
+    group.appendChild(
+      svg('circle', {
+        cx: chosen.cx.toFixed(1),
+        cy: chosen.cy.toFixed(1),
+        r: BADGE_SIZE * 1.8,
+        class: 'spot-hit',
+      })
+    );
   }
 
   return elements;
@@ -540,24 +556,58 @@ function createView(mapElement, projection, initialBox, onChange) {
     apply();
   }
 
-  /** ある地点を、画面の見えている部分のまんなかへ寄せる（倍率は変えない） */
-  function centerOn(mapX, mapY, visibleTopRatio = 0.5) {
+  /*
+   * ゆっくり動かす。
+   *
+   * 毎回「始まりの値」から測り直しているのは、apply() が地図の外へ
+   * はみ出さないように値を丸めることがあるため。丸められた値をもとに
+   * 次の一歩を決めると、途中で動きが引っかかる。
+   */
+  let animation = null;
+  function animateTo(targetX, targetY, targetPerPixel, duration = 340) {
+    stopAnimation();
+    const fromX = cx;
+    const fromY = cy;
+    const fromPerPixel = unitsPerPixel;
+    const start = performance.now();
+
+    function step(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // 終わりぎわでゆるやかに止まる
+      cx = fromX + (targetX - fromX) * eased;
+      cy = fromY + (targetY - fromY) * eased;
+      // 倍率は掛け算で変わるものなので、比を掛けて進める
+      unitsPerPixel = fromPerPixel * Math.pow(targetPerPixel / fromPerPixel, eased);
+      apply();
+      animation = t < 1 ? requestAnimationFrame(step) : null;
+    }
+    animation = requestAnimationFrame(step);
+  }
+
+  function stopAnimation() {
+    if (animation !== null) cancelAnimationFrame(animation);
+    animation = null;
+  }
+
+  /**
+   * ある地点を、画面の「見えている部分」のまんなかへ寄せる（倍率は変えない）。
+   * @param {number} visibleHeight カードなどで隠れていない、上からの高さ（画素）
+   */
+  function centerOn(mapX, mapY, visibleHeight) {
     const box = screen();
-    // 下半分がカードで隠れるときは、その上の見えている範囲のまんなかへ
-    const wantedY = box.height * visibleTopRatio;
-    cx = mapX;
-    cy = mapY - (wantedY - box.height / 2) * unitsPerPixel;
-    apply();
+    const wantedY = (visibleHeight ?? box.height) / 2;
+    animateTo(mapX, mapY - (wantedY - box.height / 2) * unitsPerPixel, unitsPerPixel);
   }
 
   function reset() {
-    unitsPerPixel = basisPerPixel;
-    cx = initialBox.left + initialBox.width / 2;
-    cy = initialBox.top + initialBox.height / 2;
-    apply();
+    animateTo(
+      initialBox.left + initialBox.width / 2,
+      initialBox.top + initialBox.height / 2,
+      basisPerPixel
+    );
   }
 
-  return { apply, zoomAt, panBy, centerOn, reset, zoom };
+  return { apply, zoomAt, panBy, centerOn, reset, zoom, stopAnimation };
 }
 
 /**
@@ -583,6 +633,7 @@ function setUpGestures(mapElement, view, onTap) {
 
   mapElement.addEventListener('pointerdown', (event) => {
     mapElement.setPointerCapture(event.pointerId);
+    view.stopAnimation(); // 動いている途中でも、指の操作を優先する
     active.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (active.size === 1) {
@@ -620,8 +671,9 @@ function setUpGestures(mapElement, view, onTap) {
     if (!active.has(event.pointerId)) return;
     active.delete(event.pointerId);
 
-    // ほとんど動いていなければ、ずらしたのではなく押したのだと判断する
-    if (active.size === 0 && movedDistance < 6 && tapTarget) onTap(tapTarget);
+    // ほとんど動いていなければ、ずらしたのではなく押したのだと判断する。
+    // 何もないところを押したときは null を渡す（カードを閉じるため）。
+    if (active.size === 0 && movedDistance < 6) onTap(tapTarget);
     if (active.size < 2) previousSpread = 0;
     tapTarget = null;
   }
@@ -643,7 +695,7 @@ function setUpGestures(mapElement, view, onTap) {
 // テーマの絞り込み（設計書 4.1）
 // ------------------------------------------------------------------
 
-function setUpThemeFilter(container, mapSpots) {
+function setUpThemeFilter(container, mapSpots, onApply) {
   // 前に選んだ設定があれば引き継ぐ。なければ全部表示。
   let hidden = new Set();
   try {
@@ -665,6 +717,8 @@ function setUpThemeFilter(container, mapSpots) {
     } catch {
       // 保存できなくても表示は正しいので、何もしない
     }
+
+    if (onApply) onApply();
   }
 
   for (const [name, theme] of Object.entries(THEMES)) {
@@ -724,6 +778,112 @@ async function showWeather(element) {
     // 通信できないときは黙って引っこめる。地図は天候がなくても使える。
     element.hidden = true;
   }
+}
+
+// ------------------------------------------------------------------
+// 絶景スポットの下敷き（乗車前の予習用）
+//
+// これは成因カード（設計書 6）ではない。
+// 成因カードは車上モードで、そのスポットを通り過ぎたあとに出すもの。
+// ここで答えるのは「どこで、どちら側の窓を見ればいいか」だけにする。
+// ------------------------------------------------------------------
+
+/** 「右」→「右の窓」。両側から見えるスポットもあるので、そこだけ書き分ける。 */
+function windowSideText(side) {
+  return side === '両' ? '両側の窓' : `${side}の窓`;
+}
+
+const DURATION_TEXT = {
+  '短': 'みじかい（すぐ過ぎる）',
+  '中': 'ふつう',
+  '長': 'ながい（ゆっくり見られる）',
+};
+
+function createSpotCard(screenElement, view) {
+  const card = document.getElementById('spot-card');
+  const themeElement = document.getElementById('spot-card-theme');
+  const nameElement = document.getElementById('spot-card-name');
+  const placeElement = document.getElementById('spot-card-place');
+  const summaryElement = document.getElementById('spot-card-summary');
+  const factsElement = document.getElementById('spot-card-facts');
+
+  let openedId = null;
+
+  function addFact(term, description) {
+    const dt = document.createElement('dt');
+    dt.textContent = term;
+    const dd = document.createElement('dd');
+    dd.textContent = description;
+    factsElement.append(dt, dd);
+  }
+
+  function open(spot, anchor) {
+    openedId = spot.id;
+
+    themeElement.textContent = spot.theme;
+    themeElement.style.setProperty('--card-color', THEMES[spot.theme].color);
+    nameElement.textContent = spot.name;
+    placeElement.textContent = spot.location;
+    summaryElement.textContent = spot.summary;
+
+    factsElement.replaceChildren();
+    /*
+     * 乗車前は、その人が上りに乗るのか下りに乗るのかわからない。
+     * 選ばせるより、両方書いてしまうほうが予習には向いている。
+     */
+    addFact('外川ゆき（下り）', windowSideText(spot.sideDown));
+    addFact('銚子ゆき（上り）', windowSideText(spot.sideUp));
+    addFact('見ごろ', spot.season);
+    addFact('見える時間', DURATION_TEXT[spot.duration] || spot.duration);
+
+    screenElement.classList.add('screen--carded');
+    card.classList.add('card--open');
+
+    /*
+     * カードに隠れていない範囲のまんなかへ、その地点を寄せる。
+     * カードの高さは中身によって変わるので、出したあとに測る。
+     */
+    requestAnimationFrame(() => {
+      const covered = card.getBoundingClientRect().height + 20;
+      view.centerOn(anchor.x, anchor.y, screenElement.clientHeight - covered);
+    });
+  }
+
+  function close() {
+    openedId = null;
+    screenElement.classList.remove('screen--carded');
+    card.classList.remove('card--open');
+  }
+
+  // 下へはらうと閉じる
+  let grabbedAt = null;
+  let pulled = 0;
+
+  card.addEventListener('pointerdown', (event) => {
+    grabbedAt = event.clientY;
+    pulled = 0;
+    card.style.transition = 'none';
+    card.setPointerCapture(event.pointerId);
+  });
+
+  card.addEventListener('pointermove', (event) => {
+    if (grabbedAt === null) return;
+    // 上へは動かさない。カードは下からせり出しているものなので。
+    pulled = Math.max(0, event.clientY - grabbedAt);
+    card.style.transform = `translateY(${pulled}px)`;
+  });
+
+  function letGo() {
+    if (grabbedAt === null) return;
+    grabbedAt = null;
+    card.style.transition = '';
+    card.style.transform = '';
+    if (pulled > 50) close();
+  }
+  card.addEventListener('pointerup', letGo);
+  card.addEventListener('pointercancel', letGo);
+
+  return { open, close, openedId: () => openedId };
 }
 
 // ------------------------------------------------------------------
@@ -825,14 +985,43 @@ async function main() {
   view.apply();
   window.addEventListener('resize', () => view.apply());
 
+  // --- 絶景スポットを押すと出る下敷き ---
+
+  const spotById = new Map(spotsFile.spots.map((spot) => [spot.id, spot]));
+  const card = createSpotCard(document.querySelector('.screen'), view);
+
+  function openCardFor(spotElement) {
+    const spot = spotById.get(spotElement.getAttribute('data-id'));
+    if (!spot) return;
+    card.open(spot, {
+      x: Number(spotElement.getAttribute('data-ax')),
+      y: Number(spotElement.getAttribute('data-ay')),
+    });
+  }
+
   setUpGestures(mapElement, view, (spotElement) => {
-    // カードはこのあとの手順で足す
-    void spotElement;
+    if (spotElement) openCardFor(spotElement);
+    else card.close(); // 何もないところを押したら閉じる
   });
+
+  // キーボードでも開けるようにする（バッジは role="button" にしてある）
+  for (const spotElement of spotsLayer.querySelectorAll('.spot')) {
+    spotElement.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openCardFor(spotElement);
+    });
+  }
 
   document.getElementById('reset-view').addEventListener('click', () => view.reset());
 
-  setUpThemeFilter(document.getElementById('themes'), spotsLayer.querySelectorAll('.spot'));
+  setUpThemeFilter(document.getElementById('themes'), spotsLayer.querySelectorAll('.spot'), () => {
+    // 絞り込みで消えたスポットのカードが開いたままにならないようにする
+    const opened = card.openedId();
+    if (!opened) return;
+    const element = spotsLayer.querySelector(`.spot[data-id="${opened}"]`);
+    if (element && element.classList.contains('spot--hidden')) card.close();
+  });
 
   showWeather(document.getElementById('weather'));
 }

@@ -68,6 +68,22 @@
       <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
     </div>
 
+    <!--
+      絶景スポットを押したときに出る下敷き。
+
+      これは「予習」のためのもので、成因カード（設計書 6）ではない。
+      成因カードは車上モードで、そのスポットを通り過ぎたあとに出す。
+      ここで知りたいのは「どこで、どちら側の窓を見ればいいか」だけ。
+    -->
+    <section class="card" id="spot-card" aria-labelledby="spot-card-name">
+      <div class="card-grip" aria-hidden="true"></div>
+      <p class="card-theme" id="spot-card-theme"></p>
+      <h2 class="card-name" id="spot-card-name"></h2>
+      <p class="card-place" id="spot-card-place"></p>
+      <p class="card-summary" id="spot-card-summary"></p>
+      <dl class="card-facts" id="spot-card-facts"></dl>
+    </section>
+
   </div>
 
   <script src="js/main.js"></script>
