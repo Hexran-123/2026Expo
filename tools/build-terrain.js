@@ -34,8 +34,13 @@ const SEA_VALUE = -10;
 /** 地図を描く大きさ（SVG の座標）。実際の縦横比に合わせて高さは自動で決まる。 */
 const MAP_WIDTH = 1000;
 
-/** 小さすぎる島や穴は消す（マスの数）。データのノイズを取るため。 */
-const MIN_AREA_CELLS = 12;
+/*
+ * 小さすぎる島や穴は消す（マスの数）。データのノイズを取るため。
+ *
+ * 実際の面積で判断したいので、1 マスの大きさ（メートル）から逆算する。
+ * fetch-elevation.js の解像度を変えても、ここは自動でついてくる。
+ */
+const MIN_AREA_SQUARE_METERS = 6500;
 
 // ---------------------------------------------------------------
 // 1. 読み込み
@@ -62,6 +67,25 @@ const spanEastWestMeters = spanLon * 111320 * Math.cos(centerLatRad);
 const spanNorthSouthMeters = spanLat * 110540;
 
 const MAP_HEIGHT = Math.round((MAP_WIDTH * spanNorthSouthMeters) / spanEastWestMeters);
+
+/*
+ * 1 マスの実際の大きさ（メートル）。
+ *
+ * fetch-elevation.js の解像度設定を変えると、この値も変わる。
+ * ノイズ取りの強さや単純化の度合いは「実際の距離」で決めたいので、
+ * マス数ではなくここから逆算する（解像度を変えても調整し直さずに済む）。
+ */
+const cellWidthMeters = spanEastWestMeters / width;
+const cellHeightMeters = spanNorthSouthMeters / height;
+const cellAreaSquareMeters = cellWidthMeters * cellHeightMeters;
+
+/*
+ * 解像度に応じた「ならし」の強さ。
+ * マスが細かいほど、同じ実距離をならすのに多くの回数が要る。
+ * 23m マス・2 回ならしを基準にして、そこからの比率で決める。
+ */
+const REFERENCE_CELL_METERS = 23;
+const resolutionScale = REFERENCE_CELL_METERS / ((cellWidthMeters + cellHeightMeters) / 2);
 
 /** 格子のマス目の位置 → 地図の座標 */
 function cellToMap(col, row) {
@@ -114,7 +138,9 @@ function smoothElevation(values, passes) {
   return current;
 }
 
-const smoothed = smoothElevation(grid.values, 2);
+const smoothPasses = Math.max(2, Math.round(2 * resolutionScale));
+const smoothed = smoothElevation(grid.values, smoothPasses);
+console.log(`マスの大きさ: 約 ${cellWidthMeters.toFixed(1)}m × ${cellHeightMeters.toFixed(1)}m / ならし ${smoothPasses} 回`);
 
 /** 海を SEA_VALUE に置きかえた、線を引くための面 */
 const surface = smoothed.map((v) => (v === null ? SEA_VALUE : v));
@@ -364,14 +390,15 @@ function smoothLoop(loop, passes) {
 // ---------------------------------------------------------------
 
 const bands = BANDS.map((threshold) => {
+  const minAreaCells = MIN_AREA_SQUARE_METERS / cellAreaSquareMeters;
   const loops = traceContours(threshold)
-    .filter((loop) => loopArea(loop) >= MIN_AREA_CELLS)
+    .filter((loop) => loopArea(loop) >= minAreaCells)
     .map((loop) => {
       // 閉じた輪なので、重複している最後の点を落としてから処理する
       const closed = loop.slice(0, -1);
-      const thinned = simplify(closed, 0.4);
+      const thinned = simplify(closed, 0.4 * resolutionScale);
       const rounded = smoothLoop(thinned, 2);
-      return simplify(rounded, 0.15);
+      return simplify(rounded, 0.15 * resolutionScale);
     });
 
   // 輪をすべて 1 本の path にまとめる。

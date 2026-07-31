@@ -64,8 +64,9 @@ node tools/fetch-osm.js            OpenStreetMap から線路と駅を取って�
 node tools/build-route.js data/source/overpass_raw.json data/route.json
                                    バラバラの線路をつなぎ、駅の位置を計算する
 
-node tools/fetch-elevation.js      国土地理院から標高を取ってくる
+node tools/fetch-elevation.js      国土地理院から標高を取ってくる（DEM5A、欠けはDEM10Bで補完）
 node tools/build-terrain.js        標高を地形の色の濃淡に変える
+node tools/fetch-hillshade.js      国土地理院の陰影起伏図タイルを貼り合わせる（地形の立体感）
 
 node tools/fetch-features.js       工場・農地・海岸線を取ってくる
 node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計算する
@@ -84,7 +85,8 @@ node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計
 | もの | 出典 | ライセンス |
 |---|---|---|
 | 線路・駅・工場・農地・海岸線 | © OpenStreetMap contributors | ODbL |
-| 標高 | 国土地理院 標高タイル（DEM10B） | 国土地理院コンテンツ利用規約 |
+| 標高（地形の色分け） | 国土地理院 標高タイル（DEM5A、欠けはDEM10Bで補完） | 国土地理院コンテンツ利用規約 |
+| 地形の陰影（立体感） | 国土地理院 陰影起伏図タイル | 国土地理院コンテンツ利用規約 |
 | 天気予報 | 気象庁 | — |
 
 ---

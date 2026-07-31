@@ -114,6 +114,13 @@ body {
   stroke-width: 1.4;
 }
 
+/* 地形の陰影（国土地理院 陰影起伏図）。色の帯の上に重ねて立体感を出す */
+.hillshade {
+  mix-blend-mode: overlay;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 /* --- 線路 --- */
 .rail {
   fill: none;
