@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>AI看板｜車窓絶景ナビ</title>
+<style>
+  :root {
+    --bg: #1E2024;
+    --panel: #2A2D33;
+    --panel-2: #33363D;
+    --ink: #E8E6E1;
+    --ink-soft: #9B9890;
+    --line: #40434A;
+    --accent: #6F8F36;
+    --epic0: #8A6F3E;
+    --epic1: #2A6E8F;
+    --epic2: #6F8F36;
+    --epic3: #B8A88A;
+    --epic4: #2E4A6B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  header {
+    padding: 18px 24px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 24px 0;
+  }
+  nav.tabs button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-soft);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  nav.tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  main { padding: 16px 24px 40px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* --- 看板ビュー --- */
+  #kanban-view {
+    display: none;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  #kanban-view.active { display: flex; }
+  .column {
+    flex: 0 0 220px;
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 10px;
+    max-height: calc(100vh - 160px);
+    display: flex;
+    flex-direction: column;
+  }
+  .column h3 {
+    font-size: 12.5px;
+    margin: 0 0 8px;
+    color: var(--ink-soft);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .column .count {
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+  .card-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .empty-note {
+    color: var(--ink-soft);
+    font-size: 12px;
+    padding: 10px 6px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    text-align: center;
+  }
+  .task-card {
+    background: var(--panel-2);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
+  .task-card .title { font-weight: 600; margin-bottom: 4px; }
+  .task-card .meta { color: var(--ink-soft); font-size: 11.5px; }
+
+  /* --- 藍圖ビュー --- */
+  #blueprint-view.active { display: block; }
+  .epic {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    border-left: 5px solid var(--accent);
+  }
+  .epic-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .epic-head h2 { margin: 0; font-size: 16px; }
+  .epic-id { color: var(--ink-soft); font-size: 12px; }
+  .epic-def { color: var(--ink-soft); margin: 6px 0 4px; font-size: 13px; }
+  .epic-rationale {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin: 8px 0 12px;
+  }
+  .epic-rationale b { color: var(--ink); }
+  .stories { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .story {
+    background: var(--panel-2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .story .name { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+  .story .def { font-size: 12px; color: var(--ink-soft); }
+  .story .note { font-size: 11.5px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); color: var(--ink-soft); }
+  .badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+  }
+  .badge.done { background: #3F5A2E; color: #DCE5C8; }
+  .badge.partial { background: #8A6F3E; color: #F5EFD9; }
+  .badge.todo { background: #40434A; color: var(--ink-soft); }
+
+  footer {
+    padding: 12px 24px 30px;
+    color: var(--ink-soft);
+    font-size: 12px;
+  }
+  code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AI看板｜車窓絶景ナビ</h1>
+  <p>project-kickoff スキルが生成した Epic / User Story / Task の一覧。データは <code>tools/kanban/epics.json</code> と <code>tools/kanban/cards/</code>。</p>
+</header>
+
+<nav class="tabs">
+  <button data-view="blueprint" class="active">藍圖（Epic / User Story）</button>
+  <button data-view="kanban">看板（タスクカードの進行）</button>
+</nav>
+
+<main>
+  <div id="blueprint-view" class="view active"></div>
+  <div id="kanban-view" class="view"></div>
+</main>
+
+<footer id="footer-note"></footer>
+
+<script>
+const STAGES = [
+  { id: "inbox",            label: "収件箱" },
+  { id: "clarify",          label: "要明確化" },
+  { id: "product-approval", label: "要プロダクト承認" },
+  { id: "ui-mockup",        label: "要UIモックアップ" },
+  { id: "arch-plan",        label: "要設計計画" },
+  { id: "task-card",        label: "要タスクカード化" },
+  { id: "ready",            label: "AI着手可" },
+  { id: "implementing",     label: "Agent実行中" },
+  { id: "verify",           label: "要検証" },
+  { id: "review",           label: "要レビュー" },
+  { id: "human-acceptance", label: "要人的受入" },
+  { id: "done",             label: "完了" },
+];
+
+const EPIC_COLORS = { E0: "var(--epic0)", E1: "var(--epic1)", E2: "var(--epic2)", E3: "var(--epic3)", E4: "var(--epic4)" };
+
+async function loadJson(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path} の読み込みに失敗（${res.status}）。python -m http.server 等のローカルサーバー経由で開いていますか？`);
+  return res.json();
+}
+
+function statusBadge(status) {
+  if (!status) return `<span class="badge todo">未着手</span>`;
+  if (status.includes("完了") && !status.includes("一部")) return `<span class="badge done">${status}</span>`;
+  if (status.includes("進行中") || status.includes("一部")) return `<span class="badge partial">${status}</span>`;
+  return `<span class="badge todo">${status}</span>`;
+}
+
+function renderBlueprint(epics) {
+  const el = document.getElementById("blueprint-view");
+  el.innerHTML = epics.map(epic => `
+    <section class="epic" style="border-left-color:${EPIC_COLORS[epic.id] || 'var(--accent)'}">
+      <div class="epic-head">
+        <span class="epic-id">${epic.id}</span>
+        <h2>${epic.name}</h2>
+      </div>
+      <p class="epic-def">${epic.definition}</p>
+      ${epic.orderRationale ? `<div class="epic-rationale"><b>この順序にした理由：</b>${epic.orderRationale}</div>` : ""}
+      <div class="stories">
+        ${epic.stories.map(s => `
+          <div class="story">
+            ${statusBadge(s.status)}
+            <div class="name">${s.id} ${s.name}</div>
+            <div class="def">${s.definition}</div>
+            ${s.note ? `<div class="note">${s.note}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function renderKanban(cards) {
+  const el = document.getElementById("kanban-view");
+  el.innerHTML = STAGES.map(stage => {
+    const inStage = cards.filter(c => c.stage === stage.id);
+    return `
+      <div class="column">
+        <h3>${stage.label} <span class="count">(${inStage.length})</span></h3>
+        <div class="card-list">
+          ${inStage.length
+            ? inStage.map(c => `
+              <div class="task-card" style="border-left-color:${EPIC_COLORS[c.epic] || 'var(--accent)'}">
+                <div class="title">${c.title || c.id}</div>
+                <div class="meta">${c.epic || ""} ${c.userStory ? "／" + c.userStory : ""}</div>
+              </div>
+            `).join("")
+            : `<div class="empty-note">カードなし</div>`
+          }
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function init() {
+  const footer = document.getElementById("footer-note");
+  try {
+    const epicsData = await loadJson("epics.json");
+    renderBlueprint(epicsData.epics);
+
+    let cards = [];
+    try {
+      const idx = await loadJson("cards/index.json");
+      cards = await Promise.all((idx.files || []).map(f => loadJson(`cards/${f}`)));
+    } catch (e) {
+      console.warn("カード一覧の読み込みをスキップ:", e.message);
+    }
+    renderKanban(cards);
+
+    footer.textContent = cards.length
+      ? `${cards.length} 件のタスクカードを表示中。`
+      : "タスクカードはまだ作成されていません（Epic / User Story レベルまで確定済み）。実装に入るときに implementation-plan スキルでカード化してください。";
+  } catch (e) {
+    document.getElementById("blueprint-view").innerHTML =
+      `<p style="color:#D99A2B">読み込みエラー: ${e.message}</p>`;
+  }
+}
+
+document.querySelectorAll("nav.tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav.tabs button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`${btn.dataset.view}-view`).classList.add("active");
+  });
+});
+
+init();
+</script>
+
+</body>
+</html>
