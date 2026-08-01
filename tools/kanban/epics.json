@@ -11,8 +11,8 @@
           "id": "E0-S1",
           "name": "技術骨格初期化",
           "definition": "プロジェクト初期化・ディレクトリ構成・依存関係・ビルド/デプロイ設定。",
-          "status": "一部完了",
-          "note": "index.html/css/js/tools/ の構成は既存実装で充足（ADR-0002によりビルドパイプラインなし）。GitHub Pages/Netlifyのデプロイ設定は未着手（.github/workflows・netlify.toml が存在しない）── これがEpic 0の唯一の残タスク。"
+          "status": "完了",
+          "note": "index.html/css/js/tools/ の構成は既存実装で充足（ADR-0002によりビルドパイプラインなし）。GitHub Pagesは既に有効化済み（legacy build type、masterブランチのルートから配信、.github/workflows等の設定ファイル無しで動作するため見落としていた）。公開URL: https://hexran-123.github.io/2026Expo/ 。2026-08-01にkanban/AI協働ワークフロー一式をコミット・push・Pages再ビルドを実施し確認済み。"
         },
         {
           "id": "E0-S2",
