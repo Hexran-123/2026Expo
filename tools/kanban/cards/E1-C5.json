@@ -1,0 +1,13 @@
+{
+  "id": "E1-C5",
+  "title": "乗車前のオフライン事前キャッシュ",
+  "epic": "E1",
+  "userStory": "E1-S5",
+  "stage": "task-card",
+  "dependsOn": ["E1-ARCH"],
+  "order": 14,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/車上モード/task-cards/E1-C5.md"
+}

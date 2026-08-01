@@ -1,0 +1,13 @@
+{
+  "id": "E1-C4",
+  "title": "電波なし時の位置推定",
+  "epic": "E1",
+  "userStory": "E1-S4",
+  "stage": "task-card",
+  "dependsOn": ["E1-ARCH"],
+  "order": 13,
+  "track": "不適用",
+  "owner": "",
+  "risk": "中",
+  "taskCardPath": "ai/artifacts/車上モード/task-cards/E1-C4.md"
+}

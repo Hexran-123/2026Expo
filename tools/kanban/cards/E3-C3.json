@@ -1,0 +1,13 @@
+{
+  "id": "E3-C3",
+  "title": "結びの一文",
+  "epic": "E3",
+  "userStory": "E3-S4",
+  "stage": "task-card",
+  "dependsOn": ["E3-C1"],
+  "order": 32,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/旅の記録/task-cards/E3-C3.md"
+}

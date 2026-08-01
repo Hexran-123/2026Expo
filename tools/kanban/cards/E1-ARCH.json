@@ -1,0 +1,13 @@
+{
+  "id": "E1-ARCH",
+  "title": "車上モード 架構基礎（位置追跡・モード状態機械）",
+  "epic": "E1",
+  "userStory": "E1-S1",
+  "stage": "ready",
+  "dependsOn": ["E0-C1", "E0-C2", "E0-C3"],
+  "order": 10,
+  "track": "不適用",
+  "owner": "",
+  "risk": "中",
+  "taskCardPath": "ai/artifacts/車上モード/task-cards/E1-ARCH.md"
+}

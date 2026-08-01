@@ -1,0 +1,13 @@
+{
+  "id": "E2-C3",
+  "title": "表示UI（コマ送り）",
+  "epic": "E2",
+  "userStory": "E2-S3",
+  "stage": "ui-mockup",
+  "dependsOn": ["E2-C1"],
+  "order": 22,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/成因カード/task-cards/E2-C3.md"
+}

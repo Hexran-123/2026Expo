@@ -1,0 +1,13 @@
+{
+  "id": "E2-C1",
+  "title": "6スポット分の本文執筆",
+  "epic": "E2",
+  "userStory": "E2-S1",
+  "stage": "ready",
+  "dependsOn": ["E0-C1", "E0-C2", "E0-C3"],
+  "order": 20,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/成因カード/task-cards/E2-C1.md"
+}

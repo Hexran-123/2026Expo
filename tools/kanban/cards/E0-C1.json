@@ -1,0 +1,13 @@
+{
+  "id": "E0-C1",
+  "title": "技術骨格初期化",
+  "epic": "E0",
+  "userStory": "E0-S1",
+  "stage": "done",
+  "dependsOn": [],
+  "order": 1,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/プロジェクト設置/task-cards/E0-C1.md"
+}

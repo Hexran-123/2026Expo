@@ -1,4 +1,26 @@
 {
   "_comment": "ブラウザのfetchはディレクトリ一覧を取得できないため、cards/配下に新しいタスクカードJSONを追加したら、そのファイル名をここにも足すこと。board.htmlがこの一覧を頼りに各カードを読み込む。",
-  "files": []
+  "files": [
+    "E0-C1.json",
+    "E0-C2.json",
+    "E0-C3.json",
+    "E1-ARCH.json",
+    "E1-C2.json",
+    "E1-C3.json",
+    "E1-C4.json",
+    "E1-C5.json",
+    "E1-C6.json",
+    "E2-C1.json",
+    "E2-C2.json",
+    "E2-C3.json",
+    "E2-C4.json",
+    "E3-C1.json",
+    "E3-C2.json",
+    "E3-C3.json",
+    "E3-C4.json",
+    "E4-ARCH.json",
+    "E4-C2.json",
+    "E4-C3.json",
+    "E4-C4.json"
+  ]
 }

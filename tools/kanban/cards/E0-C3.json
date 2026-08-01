@@ -1,0 +1,13 @@
+{
+  "id": "E0-C3",
+  "title": "UI設計システム（S1-S4）",
+  "epic": "E0",
+  "userStory": "E0-S3",
+  "stage": "done",
+  "dependsOn": [],
+  "order": 3,
+  "track": "不適用",
+  "owner": "Claude",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/プロジェクト設置/task-cards/E0-C3.md"
+}

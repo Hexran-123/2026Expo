@@ -1,0 +1,13 @@
+{
+  "id": "E1-C3",
+  "title": "接近通知UI（通知帯＋振動）",
+  "epic": "E1",
+  "userStory": "E1-S3",
+  "stage": "task-card",
+  "dependsOn": ["E1-ARCH", "E1-C2"],
+  "order": 12,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/車上モード/task-cards/E1-C3.md"
+}

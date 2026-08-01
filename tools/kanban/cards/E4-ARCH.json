@@ -1,0 +1,13 @@
+{
+  "id": "E4-ARCH",
+  "title": "レイアウト方針の決定（PC向け基盤スキャフォールド）",
+  "epic": "E4",
+  "userStory": "E4-S1",
+  "stage": "ui-mockup",
+  "dependsOn": ["E0-C1", "E0-C2", "E0-C3"],
+  "order": 40,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/PC向けレイアウト/task-cards/E4-ARCH.md"
+}
