@@ -1,0 +1,13 @@
+{
+  "id": "E4-C2",
+  "title": "地図画面（乗車前モード）のPC適応",
+  "epic": "E4",
+  "userStory": "E4-S2",
+  "stage": "task-card",
+  "dependsOn": ["E4-ARCH"],
+  "order": 41,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/PC向けレイアウト/task-cards/E4-C2.md"
+}

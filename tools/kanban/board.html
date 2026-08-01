@@ -5,18 +5,19 @@
 <title>AI看板｜車窓絶景ナビ</title>
 <style>
   :root {
-    --bg: #1E2024;
-    --panel: #2A2D33;
-    --panel-2: #33363D;
-    --ink: #E8E6E1;
-    --ink-soft: #9B9890;
-    --line: #40434A;
+    /* サイト本体（css/style.css）と同じトークンを再利用。白背景向けに新しい色は作らない */
+    --bg: #FFFFFF;
+    --panel: #FAF7EF;
+    --panel-2: #F3EEDF;
+    --ink: #2B2A28;
+    --ink-soft: #6B6862;
+    --line: #E3DDC8;
     --accent: #6F8F36;
-    --epic0: #8A6F3E;
-    --epic1: #2A6E8F;
-    --epic2: #6F8F36;
-    --epic3: #B8A88A;
-    --epic4: #2E4A6B;
+    --epic0: #8A6F3E;  /* 設計書5.4 地形テーマの差し色 */
+    --epic1: #2A6E8F;  /* 海と空 */
+    --epic2: #6F8F36;  /* 気候と農業 */
+    --epic3: #2E4A6B;  /* 産業と水運 */
+    --epic4: #3F5A2E;  /* 地形 */
   }
   * { box-sizing: border-box; }
   body {
@@ -123,7 +124,7 @@
   .epic-rationale {
     font-size: 12.5px;
     color: var(--ink-soft);
-    background: rgba(255,255,255,0.04);
+    background: rgba(0,0,0,0.035);
     border-radius: 6px;
     padding: 6px 10px;
     margin: 8px 0 12px;
@@ -146,16 +147,18 @@
     border-radius: 10px;
     margin-bottom: 6px;
   }
-  .badge.done { background: #3F5A2E; color: #DCE5C8; }
-  .badge.partial { background: #8A6F3E; color: #F5EFD9; }
-  .badge.todo { background: #40434A; color: var(--ink-soft); }
+  /* 設計書5.4のテーマ配色（淡色＋差し色）をそのまま再利用 */
+  .badge.done { background: #DCE5C8; color: #3F5A2E; }
+  .badge.partial { background: #F5EFD9; color: #8A6F3E; }
+  .badge.todo { background: #E8E4D8; color: var(--ink-soft); }
 
   footer {
     padding: 12px 24px 30px;
     color: var(--ink-soft);
     font-size: 12px;
   }
-  code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; }
+  code { background: rgba(0,0,0,0.055); padding: 1px 5px; border-radius: 4px; }
+  header, .column, .epic, .task-card, .story { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 </style>
 </head>
 <body>

@@ -1,0 +1,13 @@
+{
+  "id": "E4-C3",
+  "title": "他画面（下敷き・成因カード・旅の記録）のPC適応",
+  "epic": "E4",
+  "userStory": "E4-S3",
+  "stage": "task-card",
+  "dependsOn": ["E4-ARCH", "E2-C3", "E3-C1"],
+  "order": 42,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/PC向けレイアウト/task-cards/E4-C3.md"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "E2-C4",
+  "title": "通過後トリガーとの統合",
+  "epic": "E2",
+  "userStory": "E2-S4",
+  "stage": "task-card",
+  "dependsOn": ["E2-C3", "E1-ARCH"],
+  "order": 23,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/成因カード/task-cards/E2-C4.md"
+}

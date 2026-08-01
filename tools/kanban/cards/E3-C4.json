@@ -1,0 +1,13 @@
+{
+  "id": "E3-C4",
+  "title": "共有画像の生成・保存",
+  "epic": "E3",
+  "userStory": "E3-S3",
+  "stage": "ui-mockup",
+  "dependsOn": ["E3-C1", "E3-C2", "E3-C3", "E2-C3"],
+  "order": 33,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/旅の記録/task-cards/E3-C4.md"
+}

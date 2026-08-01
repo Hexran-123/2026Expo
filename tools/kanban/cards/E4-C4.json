@@ -1,0 +1,13 @@
+{
+  "id": "E4-C4",
+  "title": "入力方式の差異吸収（hover状態の追加）",
+  "epic": "E4",
+  "userStory": "E4-S4",
+  "stage": "task-card",
+  "dependsOn": ["E4-ARCH"],
+  "order": 43,
+  "track": "不適用",
+  "owner": "",
+  "risk": "低",
+  "taskCardPath": "ai/artifacts/PC向けレイアウト/task-cards/E4-C4.md"
+}
