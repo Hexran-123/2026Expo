@@ -3,8 +3,10 @@
   "title": "進行方向判定と車窓側の決定",
   "epic": "E1",
   "userStory": "E1-S2",
-  "stage": "task-card",
-  "dependsOn": ["E1-ARCH"],
+  "stage": "done",
+  "dependsOn": [
+    "E1-ARCH"
+  ],
   "order": 11,
   "track": "不適用",
   "owner": "",

@@ -3,8 +3,13 @@
   "title": "路線タイムライン表示",
   "epic": "E3",
   "userStory": "E3-S1",
-  "stage": "ui-mockup",
-  "dependsOn": ["E0-C1", "E0-C2", "E0-C3", "E1-ARCH"],
+  "stage": "done",
+  "dependsOn": [
+    "E0-C1",
+    "E0-C2",
+    "E0-C3",
+    "E1-ARCH"
+  ],
   "order": 30,
   "track": "不適用",
   "owner": "",

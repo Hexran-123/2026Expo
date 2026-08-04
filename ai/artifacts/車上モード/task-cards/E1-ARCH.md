@@ -67,7 +67,19 @@
 
 ## 完成證據
 
-（実装後に記入）
+- 変更したファイル：`js/onboard.js`（新規、路線への射影・乗車判定・進行方向・通知・遅れの純粋関数）、`js/onboard.test.js`（新規）、`js/main.js`（`createTrip`/`watchPosition`/`onPosition`/`onStale`ほか）、`index.html`（`#map-here`/`#riding`/`#notice-bar`/`#shoot`）、`css/style.css`
+- 実行したコマンド：`node js/onboard.test.js`（35項目）、Playwright（GPS偽装、銚子→外川を実際の軌道座標で通し走行）
+- テスト出力：`node js/onboard.test.js` は `OK すべて通った`（35/35）。ブラウザ通し確認も `OK すべて通った`（12/12、コンソールエラーなし）
+- スクリーンショット：`onboard-riding.png`（発車直後）、`onboard-looknow.png`（4倍に寄せた状態）、`onboard-journal.png`（終点到着後）
+- 実装後に見つけて直した不具合：
+  1. `hidden`属性が`display:flex`等を書いた要素（`.riding`/`.shoot`/`.journal`）に効いておらず、乗車前から出っぱなしだった。`[hidden]{display:none!important}`を追加。
+  2. SVG要素（`#map-here`）に`element.hidden`は効かない（HTMLのみのプロパティ）。属性の付け外し（`setHidden()`）に変更。
+  3. 入るときの4倍への寄せが、追従処理に毎回打ち消されていた。目当ての倍率に届くまで渡し続ける形に修正。
+  4. `onStale`の60秒打ち切りが機能しなかった。`fixedAt`を推定のたびに書き換えていたため、「最後の実測から何秒か」ではなく「前回の推定から何秒か」を測ってしまい、打ち切りが永遠に来なかった。書き換わらない`lastRealFixAt`を別に持つよう修正。仮想タイマー（Playwright Clock API）で65秒経過を再現し、通知・現在位置マーカーが正しく引っこむこと、GPS復旧で再開することを確認した。
+  5. 進行方向未確定のまま電波が途切れると、位置が逆方向へ推定されていた（`direction===null`が`'下り'`でない、すなわちfalseと解釈され、後退方向の計算になっていた）。`direction === null`のときは推定を止める（現在地を保持する）よう修正。
+- 既知の制限：localStorageキーは`choshi-navi/trip`（`js/journal.js`が管理。当初案の`trip-log`ではなく、旅の記録全体の状態としてまとめて持つ形にした）。速度・距離のしきい値（15km/h・30m・15秒・60秒・80m等）は設計書の決定どおり定数化したが、現地検証（[将来構想6](../../../docs/将来構想.md)）は未実施。
+- 後続タスク：E1-C5（オフラインキャッシュ）は未着手。現地でのしきい値調整。
+
 
 - 変更したファイル：
 - 実行したコマンド：

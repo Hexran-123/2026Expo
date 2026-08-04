@@ -3,8 +3,10 @@
   "title": "表示UI（コマ送り）",
   "epic": "E2",
   "userStory": "E2-S3",
-  "stage": "ui-mockup",
-  "dependsOn": ["E2-C1"],
+  "stage": "done",
+  "dependsOn": [
+    "E2-C1"
+  ],
   "order": 22,
   "track": "不適用",
   "owner": "",
