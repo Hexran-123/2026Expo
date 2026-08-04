@@ -3,8 +3,12 @@
   "title": "撮影写真の取り込み",
   "epic": "E3",
   "userStory": "E3-S2",
-  "stage": "ui-mockup",
-  "dependsOn": ["E0-C1", "E0-C2", "E0-C3"],
+  "stage": "done",
+  "dependsOn": [
+    "E0-C1",
+    "E0-C2",
+    "E0-C3"
+  ],
   "order": 31,
   "track": "不適用",
   "owner": "",

@@ -15,6 +15,31 @@
   -->
   <div class="screen">
 
+    <!--
+      乗車区間の設定（feature-spec「乗車区間の設定」US1）。
+
+      保存された区間が無ければ、地図より先にこれを出し、乗る駅・降りる駅の
+      両方を選ぶまで地図へ進めない（決定ボタンは両方選ぶまで押せない）。
+      すでに区間がある状態で開く（選び直し）ときだけ、閉じるボタンを出す。
+    -->
+    <section class="plan" id="plan-setup" hidden aria-labelledby="plan-title">
+      <div class="plan-card">
+        <button type="button" class="plan-close" id="plan-close" aria-label="閉じる" hidden>×</button>
+        <h2 class="plan-title" id="plan-title">どこからどこまで乗りますか？</h2>
+        <p class="plan-hint">区間に合わせて、時刻表・見どころ・通知を絞ります。</p>
+        <label class="plan-field">
+          乗る駅
+          <select id="plan-board" aria-label="乗る駅"></select>
+        </label>
+        <label class="plan-field">
+          降りる駅
+          <select id="plan-alight" aria-label="降りる駅"></select>
+        </label>
+        <p class="plan-error" id="plan-error" hidden>同じ駅は選べません。</p>
+        <button type="button" class="plan-submit" id="plan-submit">決定</button>
+      </div>
+    </section>
+
     <!-- 地図。中身は js/main.js が作る -->
     <svg class="map" id="map" aria-label="銚子電鉄の路線と絶景スポットの地図">
       <defs>
@@ -39,7 +64,31 @@
       <g id="map-route"></g>
       <g id="map-stations"></g>
       <g id="map-spots"></g>
+
+      <!-- 現在位置。車上モードのあいだだけ出る（設計書 4.3） -->
+      <!-- data-ax / data-ay は拡大時に動かさない点。出るまでは 0 にしておく -->
+      <g id="map-here" class="here scalable" data-ax="0" data-ay="0" hidden>
+        <circle class="here-halo" r="15"/>
+        <!-- 進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む -->
+        <g id="here-arrow-wrap">
+          <path class="here-arrow" d="M0,-14 L6,-6 L-6,-6 Z"/>
+        </g>
+        <circle class="here-dot" r="7"/>
+      </g>
     </svg>
+
+    <!--
+      読み込み中の表示。
+
+      main() は terrain/route/spots/schedule の4つを取り終えるまで
+      地図に何も描かない。通信が悪いとそのあいだ地図の部分だけが
+      ずっと同じ色のままになり、固まったように見える。それを埋める。
+    -->
+    <div class="loading" id="loading" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p class="loading-text" id="loading-text">地図を読み込んでいます…</p>
+      <button type="button" class="loading-retry" id="loading-retry" hidden>やり直す</button>
+    </div>
 
     <!--
       初期表示に戻すボタン。
@@ -54,19 +103,127 @@
       </svg>
     </button>
 
-    <!-- 上の帯: 作品名と路線名 -->
-    <header class="bar bar--top">
-      <h1 class="title">車窓絶景ナビ</h1>
-      <p class="line-name">銚子電鉄</p>
-    </header>
+    <!-- 画面の上に積むもの。上から順に並ぶ -->
+    <div class="top-stack">
 
-    <!-- 下の帯: 天候のひとことと、テーマの絞り込み -->
+      <!-- 作品名と路線名 -->
+      <header class="bar bar--top">
+        <h1 class="title">車窓絶景ナビ</h1>
+        <p class="line-name">銚子電鉄</p>
+        <!-- 乗車区間（設計書・feature-spec「乗車区間の設定」）。押すと選び直せる -->
+        <button type="button" class="plan-chip" id="plan-chip" hidden></button>
+        <!--
+          地図データの出典（設計書 8.3 の出典表）。
+
+          OpenStreetMap は ODbL、地理院タイルは国土地理院コンテンツ利用規約で、
+          いずれも使う側に出典の明示を求めている（ADR-0003 でも「出典表記に
+          陰影起伏図を足す必要がある」と決めてある）。地図そのものが画面いっぱいに
+          広がる作りなので、常に文字を重ねるかわりに、ここから開いて読めるようにする。
+        -->
+        <button type="button" class="credits-open" id="credits-open"
+                aria-label="地図データの出典">出典</button>
+      </header>
+
+      <!-- 出典の一覧（設計書 8.3） -->
+      <section class="credits" id="credits" hidden aria-labelledby="credits-title">
+        <div class="credits-card">
+          <button type="button" class="plan-close" id="credits-close" aria-label="閉じる">×</button>
+          <h2 class="credits-title" id="credits-title">地図データの出典</h2>
+          <dl class="credits-list">
+            <dt>線路・駅・工場・農地・海岸線</dt>
+            <dd>© OpenStreetMap contributors（ODbL）</dd>
+            <dt>標高（地形の色分け）</dt>
+            <dd>国土地理院 標高タイル（DEM5A／DEM10B）</dd>
+            <dt>地形の陰影</dt>
+            <dd>国土地理院 陰影起伏図タイル</dd>
+            <dt>天気予報</dt>
+            <dd>気象庁</dd>
+            <dt>時刻表</dt>
+            <dd>銚子電気鉄道 公式サイト</dd>
+          </dl>
+        </div>
+      </section>
+
+      <!--
+        発車待ちの帯（設計書 4.2）。駅にいると判定したときだけ出る。
+
+        時刻は時刻表の予定であって、実際の運行ではない。
+        「あと3分」のような分単位のカウントダウンは出さない。
+        遅れているかどうかは、この画面では分からないため。
+      -->
+      <section class="bar bar--station" id="station-bar" hidden aria-live="polite">
+        <p class="station-here" id="station-here"></p>
+        <ul class="departures" id="departures"></ul>
+        <p class="departures-note">時刻表の予定です</p>
+      </section>
+
+      <!--
+        接近の通知帯（設計書 4.3）。車上モードで、スポットが近づくと出る。
+
+        秒数は 5 秒刻み。1 秒ずつ減る数字は気が散るし、見てほしいのは
+        数字ではなく窓の外なので。100m を切ると「見てください」に変わる。
+      -->
+      <section class="bar bar--notice" id="notice-bar" hidden aria-live="assertive">
+        <p class="notice-lead" id="notice-lead"></p>
+        <p class="notice-detail" id="notice-detail"></p>
+      </section>
+
+      <!--
+        乗車区間の設定と、実際にGPSで検出した乗車駅・向きが食い違ったときの確認。
+        1回の乗車につき最大1回だけ出す（feature-spec「乗車区間の設定」US7）。
+      -->
+      <section class="bar bar--mismatch" id="mismatch-bar" hidden aria-live="assertive">
+        <p class="mismatch-text" id="mismatch-text"></p>
+        <div class="mismatch-actions">
+          <button type="button" id="mismatch-fix">設定を直す</button>
+          <button type="button" id="mismatch-keep">このまま</button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 下の帯: 天候のひとこと（または発車待ちの見どころ）と、テーマの絞り込み -->
     <div class="bar bar--bottom">
       <p class="weather" id="weather">天気を調べています…</p>
+
+      <!--
+        発車待ちのあいだ、天気のひとことと入れかわる。
+        乗る向きがまだ決まっていないので、上り・下りの両方の車窓側を書く。
+      -->
+      <div class="lookout" id="lookout" hidden>
+        <p class="lookout-title">この先の見どころ</p>
+        <ul class="lookout-list" id="lookout-list"></ul>
+      </div>
+
+      <!--
+        車上モードの足もと。進行方向・遅れ・通過した数（設計書 4.3）。
+        遅れは 1 分以上ずれたときだけ出る。
+      -->
+      <div class="riding" id="riding" hidden>
+        <span class="riding-towards" id="riding-towards"></span>
+        <span class="riding-delay" id="riding-delay" hidden></span>
+        <span class="riding-count" id="riding-count"></span>
+      </div>
 
       <!-- テーマの絞り込みボタン。中身は js/main.js が作る -->
       <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
     </div>
+
+    <!--
+      撮影ボタン（設計書 7.1）。車上モードのあいだだけ出る。
+
+      capture を付けた file input にしてあるので、押すと端末のカメラが
+      そのまま立ち上がる。アプリの中にカメラの画面は作らない。
+      ブラウザが描くカメラは起動が遅く、一瞬で過ぎる森のトンネルに間に合わない。
+    -->
+    <label class="shoot" id="shoot" hidden>
+      <input type="file" accept="image/*" capture="environment" id="shoot-input">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 8.5h3.2l1.6-2.2h8.4l1.6 2.2H21v10H3z"/>
+        <circle cx="12" cy="13" r="3.6"/>
+      </svg>
+      <span class="visually-hidden">写真を撮る</span>
+    </label>
 
     <!--
       絶景スポットを押したときに出る下敷き。
@@ -84,8 +241,68 @@
       <dl class="card-facts" id="spot-card-facts"></dl>
     </section>
 
+    <!--
+      成因カード（設計書 6）。絶景スポットを通過したあとに出る。
+
+      予習用の下敷き（上）とは別もの。あちらは「どちら側の窓か」を答えるだけで、
+      こちらは通り過ぎた風景が、なぜそこにあるのかを数コマで語る。
+
+      1 スポット 400 字ほどを 5〜6 コマに分ける。画像は任意。
+      発車待ちのあいだに先読みしてあるので、通信が切れていても文は読める。
+    -->
+    <section class="origin" id="origin" hidden aria-labelledby="origin-name">
+      <div class="card-grip" aria-hidden="true"></div>
+
+      <header class="origin-head">
+        <p class="card-theme" id="origin-theme"></p>
+        <h2 class="card-name" id="origin-name"></h2>
+      </header>
+
+      <!-- コマ。中身は js/main.js が作る -->
+      <div class="origin-panels" id="origin-panels"></div>
+
+      <footer class="origin-foot">
+        <button type="button" class="origin-step" id="origin-back" aria-label="前のコマ">‹</button>
+        <p class="origin-pager" id="origin-pager"></p>
+        <button type="button" class="origin-step" id="origin-next" aria-label="次のコマ">›</button>
+      </footer>
+    </section>
+
   </div>
 
+  <!--
+    旅の記録（設計書 7）。降車後に出る。
+
+    その日たどったつながりを、通過したスポットの並び・撮った写真・
+    結びの一文でふりかえる。最後に 1 枚の縦長画像にまとめて保存できる。
+  -->
+  <section class="journal" id="journal" hidden aria-labelledby="journal-title">
+    <header class="journal-head">
+      <h2 class="journal-title" id="journal-title">きょうの旅</h2>
+      <p class="journal-date" id="journal-date"></p>
+      <button type="button" class="journal-close" id="journal-close" aria-label="閉じる">×</button>
+    </header>
+
+    <div class="journal-body">
+      <!-- ① 路線のタイムライン。通過したスポットをテーマ色で並べる -->
+      <div class="journal-line" id="journal-line"></div>
+
+      <!-- ② 撮った写真 -->
+      <div class="journal-shots" id="journal-shots"></div>
+
+      <!-- ③ 体験としての結び -->
+      <p class="journal-closing" id="journal-closing"></p>
+    </div>
+
+    <footer class="journal-foot">
+      <button type="button" class="journal-save" id="journal-save">画像として保存</button>
+    </footer>
+  </section>
+
+  <!-- 計算だけを持つ部品。画面には触らない。main.js より先に読む -->
+  <script src="js/schedule.js"></script>
+  <script src="js/onboard.js"></script>
+  <script src="js/journal.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

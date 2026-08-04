@@ -55,6 +55,9 @@ const GLYPHS = {
 /** 絞り込みの設定をブラウザに覚えさせるときの名前 */
 const STORAGE_KEY = 'choshi-navi/themes';
 
+/** 乗車区間（乗る駅・降りる駅・方向）をブラウザに覚えさせるときの名前 */
+const PLAN_KEY = 'choshi-navi/plan';
+
 /** 絶景スポットのひし形バッジの大きさ（中心から角まで） */
 const BADGE_SIZE = 17;
 
@@ -78,11 +81,45 @@ const HILLSHADE_FADE_TO = 10;
 /** 絶景スポットの名前を出しはじめる倍率（設計書 4.1「最初はアイコンだけ」） */
 const LABEL_ZOOM = 1.6;
 
+/*
+ * 駅にいるとみなす半径（m）。設計書 3.2。
+ *
+ * 市販の端末の位置情報は 5〜15m ずれ、駅前の建物のあいだではさらに悪くなる。
+ * 10m ほどの円にすると、駅に立っていても入れないことがある。
+ * 駅どうしは数百 m 以上離れているので、広くしても取り違えはしない。
+ */
+const STATION_RADIUS_METERS = 80;
+
+/*
+ * 歩く程度の速さの上限（m/s）。3 m/s はおよそ時速 11km。
+ * これより速く動いていれば、駅にいるのではなく駅を通り過ぎている。
+ */
+const WALKING_SPEED_LIMIT = 3;
+
+/** 発車待ちで出す、次の発車の本数 */
+const DEPARTURE_COUNT = 2;
+
+/** 発車待ちで出す、見どころの数（最大3件、線路上で近い順） */
+const LOOKOUT_COUNT = 3;
+
+/** 発車待ちの表示を作り直す間隔（ミリ秒）。発車時刻をまたいだら次の列車に繰り上げる */
+const DEPARTURE_REFRESH_MS = 20000;
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // ------------------------------------------------------------------
 // 小さな道具
 // ------------------------------------------------------------------
+
+/**
+ * 出す・隠すを切り替える。
+ *
+ * `element.hidden = true` は HTML の要素にしか効かない。SVG の要素
+ * （現在位置の印など）では何も起きないので、属性で付け外しする。
+ */
+function setHidden(element, value) {
+  element.toggleAttribute('hidden', value);
+}
 
 /** SVG の部品を作る。createElementNS は SVG 専用の書き方。 */
 function svg(tag, attributes = {}) {
@@ -138,6 +175,30 @@ function makeProjection(projection) {
       y: ((bounds.maxLat - lat) / spanLat) * height, // 北が上なので引き算
     };
   };
+}
+
+/**
+ * 起点からの距離（along, m）から、地図の画面座標を求める。
+ *
+ * track（Onboard.prepareTrack の結果、緯度経度と累積距離）と、その各点を
+ * あらかじめ project() した points を対で使う。区間の途中を線形補間するので、
+ * 駅の印（distanceAlong）も現在位置の印（along）もこれで求めれば、
+ * 同じ場所にいるときは画面上でも必ず重なる。
+ */
+function pointAtDistance(track, points, along) {
+  const last = track[track.length - 1];
+  const clamped = Math.max(0, Math.min(last.along, along));
+
+  let index = 1;
+  while (index < track.length - 1 && track[index].along < clamped) index += 1;
+
+  const from = track[index - 1];
+  const span = track[index].along - from.along || 1;
+  const t = (clamped - from.along) / span;
+
+  const p0 = points[index - 1];
+  const p1 = points[index];
+  return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t };
 }
 
 /**
@@ -256,11 +317,17 @@ function placeLabel(textElement, origin, candidates, size, placed) {
 }
 
 /** 駅を置く */
-function drawStations(container, route, project, points, placed) {
+function drawStations(container, route, project, points, placed, track) {
   route.stations.forEach((station, i) => {
-    const p = project(station.lat, station.lon);
+    /*
+     * 駅の印は station.lat/lon ではなく、distanceAlong で線路の上に置く。
+     * 駅舎の実際の座標は線路の折れ線から数十m離れていることがあり
+     * （route.json の offsetFromTrack）、lat/lon をそのまま使うと、
+     * 電車がその駅に停まっているときでも現在位置の印とずれて見える。
+     */
+    const p = pointAtDistance(track, points, station.distanceAlong);
     const isEnd = i === 0 || i === route.stations.length - 1;
-    const radius = isEnd ? 8 : 6;
+    const radius = isEnd ? 9 : 7;
     const fontSize = isEnd ? 19 : 17;
 
     /*
@@ -607,7 +674,23 @@ function createView(mapElement, projection, initialBox, onChange) {
     );
   }
 
-  return { apply, zoomAt, panBy, centerOn, reset, zoom, stopAnimation };
+  /**
+   * ある地点へ寄る。倍率も指定できる（省略すれば今のまま）。
+   * 車上モードで現在位置を追いかけるのに使う（設計書 4.3）。
+   *
+   * @param {number} [zoomLevel] 初期表示の何倍か
+   * @param {number} [duration] かける時間（ミリ秒）。追従では短くする
+   */
+  function goTo(mapX, mapY, zoomLevel, duration = 340) {
+    animateTo(
+      mapX,
+      mapY,
+      zoomLevel === undefined ? unitsPerPixel : basisPerPixel / zoomLevel,
+      duration
+    );
+  }
+
+  return { apply, zoomAt, panBy, centerOn, goTo, reset, zoom, stopAnimation };
 }
 
 /**
@@ -695,6 +778,10 @@ function setUpGestures(mapElement, view, onTap) {
 // テーマの絞り込み（設計書 4.1）
 // ------------------------------------------------------------------
 
+/**
+ * @returns {{isHidden: (theme: string) => boolean}}
+ *          消されているテーマを、あとから他の表示（発車待ちの見どころ）でも使うため
+ */
 function setUpThemeFilter(container, mapSpots, onApply) {
   // 前に選んだ設定があれば引き継ぐ。なければ全部表示。
   let hidden = new Set();
@@ -739,6 +826,1084 @@ function setUpThemeFilter(container, mapSpots, onApply) {
   }
 
   apply();
+
+  return { isHidden: (theme) => hidden.has(theme) };
+}
+
+// ------------------------------------------------------------------
+// 発車待ち（設計書 4.2）
+//
+// 駅に着いてから乗るまでの数分は、乗客がいちばん自由に画面を見られる時間。
+// ここで「どちら側に座るか」を決められるようにする。
+//
+// 出す時刻は時刻表の予定であって、実際の運行ではない。
+// 分単位のカウントダウンは出さない（設計書 4.2 の理由を参照）。
+// ------------------------------------------------------------------
+
+/** 2 地点の距離（m）。全長 6.4km の範囲なので、地球を球とみなせば十分。 */
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const EARTH_RADIUS = 6371000;
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  return 2 * EARTH_RADIUS * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * いまいる場所が、どの駅の構内とみなせるか。
+ * どの駅からも離れているか、電車の速さで動いていれば null。
+ */
+function stationAt(route, coords) {
+  // 速さがわかっていて、それが歩く速さを超えていれば、通り過ぎているところ
+  if (coords.speed !== null && coords.speed !== undefined && coords.speed > WALKING_SPEED_LIMIT) {
+    return null;
+  }
+
+  let nearest = null;
+  for (const station of route.stations) {
+    const distance = distanceMeters(coords.latitude, coords.longitude, station.lat, station.lon);
+    if (distance <= STATION_RADIUS_METERS && (nearest === null || distance < nearest.distance)) {
+      nearest = { station, distance };
+    }
+  }
+  return nearest && nearest.station;
+}
+
+// ------------------------------------------------------------------
+// 乗車区間の設定（feature-spec「乗車区間の設定」）
+//
+// 乗る駅・降りる駅を初回起動時に選ばせ、区間・方向をブラウザに覚えさせる。
+// モード自動判定（設計書3.2）は変えない。ここで持つのはあくまで
+// 「発車待ち・接近通知をどこまで絞るか」の下書きで、実際の位置情報が
+// いつでも優先される（食い違えば一度だけ気づかせるだけ）。
+// ------------------------------------------------------------------
+
+function loadPlan() {
+  try {
+    const saved = localStorage.getItem(PLAN_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePlan(plan) {
+  try {
+    localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+  } catch {
+    // 保存できない設定のブラウザでも、その場での動きは変えない
+  }
+}
+
+function stationDistance(route, name) {
+  const station = route.stations.find((s) => s.name === name);
+  return station ? station.distanceAlong : null;
+}
+
+/** 2駅の並び順から方向を決める。route.stations は銚子→外川の順（distanceAlong昇順）。 */
+function directionFor(route, board, alight) {
+  return stationDistance(route, board) < stationDistance(route, alight) ? '下り' : '上り';
+}
+
+/** 区間の範囲（distanceAlongのmin/max）。planが無ければnull（絞り込まない）。 */
+function planRange(route, plan) {
+  if (!plan) return null;
+  const a = stationDistance(route, plan.board);
+  const b = stationDistance(route, plan.alight);
+  if (a === null || b === null) return null;
+  return { lo: Math.min(a, b), hi: Math.max(a, b) };
+}
+
+/** 区間の中にあるスポットだけを残す。planが無ければ全部残す。 */
+function withinPlan(route, plan, spots) {
+  const range = planRange(route, plan);
+  if (!range) return spots;
+  return spots.filter((spot) => spot.distanceAlong >= range.lo && spot.distanceAlong <= range.hi);
+}
+
+/**
+ * 食い違い確認で「直す」を選んだときの降車駅。
+ * 既存の設定が新しい方向・乗車駅と整合すればそのまま使い、整合しなければ
+ * （例: 方向そのものが変わった）その方向の終点をひとまずの降車駅とする。
+ */
+function correctedAlight(route, board, direction, oldAlight) {
+  if (oldAlight) {
+    const boardDist = stationDistance(route, board);
+    const oldDist = stationDistance(route, oldAlight);
+    const consistent = direction === '下り' ? oldDist > boardDist : oldDist < boardDist;
+    if (consistent) return oldAlight;
+  }
+  return direction === '下り' ? '外川' : '銚子';
+}
+
+/** 起点からの距離に、いちばん近い駅の名前 */
+function nearestStationName(route, along) {
+  let nearest = route.stations[0];
+  let best = Infinity;
+  for (const station of route.stations) {
+    const diff = Math.abs(station.distanceAlong - along);
+    if (diff < best) {
+      best = diff;
+      nearest = station;
+    }
+  }
+  return nearest.name;
+}
+
+/**
+ * その要素の data-ax/data-ay（指している地図上の点）を動かさないまま、
+ * 倍率 k でその場を縮める transform を計算して設定する。
+ *
+ * 拡大・パンのたびに onViewChange が scalables 全部に対してこれをやり直す。
+ * 現在位置マーカーだけは、位置そのものが動くたびに（追従の有無に関係なく）
+ * 自分で呼び直す必要がある。さもないと、位置が動いた分と transform の基準点が
+ * ずれたまま合成され、地図を操作するまで見た目が追いつかない
+ * （かつ、ずれた基準点との合成は線路の曲がり角で線路から外れて見える）。
+ */
+function setScaleTransform(element, k) {
+  const x = element.getAttribute('data-ax');
+  const y = element.getAttribute('data-ay');
+  element.setAttribute('transform', `translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})`);
+}
+
+/** 「上り 左／下り 右」。どちらの向きでも見えるスポットは、そう書く。 */
+function sidesText(spot) {
+  if (spot.sideUp === '両' && spot.sideDown === '両') return 'どちらの窓でも';
+  return `上り ${spot.sideUp}／下り ${spot.sideDown}`;
+}
+
+function createStationPanel(route, schedule, spots, themeFilter, getWeather, getPlan) {
+  const bar = document.getElementById('station-bar');
+  const here = document.getElementById('station-here');
+  const departureList = document.getElementById('departures');
+  const note = bar.querySelector('.departures-note');
+  const weather = document.getElementById('weather');
+  const lookout = document.getElementById('lookout');
+  const lookoutList = document.getElementById('lookout-list');
+
+  /** いま出している駅。null なら発車待ちではない */
+  let current = null;
+
+  function renderDepartures(station) {
+    const plan = getPlan();
+    const departures = Schedule.nextDepartures(
+      schedule, station.name, Schedule.now(), DEPARTURE_COUNT, plan ? plan.direction : undefined
+    );
+    departureList.replaceChildren();
+
+    if (departures.length === 0) {
+      // 終電のあと。翌日の始発は出さない（夜に「次は5:37」と言っても待てない）
+      const item = document.createElement('li');
+      item.className = 'departures-none';
+      item.textContent = 'きょうの運行は終わりました。';
+      departureList.appendChild(item);
+      note.hidden = true;
+      return;
+    }
+
+    for (const departure of departures) {
+      const time = document.createElement('span');
+      time.className = 'departure-time';
+      time.textContent = Schedule.toClock(departure.分);
+
+      const towards = document.createElement('span');
+      towards.className = 'departure-for';
+      towards.textContent =
+        `${Schedule.terminusOf(schedule, departure.方向)}方面（${departure.方向}）`;
+
+      const item = document.createElement('li');
+      item.append(time, towards);
+      departureList.appendChild(item);
+    }
+    note.hidden = false;
+  }
+
+  function renderLookout(station) {
+    const plan = getPlan();
+
+    /*
+     * 近い順に並べる。乗車区間が設定されていれば、その区間内のスポットだけに絞る
+     * （feature-spec「乗車区間の設定」US4）。区間が無ければ今まで通り、
+     * 乗る向きが決まっていない前提でこの駅の前後から近いものを出す。
+     */
+    const nearby = withinPlan(route, plan, spots.filter((spot) => !themeFilter.isHidden(spot.theme)))
+      .sort(
+        (a, b) =>
+          Math.abs(a.distanceAlong - station.distanceAlong) -
+          Math.abs(b.distanceAlong - station.distanceAlong)
+      )
+      .slice(0, LOOKOUT_COUNT);
+
+    lookoutList.replaceChildren();
+    for (const spot of nearby) {
+      const diamond = document.createElement('span');
+      diamond.className = 'lookout-diamond';
+      diamond.style.setProperty('--spot-color', THEMES[spot.theme].color);
+
+      const name = document.createElement('span');
+      name.className = 'lookout-name';
+      name.textContent = spot.name;
+
+      const sides = document.createElement('span');
+      sides.className = 'lookout-sides';
+      /*
+       * 区間から方向が決まっていれば、見るべき片側だけを言う
+       * （「上り左／下り右」の併記をやめる。項目3・US4）。
+       * 決まっていなければ、乗る向きがわからない前提で今まで通り両方書く。
+       */
+      sides.textContent = plan
+        ? windowSideText(plan.direction === '下り' ? spot.sideDown : spot.sideUp)
+        : sidesText(spot);
+
+      const item = document.createElement('li');
+      item.append(diamond, name, sides);
+
+      /*
+       * 天気に合うスポットだけ、一言添える。
+       * 合わない（bad）側はここでは何も言わない。悪い予告は地図バッジの
+       * 弱め表現だけで十分で、リストにまで否定的な言葉を並べると
+       * 「これから乗る区間の見どころ」という前向きな案内の趣旨とずれる。
+       */
+      if (weatherMatch(spot, getWeather()) === 'good') {
+        item.classList.add('lookout-item--weather-good');
+        const hint = document.createElement('span');
+        hint.className = 'lookout-weather';
+        hint.textContent = '今日はよく見えそう';
+        item.appendChild(hint);
+      }
+
+      lookoutList.appendChild(item);
+    }
+
+    // 全部のテーマを消したときは、見出しだけが残らないようにする
+    lookout.hidden = nearby.length === 0;
+    weather.hidden = nearby.length > 0;
+  }
+
+  /** 駅に着いたときに一度だけ呼ぶもの（成因カードの絵の先読みに使う） */
+  const arriveHandlers = [];
+
+  /** 発車待ちに入る・出る・中身を作り直す。すべてここを通る。 */
+  function update(station) {
+    const wasAway = current === null;
+    current = station;
+
+    if (station === null) {
+      bar.hidden = true;
+      lookout.hidden = true;
+      weather.hidden = false;
+      return;
+    }
+
+    here.textContent = `${station.name}駅`;
+    renderDepartures(station);
+    renderLookout(station);
+    bar.hidden = false;
+
+    if (wasAway) for (const handler of arriveHandlers) handler(station);
+  }
+
+  // 発車時刻をまたいだら、次の列車へ繰り上げる
+  setInterval(() => {
+    if (current !== null) renderDepartures(current);
+  }, DEPARTURE_REFRESH_MS);
+
+  return {
+    update,
+    /** テーマの絞り込みが変わったとき */
+    refresh: () => {
+      if (current !== null) renderLookout(current);
+    },
+    /** 駅に着いたときに呼ばれる。発車まで数分あるので、重いことはここでやる。 */
+    onArrive: (handler) => arriveHandlers.push(handler),
+  };
+}
+
+// ------------------------------------------------------------------
+// 成因カード（設計書 6）
+//
+// 絶景スポットを通過したあとに出る。予習用の下敷き（4.1）とは別もの。
+// 1 スポット 400 字ほどを 5〜6 コマに分け、めくって読む。
+// ------------------------------------------------------------------
+
+function createOriginCard(screenElement) {
+  const card = document.getElementById('origin');
+  const themeElement = document.getElementById('origin-theme');
+  const nameElement = document.getElementById('origin-name');
+  const panelsElement = document.getElementById('origin-panels');
+  const pagerElement = document.getElementById('origin-pager');
+  const backButton = document.getElementById('origin-back');
+  const nextButton = document.getElementById('origin-next');
+
+  let openedId = null;
+  let count = 0;
+
+  /** いま何コマ目が見えているか。横スクロールの位置から求める */
+  function currentIndex() {
+    const width = panelsElement.clientWidth || 1;
+    return Math.round(panelsElement.scrollLeft / width);
+  }
+
+  function updatePager() {
+    if (count === 0) return;
+    const index = currentIndex();
+    pagerElement.textContent = `${index + 1} / ${count}`;
+    backButton.disabled = index === 0;
+    nextButton.disabled = index >= count - 1;
+  }
+
+  function scrollToPanel(index) {
+    panelsElement.scrollTo({
+      left: index * panelsElement.clientWidth,
+      behavior: 'smooth',
+    });
+  }
+
+  panelsElement.addEventListener('scroll', updatePager, { passive: true });
+  backButton.addEventListener('click', () => scrollToPanel(currentIndex() - 1));
+  nextButton.addEventListener('click', () => scrollToPanel(currentIndex() + 1));
+
+  function open(spot) {
+    // 中身がまだ書かれていないスポットでは、空のカードを出さない
+    if (!Array.isArray(spot.panels) || spot.panels.length === 0) return false;
+
+    openedId = spot.id;
+    count = spot.panels.length;
+
+    const theme = THEMES[spot.theme];
+    themeElement.textContent = spot.theme;
+    themeElement.style.setProperty('--card-color', theme.color);
+    nameElement.textContent = spot.name;
+
+    panelsElement.replaceChildren();
+    for (const panel of spot.panels) {
+      const item = document.createElement('div');
+      item.className = 'origin-panel';
+
+      /*
+       * 絵は任意（設計書 6.1）。先読みが間に合わなかったコマ、
+       * 通信が無いときのコマは、文だけが残る。
+       */
+      if (panel.image) {
+        const image = document.createElement('img');
+        image.className = 'origin-image';
+        image.src = panel.image;
+        image.alt = '';
+        image.loading = 'eager';
+        image.style.setProperty('--panel-tint', theme.color + '22');
+        // 読めなかった絵は、枠だけ残さず消す
+        image.addEventListener('error', () => image.remove());
+        item.appendChild(image);
+      }
+
+      const text = document.createElement('p');
+      text.className = 'origin-text';
+      text.textContent = panel.text;
+      item.appendChild(text);
+
+      panelsElement.appendChild(item);
+    }
+
+    panelsElement.scrollLeft = 0;
+    updatePager();
+
+    screenElement.classList.add('screen--carded');
+    card.hidden = false;
+    // hidden を外した直後だと、せり出す動きが飛ばされる
+    requestAnimationFrame(() => card.classList.add('origin--open'));
+    return true;
+  }
+
+  function close() {
+    openedId = null;
+    screenElement.classList.remove('screen--carded');
+    card.classList.remove('origin--open');
+  }
+
+  // 下へはらうと閉じる。予習用の下敷きと同じ操作にそろえる。
+  let grabbedAt = null;
+  let pulled = 0;
+
+  card.addEventListener('pointerdown', (event) => {
+    /*
+     * コマを横にめくっている最中と、めくるボタンを押したときは、
+     * 閉じる操作を拾わない。ここで setPointerCapture すると、以降の
+     * pointerup がボタンではなくこの card 自身に向くようになり、
+     * ボタンの click が発火しなくなる（実機確認で見つかった不具合）。
+     */
+    if (event.target.closest('.origin-panels, .origin-foot')) return;
+    grabbedAt = event.clientY;
+    pulled = 0;
+    card.style.transition = 'none';
+    card.setPointerCapture(event.pointerId);
+  });
+
+  card.addEventListener('pointermove', (event) => {
+    if (grabbedAt === null) return;
+    pulled = Math.max(0, event.clientY - grabbedAt);
+    card.style.transform = `translateY(${pulled}px)`;
+  });
+
+  function letGo() {
+    if (grabbedAt === null) return;
+    grabbedAt = null;
+    card.style.transition = '';
+    card.style.transform = '';
+    if (pulled > 50) close();
+  }
+  card.addEventListener('pointerup', letGo);
+  card.addEventListener('pointercancel', letGo);
+
+  return { open, close, openedId: () => openedId };
+}
+
+/**
+ * コマの画像を先に読んでおく（設計書 6.2）。
+ *
+ * 発車待ちのあいだに呼ぶ。駅にいるあいだは電波がある見込みが高く、
+ * 発車まで数分ある。通過するそのときに読みはじめたのでは間に合わない。
+ * 失敗しても何もしない。文だけで読めるようにしてある。
+ */
+function preloadPanelImages(spots) {
+  for (const spot of spots) {
+    for (const panel of spot.panels || []) {
+      if (!panel.image) continue;
+      const image = new Image();
+      image.src = panel.image;
+    }
+  }
+}
+
+// ------------------------------------------------------------------
+// 車上モード（設計書 3.2 / 3.3 / 4.3）
+//
+// 位置情報を見張り、乗車前・発車待ち・車上・降車後を行き来する。
+// 通知・遅れ・現在位置・通過の記録は、すべてここから出る。
+// ------------------------------------------------------------------
+
+/** 画面を眠らせない（設計書 4.3）。対応していないブラウザでは何も起きない。 */
+function createWakeLock() {
+  let sentinel = null;
+
+  async function acquire() {
+    if (!('wakeLock' in navigator) || sentinel !== null) return;
+    try {
+      sentinel = await navigator.wakeLock.request('screen');
+      sentinel.addEventListener('release', () => { sentinel = null; });
+    } catch {
+      // 断られた・電池が少ない。通知の帯は出るので、致命的ではない。
+    }
+  }
+
+  function release() {
+    if (sentinel === null) return;
+    sentinel.release().catch(() => {});
+    sentinel = null;
+  }
+
+  /*
+   * 写真を撮るとカメラへ移り、このページは隠れる。
+   * 仕様では隠れた時点で解除されるので、戻ってきたら取り直す。
+   */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && sentinel === null && wanted) acquire();
+  });
+
+  let wanted = false;
+  return {
+    on() { wanted = true; acquire(); },
+    off() { wanted = false; release(); },
+  };
+}
+
+function createTrip(route, spots, schedule, parts) {
+  const { stationPanel, spotCard, originCard, view, project, points, spotElements, onRecord, getPlan, setPlan, getK } = parts;
+  const track = Onboard.prepareTrack(route);
+  const wakeLock = createWakeLock();
+
+  const noticeBar = document.getElementById('notice-bar');
+  const noticeLead = document.getElementById('notice-lead');
+  const noticeDetail = document.getElementById('notice-detail');
+  const riding = document.getElementById('riding');
+  const ridingTowards = document.getElementById('riding-towards');
+  const ridingDelay = document.getElementById('riding-delay');
+  const ridingCount = document.getElementById('riding-count');
+  const hereMarker = document.getElementById('map-here');
+  const hereArrow = document.getElementById('here-arrow-wrap');
+  const shootButton = document.getElementById('shoot');
+
+  const mismatchBar = document.getElementById('mismatch-bar');
+  const mismatchText = document.getElementById('mismatch-text');
+
+  /** 乗車前 / 発車待ち / 車上 / 降車後 */
+  let mode = '乗車前';
+  let along = null;
+  let direction = null;
+  let speed = null;
+  /**
+   * 推定の起点となる時刻。onStale が推定するたびに進める（推定のあいだの
+   * 経過時間を測るため）。
+   */
+  let fixedAt = 0;
+  /**
+   * 最後に「実測」できた時刻。fixedAt とは別に持つ。
+   *
+   * fixedAt は推定のたびに書き換わるので、これと 60 秒を比べると
+   * 「前回の推定から 60 秒」を測ってしまい、実測が戻らないかぎり
+   * 打ち切りが永遠に来ない（実機で見つかった不具合）。
+   * 「最後に実測できてから 60 秒」を測るには、書き換わらないこの値がいる。
+   */
+  let lastRealFixAt = 0;
+  /**
+   * 最後に「実測」できた地点。進行方向はここと次の実測から決める。
+   *
+   * along のほうは推定でも書き換わる。推定と実測を突き合わせて向きを出すと、
+   * 電波が戻ったときの引き戻し（推定が進みすぎていた分）を「後ろへ動いた」と
+   * 読んで、下りが上りに裏返る。
+   */
+  let lastRealAlong = null;
+  /** 前回この関数を通ったときの地点。スポットを跨いだかどうかを見るのに使う */
+  let lastUpdateAlong = null;
+  /** 車上モードに入ったときの地点。終点でまとめて拾う範囲を決めるのに使う */
+  let boardedAlong = null;
+  /** 乗車区間の食い違いを、このトリップですでに確認したか（1トリップにつき最大1回） */
+  let mismatchChecked = false;
+  /** 路線から外れはじめた時刻。15 秒続いたら降りたとみなす */
+  let offRouteSince = null;
+  /** いま通知を出しているスポット。通過するまで次に移らない */
+  let noticedId = null;
+  let vibratedId = null;
+  let delayShown = null;
+  /** 遅れを最後に引き直した時刻。null なら「まだこの乗車で引いていない」 */
+  let delayCheckedAt = null;
+  /** 次に停まる駅（遅れとあわせて「何時にどこへ着く予定か」を出す） */
+  let nextStopShown = null;
+  /** 追いかけているか。指で地図を動かすとやめる */
+  let following = true;
+  /**
+   * 入るときに寄せたい倍率。届くまでは追従のたびにこれを渡す。
+   * 渡さないと、追従が「いまの倍率のまま」を目標にしてしまい、
+   * 寄せる動きが毎回打ち消される。
+   */
+  let wantedZoom = undefined;
+
+  const passed = new Set();
+  const passedLog = [];
+
+  // ---- 見た目を書き換える ----
+
+  function showNotice(notice) {
+    if (notice === null) {
+      noticeBar.hidden = true;
+      return;
+    }
+    const theme = THEMES[notice.spot.theme];
+    noticeBar.style.setProperty('--notice-color', theme.color);
+    noticeBar.dataset.phase = notice.phase;
+
+    if (notice.phase === 'いま') {
+      noticeLead.textContent =
+        notice.side === '両' ? 'どちらの車窓を見てください' : `${notice.side}側の車窓を見てください`;
+      noticeDetail.textContent = notice.spot.name;
+    } else {
+      noticeLead.textContent = `まもなく ${notice.spot.name}`;
+      const side = notice.side === '両' ? 'どちらの窓でも' : `${notice.side}の窓`;
+      noticeDetail.textContent =
+        notice.seconds === null ? side : `${side} ・ あと ${notice.seconds} 秒`;
+    }
+    noticeBar.hidden = false;
+  }
+
+  function showHere() {
+    if (along === null) {
+      setHidden(hereMarker, true);
+      return;
+    }
+    /*
+     * 軌道上の距離から、地図の座標へ戻す。区間の途中を線形補間する
+     * （pointAtDistance）。駅の印も同じ関数で置いているので、駅に
+     * 停まっているときは駅の印とぴったり重なる。
+     */
+    const spot = pointAtDistance(track, points, along);
+
+    hereMarker.setAttribute('data-ax', spot.x);
+    hereMarker.setAttribute('data-ay', spot.y);
+    hereMarker.querySelectorAll('circle').forEach((circle) => {
+      circle.setAttribute('cx', spot.x.toFixed(1));
+      circle.setAttribute('cy', spot.y.toFixed(1));
+    });
+    setHidden(hereMarker, false);
+
+    /*
+     * 矢印を進行方向へ向ける。いま居る区間（track の前後2点）そのものの
+     * 向きを使う。固定距離だけ先の点を探すやり方だと、路線データの点が
+     * 疎らな区間（笠上黒生付近など、隣の点まで200m近く空くところがある）で
+     * 「先の点」が現在地と同じ点に落ちてしまい、向きが求まらなくなる
+     * （atan2(0,0) で 90° 固定になり、線路の曲がりを無視した矢印になる）。
+     * 区間そのものの向きなら、区間の長さに関係なく必ず求まる。
+     */
+    if (direction !== null) {
+      let segIndex = 1;
+      while (segIndex < track.length - 1 && track[segIndex].along < along) segIndex += 1;
+      const from = project(track[segIndex - 1].lat, track[segIndex - 1].lon);
+      const to = project(track[segIndex].lat, track[segIndex].lon);
+      let angle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI + 90;
+      if (direction === '上り') angle += 180;
+      hereArrow.setAttribute('transform', `translate(${spot.x.toFixed(1)} ${spot.y.toFixed(1)}) rotate(${angle.toFixed(1)})`);
+    }
+
+    /*
+     * 自分の transform は自分で計算し直す。onViewChange（拡大・パンのたびに
+     * scalables 全部をやり直す処理）だけに任せると、following が false の
+     * あいだ（地図を指で動かした後）は view.goTo が呼ばれず onViewChange も
+     * 走らないため、この位置が動いた分だけ transform の基準点とずれる。
+     * 「拡大・縮小しないと現在位置が更新されない」「線路から位置がずれる」
+     * という2つの不具合は、どちらもこのずれが原因だった。
+     */
+    setScaleTransform(hereMarker, getK());
+
+    if (!following) return;
+    view.goTo(spot.x, spot.y, wantedZoom, 900);
+    // 目当ての倍率まで届いたら、あとは利用者の見え方を尊重する
+    if (wantedZoom !== undefined && Math.abs(view.zoom() - wantedZoom) < 0.3) {
+      wantedZoom = undefined;
+    }
+  }
+
+  /** 乗車区間の食い違いを、いま伝えている内容（確認バーの「直す」が使う） */
+  let pendingMismatch = null;
+
+  function showMismatch(boardStation, dir) {
+    pendingMismatch = { boardStation, direction: dir };
+    mismatchText.textContent =
+      `${boardStation}から${Schedule.terminusOf(schedule, dir)}方面（${dir}）へお乗りのようです。設定を直しますか？`;
+    mismatchBar.hidden = false;
+  }
+
+  document.getElementById('mismatch-fix').addEventListener('click', () => {
+    if (!pendingMismatch) return;
+    const plan = getPlan();
+    const alight = correctedAlight(
+      route, pendingMismatch.boardStation, pendingMismatch.direction, plan && plan.alight
+    );
+    setPlan({ board: pendingMismatch.boardStation, alight, direction: pendingMismatch.direction });
+    mismatchBar.hidden = true;
+    pendingMismatch = null;
+  });
+
+  document.getElementById('mismatch-keep').addEventListener('click', () => {
+    mismatchBar.hidden = true;
+    pendingMismatch = null;
+  });
+
+  function showRiding() {
+    ridingTowards.textContent =
+      direction === null ? '' : `${Schedule.terminusOf(schedule, direction)}方面（${direction}）`;
+    ridingCount.textContent = `${passed.size}/${spots.length} 通過`;
+
+    if (delayShown === null) {
+      ridingDelay.hidden = true;
+    } else {
+      /*
+       * 遅れているときだけ、次に停まる駅への到着予定時刻も添える
+       * （例:「約3分遅れ・笠上黒生 9:18着」）。乗り継ぎの間に合うかどうかは、
+       * 遅れの分数だけでなく実際の時刻で判断したいという声を踏まえた。
+       * 遅れていないときにまで出すと、この表示自体の「遅れている」という
+       * 意味が薄まるので、条件は今まで通り delayShown が出ているときだけにする。
+       */
+      const eta = nextStopShown
+        ? `・${nextStopShown.station} ${Schedule.toClock(nextStopShown.scheduledMinute + delayShown)}着`
+        : '';
+      ridingDelay.textContent = `約${delayShown}分遅れ${eta}`;
+      ridingDelay.hidden = false;
+    }
+  }
+
+  // ---- モードの出入り（設計書 3.2）----
+
+  function enterRiding() {
+    if (mode === '車上') return;
+    mode = '車上';
+    stationPanel.update(null);
+    riding.hidden = false;
+    shootButton.hidden = false;
+    // 天候のひとことは乗車前のもの。車上では足もとの表示に場所を譲る
+    document.getElementById('weather').hidden = true;
+    wakeLock.on();
+    following = true;
+    // 前の乗車の名残りを持ちこさない
+    offRouteSince = null;
+    delayShown = null;
+    delayCheckedAt = null;
+    nextStopShown = null;
+    lastUpdateAlong = null;
+    boardedAlong = null;
+    mismatchChecked = false;
+    mismatchBar.hidden = true;
+    /*
+     * 向きは、乗ってからの動きで決め直す。
+     *
+     * ホームを歩いているあいだにも向きは付いてしまうが、それは乗る向きとは
+     * 関係がない。いちど決まった向きは簡単には裏返らない（directionOf）ので、
+     * 歩いて付いた向きを持ちこむと、車窓の左右が逆のまま直らないことがある。
+     */
+    direction = null;
+
+    /*
+     * 入るときに一度だけ寄せる。1 倍のままだと 6.4km 全体が画面に入っていて、
+     * 現在位置の印が動くだけで、次のスポットがどちら側かが読み取れない。
+     * そのあとは利用者の操作を優先する（設計書 4.3）。
+     */
+    if (view.zoom() < 3) wantedZoom = 4;
+    showRiding();
+  }
+
+  function leaveRiding(next) {
+    if (mode !== '車上') return;
+    mode = next;
+    riding.hidden = true;
+    shootButton.hidden = true;
+    setHidden(hereMarker, true);
+    showNotice(null);
+    wakeLock.off();
+    noticedId = null;
+    wantedZoom = undefined;
+    // 乗車前に戻るなら、天候のひとことも戻す
+    if (next === '乗車前') document.getElementById('weather').hidden = false;
+  }
+
+  /** 終点に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
+  function arrive() {
+    /*
+     * 電波が届かない区間で拾いそこねたぶんを、ここで記録に足す。
+     *
+     * 足すのは、乗った地点から終点までのあいだにあるものだけ。乗る前に
+     * 通り過ぎている区間のものまで足すと、見ていない景色が記録に並ぶ。
+     *
+     * 成因カードは出さない（silent）。出すと、着いた瞬間に残りのぶんだけ
+     * カードが立て続けに開き、そのうえへ旅の記録がかぶさる。
+     */
+    for (const spot of spots) {
+      if (passed.has(spot.id)) continue;
+      const beforeBoarding = boardedAlong !== null && (direction === '下り'
+        ? spot.distanceAlong < boardedAlong
+        : spot.distanceAlong > boardedAlong);
+      if (beforeBoarding) continue;
+      markPassed(spot, { detected: false, silent: true });
+    }
+    leaveRiding('降車後');
+    onRecord({ mode: '降車後', passed: passedLog, direction });
+  }
+
+  function markPassed(spot, options = {}) {
+    if (passed.has(spot.id)) return;
+    passed.add(spot.id);
+    passedLog.push({
+      id: spot.id,
+      name: spot.name,
+      theme: spot.theme,
+      at: new Date().toISOString(),
+      detected: options.detected !== false,
+    });
+
+    // 地図のバッジを、押せば成因カードが読めるものに変える（設計書 6.2）
+    const element = spotElements.get(spot.id);
+    if (element) element.classList.add('spot--passed');
+
+    /*
+     * 予習用の下敷き（4.1）が開いたままだと、成因カードと二重に重なる。
+     * 車上モードでバッジを押して下敷きを見ているあいだに通過することは
+     * 普通に起こりうるので、自動で出すときも必ず先に下敷きを閉じる。
+     */
+    if (options.silent !== true) {
+      spotCard.close();
+      originCard.open(spot);
+    }
+    onRecord({ mode, passed: passedLog, direction });
+  }
+
+  // ---- 位置情報が来るたび ----
+
+  function onPosition(coords, timestamp) {
+    const place = Onboard.projectOntoTrack(track, coords.latitude, coords.longitude);
+    const onRoute = place.offset <= Onboard.ON_ROUTE_METERS;
+
+    along = place.along;
+    speed = coords.speed;
+    fixedAt = timestamp;
+    lastRealFixAt = timestamp;
+
+    /*
+     * 向きは実測どうしで見る（推定を混ぜない。lastRealAlong の説明を参照）。
+     *
+     * 比べ元は、決められるだけ動いたときにだけ進める（trackDirection）。
+     * 位置情報が細かく来ると 1 回の差が判定に要る距離に届かず、毎回進めていると
+     * いつまでも向きが決まらない。向きが決まらないあいだは通知も通過の記録も
+     * 止まる（updateRiding）ので、車窓の案内そのものが出なくなる。
+     */
+    if (lastRealAlong === null) {
+      lastRealAlong = along;
+    } else {
+      const tracked = Onboard.trackDirection(lastRealAlong, along, direction);
+      direction = tracked.direction;
+      lastRealAlong = tracked.anchorAlong;
+    }
+
+    if (mode === '車上') {
+      // 停車では抜けない。抜けるのは路線から離れたときだけ（設計書 3.2）
+      if (onRoute) {
+        offRouteSince = null;
+      } else {
+        if (offRouteSince === null) offRouteSince = timestamp;
+        if (timestamp - offRouteSince >= Onboard.OFF_ROUTE_LIMIT_MS) {
+          leaveRiding('乗車前');
+          return;
+        }
+      }
+
+      // 終点に着いたか。終点駅の 80m 以内で、かつ停まっている
+      const station = stationAt(route, coords);
+      if (station && (station.name === '銚子' || station.name === '外川')) {
+        const isEndOfLine =
+          (direction === '下り' && station.name === '外川') ||
+          (direction === '上り' && station.name === '銚子');
+        if (isEndOfLine) {
+          arrive();
+          return;
+        }
+      }
+
+      updateRiding(timestamp);
+      return;
+    }
+
+    // まだ乗っていない
+    if (Onboard.looksLikeRiding(track, coords)) {
+      enterRiding();
+      updateRiding(timestamp);
+      return;
+    }
+
+    stationPanel.update(stationAt(route, coords) || null);
+  }
+
+  /** 車上モードのあいだ、毎回やること */
+  function updateRiding(timestamp) {
+    showHere();
+
+    /*
+     * 進行方向が決まるまでは、通知も通過の記録もしない。
+     *
+     * 向きは位置が 2 回そろってはじめて決まる（directionOf）。それまでを
+     * 「上り」と決めうちすると、前方のスポットが全部「もう通り過ぎた」側に
+     * 入ってしまい、乗ってからアプリを開いた人には、開いた瞬間に 6 件とも
+     * 通過済みになる。1 回ぶん黙って待てば済む。
+     */
+    if (direction === null) {
+      showNotice(null);
+      showRiding();
+      return;
+    }
+    if (boardedAlong === null) boardedAlong = along;
+
+    /*
+     * 乗車区間の食い違い確認（feature-spec「乗車区間の設定」US7）。
+     * 方向が決まった、このトリップで最初の瞬間に一度だけ見る。
+     * 実際の乗車駅は、乗った地点にいちばん近い駅で代用する
+     * （乗った瞬間はもう電車の速さで動いているので、駅の中にいるとは判定できない）。
+     */
+    if (!mismatchChecked) {
+      mismatchChecked = true;
+      const plan = getPlan();
+      const boardStation = nearestStationName(route, boardedAlong);
+      if (plan && (plan.board !== boardStation || plan.direction !== direction)) {
+        showMismatch(boardStation, direction);
+      }
+    }
+
+    /*
+     * 通過したスポットを拾う。
+     *
+     * 見るのは「前回いた地点と今いる地点のあいだを跨いだか」。
+     * 「もう後ろにあるか」で見ると、途中の駅から乗った人には、乗った
+     * その瞬間に手前のスポットが全部通過済みになる。見ていないものが
+     * 旅の記録に並び、成因カードまで開いてしまう。
+     *
+     * 進んだ向きが進行方向と合っているときだけ数える。電波が戻ったときの
+     * 引き戻しでスポットを「通過」させないため。
+     */
+    if (lastUpdateAlong !== null) {
+      const wentForward = direction === '下り' ? along > lastUpdateAlong : along < lastUpdateAlong;
+      if (wentForward) {
+        const low = Math.min(lastUpdateAlong, along);
+        const high = Math.max(lastUpdateAlong, along);
+        for (const spot of spots) {
+          if (passed.has(spot.id)) continue;
+          if (spot.distanceAlong >= low && spot.distanceAlong <= high) markPassed(spot);
+        }
+      }
+    }
+    lastUpdateAlong = along;
+
+    /*
+     * 通知。前のスポットを通過するまで、次には移らない（設計書 4.3）。
+     * 乗車区間が設定されていれば、区間外のスポットには接近通知を出さない
+     * （通過判定・成因カード・旅の記録は区間の内外にかかわらず今まで通り。US5）。
+     */
+    const ahead = withinPlan(route, getPlan(), Onboard.spotsAhead(spots, along, direction));
+    const target = noticedId
+      ? spots.find((spot) => spot.id === noticedId && !passed.has(spot.id))
+      : ahead[0];
+
+    const notice = target && !passed.has(target.id)
+      ? Onboard.noticeFor(target, along, direction, speed)
+      : null;
+
+    showNotice(notice);
+    noticedId = notice ? notice.spot.id : null;
+
+    // 振動は 1 スポットにつき一度だけ。短く 1 回（設計書 4.3）
+    if (notice && vibratedId !== notice.spot.id) {
+      vibratedId = notice.spot.id;
+      if (navigator.vibrate) navigator.vibrate(200);
+    }
+
+    /*
+     * 遅れは 30 秒ごと。毎秒引き直すと、誤差でちらつく（設計書 4.3）。
+     *
+     * ただし乗るたびに測り直す（delayCheckedAt は enterRiding で null に戻す）。
+     * 前の乗車の時刻を持ちこすと、次に乗ったときの一発目が 30 秒待たされる。
+     * さらに時計が巻き戻った場合も引き直す。テスト走行で乗り直すと、次の列車が
+     * 前の列車より早い時刻の便になり、引き算が負になって以後ずっと
+     * 引き直されなくなる（遅れ表示がその乗車のあいだ出ないままになる）。
+     */
+    if (delayCheckedAt === null ||
+        timestamp < delayCheckedAt ||
+        timestamp - delayCheckedAt >= 30000) {
+      delayCheckedAt = timestamp;
+      delayShown = Onboard.delayMinutes(Schedule, schedule, route, direction, along, Schedule.now());
+      nextStopShown = Onboard.nextStopEta(Schedule, schedule, route, direction, along, Schedule.now());
+    }
+    showRiding();
+  }
+
+  /**
+   * 位置情報が来ないまま時間が経ったとき（設計書 3.3）。
+   * 直前の速度で進んだものとして推定する。ただし 60 秒まで。
+   */
+  function onStale(now) {
+    if (mode !== '車上' || along === null) return;
+
+    // 「最後に実測できてから」何秒か。fixedAt ではなく lastRealFixAt で測る。
+    if (now - lastRealFixAt > Onboard.DEAD_RECKON_LIMIT_MS) {
+      // これ以上は当てにならない。黙る。
+      showNotice(null);
+      setHidden(hereMarker, true);
+      return;
+    }
+    // 向きが定まっていなければ、進む方向を当てずっぽうにするより止まっていたほうがよい
+    // （2 点そろう前に電波が途切れると、まだ direction が決まっていない）。
+    if (speed === null || speed <= 0 || direction === null) return;
+
+    const silence = now - fixedAt;
+    const moved = speed * (silence / 1000);
+    along += direction === '下り' ? moved : -moved;
+    fixedAt = now;
+    updateRiding(now);
+  }
+
+  // ---- 地図を指で動かしたら追うのをやめる（設計書 4.3）----
+
+  function stopFollowing() {
+    following = false;
+  }
+
+  return {
+    onPosition,
+    onStale,
+    stopFollowing,
+    resumeFollowing() { following = true; showHere(); },
+    mode: () => mode,
+    passedLog: () => passedLog,
+    isPassed: (id) => passed.has(id),
+  };
+}
+
+/** 旅の記録を組み立てる（中身は js/journal.js） */
+function createJournal(spots, closings) {
+  return Journal.create(spots, THEMES, closings || {});
+}
+
+/**
+ * 撮影ボタン（設計書 7.1）。
+ *
+ * capture を付けた file input なので、押すと端末のカメラがそのまま開く。
+ * 撮った写真は、そのとき直近だった絶景スポットと一緒にしまう。
+ */
+function setUpPhotoButton(journal, passedLog) {
+  const input = document.getElementById('shoot-input');
+
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    // 直近に通過したスポットを「そのあたりで撮ったもの」として覚えておく
+    const log = passedLog();
+    const near = log.length > 0 ? log[log.length - 1].name : null;
+
+    await journal.savePhoto(file, near).catch(() => {
+      // しまえなくても、写真は端末のカメラロールに残っている
+    });
+    input.value = '';
+  });
+}
+
+/**
+ * テスト用の走行シミュレーターを持ち出すか（URL に ?demo=1）。
+ *
+ * 銚子まで行かないと車上モードを確かめられない、では手が足りない。
+ * 付いていないときは js/simulate.js を読みにも行かないので、
+ * 本番の画面はこの仕掛けをまったく通らない。
+ */
+function demoRequested() {
+  return new URLSearchParams(location.search).has('demo');
+}
+
+/** 追加のスクリプトを 1 本読む（ビルド工程がないので、その場で足す）*/
+function loadScript(source) {
+  return new Promise((resolve, reject) => {
+    const element = document.createElement('script');
+    element.src = source;
+    element.onload = resolve;
+    element.onerror = () => reject(new Error(`${source} を読めなかった`));
+    document.head.appendChild(element);
+  });
+}
+
+/**
+ * 位置情報を見張る。
+ *
+ * 断られたら何もしない。位置情報がなくても地図は使えるので、
+ * 発車待ちと車上モードが出なくなるだけで、他は変わらない。
+ */
+function watchPosition(trip) {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.watchPosition(
+    (position) => trip.onPosition(position.coords, Date.now()),
+    () => {
+      // 断られた・取れなかった。乗車前モードのままでよい。
+    },
+    { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+  );
+
+  // 位置情報が来ないあいだも時間は進む。推定はこちらで回す。
+  setInterval(() => trip.onStale(Date.now()), 2000);
 }
 
 // ------------------------------------------------------------------
@@ -759,25 +1924,39 @@ function windowHint(weather) {
   return '';
 }
 
-async function showWeather(element) {
-  try {
-    const forecast = await loadJson(JMA_CHIBA);
+/**
+ * 天気予報から、今日の天候区分（晴・曇・雨・雪のいずれか）だけを取り出す。
+ * 取れなければ例外を投げる（呼び出し側で「わからない」として扱う）。
+ */
+async function fetchTodayWeather() {
+  const forecast = await loadJson(JMA_CHIBA);
 
-    // 銚子は「北東部」。見つからなければ最初の区分を使う。
-    const areas = forecast[0].timeSeries[0].areas;
-    const area = areas.find((a) => a.area.name.includes('北東部')) || areas[0];
-    const weather = area.weathers[0].replace(/\s+/g, '');
+  // 銚子は「北東部」。見つからなければ最初の区分を使う。
+  const areas = forecast[0].timeSeries[0].areas;
+  const area = areas.find((a) => a.area.name.includes('北東部')) || areas[0];
+  const weather = area.weathers[0].replace(/\s+/g, '');
 
-    // 「くもり所により雨」のような長い言い方は、先頭のひと言だけにする。
-    // ひとことも同じ短い言い方から選ぶ。
-    // （「きょうはくもり」と言いながら雨の話をすると、ちぐはぐになるため）
-    const short = weather.split(/のち|時々|一時|所により|後/)[0];
+  // 「くもり所により雨」のような長い言い方は、先頭のひと言だけにする。
+  // ひとことも同じ短い言い方から選ぶ。
+  // （「きょうはくもり」と言いながら雨の話をすると、ちぐはぐになるため）
+  return weather.split(/のち|時々|一時|所により|後/)[0];
+}
 
-    element.textContent = `きょうは${short}。${windowHint(short)}`;
-  } catch {
-    // 通信できないときは黙って引っこめる。地図は天候がなくても使える。
-    element.hidden = true;
-  }
+/**
+ * スポットが今日の天気とどう合うか。
+ *
+ * good … 今日の天気なら特によく見える（地図バッジのフチを暖色にする）
+ * bad  … 見えにくいかもしれない（地図バッジの彩度・不透明度を落とす）
+ * neutral … 天気の影響なし（`weather` を持たないスポットは常にこれ）
+ *
+ * 天気がわからない（通信できない）ときも neutral として扱う。
+ * 断定できない情報で強調・弱めをするのは、予報の粒度（広域・区分のみ）に合わないため。
+ */
+function weatherMatch(spot, short) {
+  if (!short || !spot.weather) return 'neutral';
+  if (spot.weather.good && spot.weather.good.includes(short)) return 'good';
+  if (spot.weather.bad && spot.weather.bad.includes(short)) return 'bad';
+  return 'neutral';
 }
 
 // ------------------------------------------------------------------
@@ -799,7 +1978,7 @@ const DURATION_TEXT = {
   '長': 'ながい（ゆっくり見られる）',
 };
 
-function createSpotCard(screenElement, view) {
+function createSpotCard(screenElement, view, getWeather) {
   const card = document.getElementById('spot-card');
   const themeElement = document.getElementById('spot-card-theme');
   const nameElement = document.getElementById('spot-card-name');
@@ -835,6 +2014,14 @@ function createSpotCard(screenElement, view) {
     addFact('銚子ゆき（上り）', windowSideText(spot.sideUp));
     addFact('見ごろ', spot.season);
     addFact('見える時間', DURATION_TEXT[spot.duration] || spot.duration);
+
+    /*
+     * 「その天気でないと実質見えない」種類のスポットだけ、控えめに注意を添える。
+     * 気象庁の予報は広域（千葉県北東部）でしかないので、断定はせず「ことがある」に留める。
+     */
+    if (spot.weather?.critical && weatherMatch(spot, getWeather()) === 'bad') {
+      addFact('きょうの空模様', 'かすんで見えないことがあります');
+    }
 
     screenElement.classList.add('screen--carded');
     card.classList.add('card--open');
@@ -893,14 +2080,16 @@ function createSpotCard(screenElement, view) {
 async function main() {
   const mapElement = document.getElementById('map');
 
-  const [terrain, route, spotsFile] = await Promise.all([
+  const [terrain, route, spotsFile, schedule] = await Promise.all([
     loadJson('data/terrain.json'),
     loadJson('data/route.json'),
     loadJson('data/spots.json'),
+    loadJson('data/schedule.json'),
   ]);
 
   const project = makeProjection(terrain.projection);
   const points = route.track.map(([lat, lon]) => project(lat, lon));
+  const track = Onboard.prepareTrack(route);
 
   drawTerrain(document.getElementById('map-terrain'), terrain);
   drawRoute(document.getElementById('map-route'), points);
@@ -934,7 +2123,7 @@ async function main() {
     gap: 0, // 触れていなければよい。余白まで求めると名前の置き場所がなくなる。
   }));
 
-  drawStations(document.getElementById('map-stations'), route, project, points, placed);
+  drawStations(document.getElementById('map-stations'), route, project, points, placed, track);
 
   const spotsLayer = document.getElementById('map-spots');
   drawSpots(spotsLayer, spotsFile.spots, route, project, points, placed);
@@ -945,6 +2134,9 @@ async function main() {
   const initialBox = fittedBox(mapElement, [railBox, ...placed]);
   const scalables = [...mapElement.querySelectorAll('.scalable')];
   const hillshade = mapElement.querySelector('.hillshade');
+  // 現在位置マーカーが、追従の有無に関係なく自分の transform を計算し直すのに使う
+  let currentK = 1;
+  const getK = () => currentK;
   const embossBlur = document.getElementById('coast-emboss-blur');
   const embossOffset = document.getElementById('coast-emboss-offset');
 
@@ -957,12 +2149,8 @@ async function main() {
    * 初期表示では k = 1 なので、拡大縮小を足す前とまったく同じ見た目になる。
    */
   function onViewChange(k, zoom) {
-    for (const element of scalables) {
-      const x = element.getAttribute('data-ax');
-      const y = element.getAttribute('data-ay');
-      // 指している点を動かさないまま、その場で縮める
-      element.setAttribute('transform', `translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})`);
-    }
+    currentK = k;
+    for (const element of scalables) setScaleTransform(element, k);
 
     // 線の太さと文字の大きさは CSS 側で calc() を使って合わせる
     mapElement.style.setProperty('--k', k);
@@ -985,10 +2173,18 @@ async function main() {
   view.apply();
   window.addEventListener('resize', () => view.apply());
 
+  // 地図が動かせる状態になったので、読み込み中の表示を退ける
+  document.getElementById('loading').hidden = true;
+
   // --- 絶景スポットを押すと出る下敷き ---
 
   const spotById = new Map(spotsFile.spots.map((spot) => [spot.id, spot]));
-  const card = createSpotCard(document.querySelector('.screen'), view);
+
+  // 今日の天候区分（晴/曇/雨/雪）。わかるまでは null（= neutral 扱い）
+  let currentWeather = null;
+  const getWeather = () => currentWeather;
+
+  const card = createSpotCard(document.querySelector('.screen'), view, getWeather);
 
   function openCardFor(spotElement) {
     const spot = spotById.get(spotElement.getAttribute('data-id'));
@@ -999,9 +2195,31 @@ async function main() {
     });
   }
 
+  /*
+   * バッジを押したときに出るものは、通過したかどうかで変わる（設計書 6.2）。
+   * まだなら予習用の下敷き、通過したあとなら成因カード。
+   */
+  const originCard = createOriginCard(document.querySelector('.screen'));
+  let trip = null;
+
+  function openForSpot(spotElement) {
+    const spot = spotById.get(spotElement.getAttribute('data-id'));
+    if (!spot) return;
+
+    if (trip && trip.isPassed(spot.id) && originCard.open(spot)) {
+      card.close();
+      return;
+    }
+    openCardFor(spotElement);
+  }
+
   setUpGestures(mapElement, view, (spotElement) => {
-    if (spotElement) openCardFor(spotElement);
-    else card.close(); // 何もないところを押したら閉じる
+    if (spotElement) openForSpot(spotElement);
+    else {
+      // 何もないところを押したら閉じる
+      card.close();
+      originCard.close();
+    }
   });
 
   // キーボードでも開けるようにする（バッジは role="button" にしてある）
@@ -1009,26 +2227,212 @@ async function main() {
     spotElement.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      openCardFor(spotElement);
+      openForSpot(spotElement);
     });
   }
 
-  document.getElementById('reset-view').addEventListener('click', () => view.reset());
-
-  setUpThemeFilter(document.getElementById('themes'), spotsLayer.querySelectorAll('.spot'), () => {
-    // 絞り込みで消えたスポットのカードが開いたままにならないようにする
-    const opened = card.openedId();
-    if (!opened) return;
-    const element = spotsLayer.querySelector(`.spot[data-id="${opened}"]`);
-    if (element && element.classList.contains('spot--hidden')) card.close();
+  /*
+   * 右下のボタン。乗車前は「路線全体へ」、車上モードでは「現在位置へ」戻る
+   * （設計書 4.1）。どちらも「見失ったら押す」という同じ意味になる。
+   */
+  document.getElementById('reset-view').addEventListener('click', () => {
+    if (trip && trip.mode() === '車上') trip.resumeFollowing();
+    else view.reset();
   });
 
-  showWeather(document.getElementById('weather'));
+  /*
+   * 発車待ちの見どころもテーマの絞り込みに従う。
+   * 絞り込みを先に作り、そのあとで発車待ちに渡す。
+   */
+  let stationPanel = null;
+
+  const themeFilter = setUpThemeFilter(
+    document.getElementById('themes'),
+    spotsLayer.querySelectorAll('.spot'),
+    () => {
+      // 絞り込みで消えたスポットのカードが開いたままにならないようにする
+      const opened = card.openedId();
+      if (opened) {
+        const element = spotsLayer.querySelector(`.spot[data-id="${opened}"]`);
+        if (element && element.classList.contains('spot--hidden')) card.close();
+      }
+      if (stationPanel) stationPanel.refresh();
+    }
+  );
+
+  // --- 乗車区間の設定（feature-spec「乗車区間の設定」）---
+
+  let currentPlan = loadPlan();
+  const getPlan = () => currentPlan;
+
+  const planSetup = document.getElementById('plan-setup');
+  const planClose = document.getElementById('plan-close');
+  const planBoard = document.getElementById('plan-board');
+  const planAlight = document.getElementById('plan-alight');
+  const planError = document.getElementById('plan-error');
+  const planSubmit = document.getElementById('plan-submit');
+  const planChip = document.getElementById('plan-chip');
+
+  for (const station of route.stations) {
+    for (const select of [planBoard, planAlight]) {
+      const option = document.createElement('option');
+      option.value = option.textContent = station.name;
+      select.appendChild(option);
+    }
+  }
+
+  function updatePlanChip() {
+    planChip.hidden = !currentPlan;
+    if (currentPlan) planChip.textContent = `${currentPlan.board}→${currentPlan.alight}`;
+  }
+
+  function updatePlanValidity() {
+    const same = planBoard.value === planAlight.value;
+    planSubmit.disabled = same;
+    planError.hidden = !same;
+  }
+
+  /** 選び直すときに開く。初回（未設定）は閉じるボタンを出さない（スキップさせないため） */
+  function openPlanSetup() {
+    if (currentPlan) {
+      planBoard.value = currentPlan.board;
+      planAlight.value = currentPlan.alight;
+    }
+    planClose.hidden = !currentPlan;
+    updatePlanValidity();
+    planSetup.hidden = false;
+  }
+
+  function setPlan(plan) {
+    currentPlan = plan;
+    savePlan(plan);
+    updatePlanChip();
+    if (stationPanel) stationPanel.refresh();
+  }
+
+  planBoard.addEventListener('change', updatePlanValidity);
+  planAlight.addEventListener('change', updatePlanValidity);
+
+  planSubmit.addEventListener('click', () => {
+    if (planBoard.value === planAlight.value) return;
+    setPlan({
+      board: planBoard.value,
+      alight: planAlight.value,
+      direction: directionFor(route, planBoard.value, planAlight.value),
+    });
+    planSetup.hidden = true;
+  });
+
+  planClose.addEventListener('click', () => { planSetup.hidden = true; });
+  planChip.addEventListener('click', () => openPlanSetup());
+
+  updatePlanChip();
+  if (!currentPlan) openPlanSetup();
+
+  // --- 出典（設計書 8.3）---
+
+  const credits = document.getElementById('credits');
+  document.getElementById('credits-open')
+    .addEventListener('click', () => { credits.hidden = false; });
+  document.getElementById('credits-close')
+    .addEventListener('click', () => { credits.hidden = true; });
+  // 外側を押しても閉じる。読み終えたらすぐ地図へ戻れるように
+  credits.addEventListener('click', (event) => {
+    if (event.target === credits) credits.hidden = true;
+  });
+
+  // --- 発車待ち（設計書 4.2）と車上モード（設計書 4.3）---
+
+  stationPanel = createStationPanel(route, schedule, spotsFile.spots, themeFilter, getWeather, getPlan);
+
+  const spotElements = new Map(
+    [...spotsLayer.querySelectorAll('.spot')].map((element) => [
+      element.getAttribute('data-id'),
+      element,
+    ])
+  );
+
+  /*
+   * 天気が決まった（わかった／わからなかった）ときに一度に反映する。
+   * 「天候のひとこと」の文言、地図バッジの強調・弱め、発車待ちの見どころリストの
+   * 3か所がこれ1つにぶら下がる。テスト走行（?demo=1）では実際の気象庁通信の
+   * かわりに、操作盤で選んだ区分をそのままここへ渡す。
+   */
+  function applyWeather(short) {
+    currentWeather = short;
+
+    for (const spot of spotsFile.spots) {
+      const element = spotElements.get(spot.id);
+      if (!element) continue;
+      const match = weatherMatch(spot, short);
+      element.classList.toggle('spot--weather-good', match === 'good');
+      element.classList.toggle('spot--weather-bad', match === 'bad');
+    }
+
+    const weatherElement = document.getElementById('weather');
+    if (short) {
+      weatherElement.hidden = false;
+      weatherElement.textContent = `きょうは${short}。${windowHint(short)}`;
+    } else {
+      // わからないときは黙って引っこめる。地図は天候がなくても使える。
+      weatherElement.hidden = true;
+    }
+
+    if (stationPanel) stationPanel.refresh();
+  }
+
+  // テスト走行では実際の気象庁通信をせず、操作盤の選択を待つ（Simulator.start 側で呼ぶ）
+  if (!demoRequested()) {
+    fetchTodayWeather().then(applyWeather).catch(() => applyWeather(null));
+  }
+
+  const journal = createJournal(spotsFile.spots, spotsFile.closings);
+
+  trip = createTrip(route, spotsFile.spots, schedule, {
+    stationPanel,
+    spotCard: card,
+    originCard,
+    view,
+    project,
+    points,
+    spotElements,
+    onRecord: (state) => journal.update(state),
+    getPlan,
+    setPlan,
+    getK,
+  });
+
+  // 地図を指で動かしたら、現在位置を追うのをやめる（設計書 4.3）
+  mapElement.addEventListener('pointerdown', () => trip.stopFollowing());
+  mapElement.addEventListener('wheel', () => trip.stopFollowing(), { passive: true });
+
+  // 発車待ちのあいだに、成因カードの絵を先読みしておく（設計書 6.2）
+  stationPanel.onArrive(() => preloadPanelImages(spotsFile.spots));
+
+  setUpPhotoButton(journal, () => trip.passedLog());
+
+  /*
+   * ふだんは端末の位置情報を見張る。?demo=1 のときだけ、
+   * そのかわりに走行シミュレーターへ運転をまかせる（両方は動かさない）。
+   */
+  if (demoRequested()) {
+    await loadScript('js/simulate.js');
+    Simulator.start({ route, spots: spotsFile.spots, schedule, trip, setWeather: applyWeather });
+  } else {
+    watchPosition(trip);
+  }
 }
 
 main().catch((error) => {
   console.error(error);
-  const weather = document.getElementById('weather');
-  weather.textContent =
-    'データを読み込めませんでした。ローカルサーバー経由で開いているか確かめてください。';
+
+  // 地図そのものが組み上がっていないので、天気欄ではなく読み込み中の表示を差し替える
+  const loading = document.getElementById('loading');
+  const text = document.getElementById('loading-text');
+  const retry = document.getElementById('loading-retry');
+  loading.hidden = false;
+  loading.classList.add('loading--error');
+  text.textContent = '地図を読み込めませんでした。電波の良い場所でやり直してください。';
+  retry.hidden = false;
+  retry.addEventListener('click', () => location.reload());
 });
