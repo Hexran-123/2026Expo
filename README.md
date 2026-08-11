@@ -155,8 +155,9 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/choshi.html      銚子電鉄（作品そのもの）  0.66 MB
-demo/yurakucho.html   有楽町線（試験用）        2.14 MB
+demo/choshi.html         銚子電鉄（作品そのもの）      0.66 MB
+demo/yurakucho.html      有楽町線（試験用）            2.14 MB
+demo/yurakucho-gps.html  有楽町線・実機の位置情報版    2.12 MB
 ```
 
 **ダブルクリックで開くだけで動く。**通信は一切しない。
@@ -168,7 +169,29 @@ demo/yurakucho.html   有楽町線（試験用）        2.14 MB
 ```
 node tools/build-demo.js choshi    demo/choshi.html
 node tools/build-demo.js yurakucho demo/yurakucho.html
+node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
 ```
+
+### 現地で実際に乗って確かめる版（`--gps`）
+
+`--gps` を付けて作ったものは、走行シミュレーターを積まない。かわりに
+**端末の位置情報**（`watchPosition`）で動く。設計書 3.3 の「位置情報が
+取れないときの振る舞い」を、実際に電車の中で確かめるためのもの。
+
+有楽町線を選んであるのは、**ほぼ全線が地下**だから。トンネルに入って
+位置が取れなくなる様子そのものが確かめたいことなので、正常系を測る
+路線としてではなく、異常系を測る路線として使う。
+
+画面の左下に位置情報の窓が出る。緯度経度・精度・速さ・向きに加えて、
+**線路までの距離**を出す。何も起きないときに、それが「断られた」のか
+「電波が無い」のか「線路から離れすぎ」なのかを切り分けるため。
+取れていないあいだは窓の縁が色づく。
+
+**位置情報は端末から出ない。**この 1 枚は通信そのものをしない。
+
+なお位置情報は安全な文脈（https）でないとブラウザが渡さない。
+スマートフォンで試すときは `file://` ではなく、GitHub Pages
+（<https://hexran-123.github.io/2026Expo/>）などの https 経由で開くこと。
 
 `css/`・`js/`・`data/` を直したら作り直すこと。**`demo/*.html` を手で直さない。**
 路線 id に `all` を渡すと両方入った 1 枚になり、路線選択画面も出る。

@@ -2538,6 +2538,7 @@ Element.prototype.setAttributeNS = function (ns, name, value) {
   return setAttrNS.call(this, ns, name, value);
 };
 
+
 /*
  * 本体は URL の ?demo=1 を見て走行シミュレーターに切り替える。
  * 1 枚の HTML を直接開く使い方では URL に引数を付けられないので、
@@ -2549,6 +2550,7 @@ window.URLSearchParams = function (init) {
   return new RealParams(init);
 };
 window.URLSearchParams.prototype = RealParams.prototype;
+
 
 /* 開くたびに最初の画面から始める */
 try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
@@ -7757,6 +7759,8 @@ if (window.Popularity) {
     text.after(p);
   }).observe(text, { childList: true, characterData: true, subtree: true });
 })();
+
+
 
 /*
  * 注記は、路線選択画面が出ているあいだだけ残す。
