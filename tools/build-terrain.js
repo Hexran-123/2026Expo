@@ -8,15 +8,24 @@
  *           これを何段階か重ねると、台地が濃く、低地が淡い地図になる。
  *           等高線そのものは見せない（設計書 5.2）。
  *
- * 使い方:  node tools/build-terrain.js
+ * 使い方:  node tools/build-terrain.js [elevation-grid.json] [route.json] [出力先.json]
+ *
+ * 引数は省略できる。省略したときは銚子電鉄のときの値になるので、
+ * 今までの `node tools/build-terrain.js` はそのまま同じ結果になる。
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const GRID_PATH = path.join(__dirname, '..', 'data', 'source', 'elevation-grid.json');
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'route.json');
-const OUT_PATH = path.join(__dirname, '..', 'data', 'terrain.json');
+const GRID_PATH = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(__dirname, '..', 'data', 'source', 'elevation-grid.json');
+const ROUTE_PATH = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(__dirname, '..', 'data', 'choshi', 'route.json');
+const OUT_PATH = process.argv[4]
+  ? path.resolve(process.argv[4])
+  : path.join(__dirname, '..', 'data', 'choshi', 'terrain.json');
 
 /**
  * 色を塗り分ける高さ（m）。低いほうから順に、上に重ねて塗っていく。

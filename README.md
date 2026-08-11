@@ -9,7 +9,10 @@ Geoアクティビティコンテスト（G空間EXPO2027）応募作品。
 
 ## 動かす
 
-このサイトはサーバーを持たない、ただのファイルの集まり（設計書 9 章）。
+このサイトの本体は、ただのファイルの集まり（設計書 9 章）。投稿と累積人気だけは
+Supabase を使うが（[ADR-0004](docs/adr/0004-投稿と集計のためにサーバーを持ち、ログインは持たない.md)）、
+それが無くても地図・通知・成因カード・旅の記録は動く。手元で動かすのに用意するものはない。
+
 ただし **ファイルを直接ダブルクリックしても動かない**。ブラウザには
 「手元のファイルから別のファイルを読み込んではいけない」という安全のための決まりがあり、
 `data/*.json` を読むところで止まってしまうため。
@@ -70,22 +73,43 @@ js/onboard.js       車上モードの判定・通知・遅れ → node js/onboa
 js/simulate.js      テスト走行（?demo=1 のときだけ読み込む。本番には出ない）
 
 data/
-  route.json        路線の形と 10 駅の位置        ← 自動生成
-  terrain.json      地形の濃淡                    ← 自動生成
-  spots.json        絶景スポットの情報            ← 手で書く
-  schedule.json     時刻表                        ← 手で書く
+  lines.json        どの路線があるか              ← 手で書く
+  choshi/           銚子電鉄（作品そのもの）
+    route.json      路線の形と 10 駅の位置        ← 自動生成
+    terrain.json    地形の濃淡                    ← 自動生成
+    terrain-hillshade.webp  地形の陰影            ← 自動生成
+    spots.json      絶景スポットの情報            ← 手で書く
+    schedule.json   時刻表                        ← 手で書く
+  yurakucho/        有楽町線（GPS を試すための試験用。中身は作り物）
   source/           もとになった生データと計算結果 ← 自動生成
 
 tools/              データを作り直すための道具（サイトの一部ではない）
 docs/               設計書・将来構想・ADR
 ```
 
-**`data/spots.json` と `data/schedule.json` は手で書くファイル。**
-絶景スポットを足したり、文章を直したりするときは `spots.json` を開く。
+**`data/choshi/spots.json` と `data/choshi/schedule.json` は手で書くファイル。**
+絶景スポットを足したり、文章を直したりするときはこれを開く。
 プログラムを触る必要はない（設計書 8 章）。
 
-`data/` の他のファイルと `data/source/` は自動生成なので、直接直さない。
+同じ階層の他のファイルと `data/source/` は自動生成なので、直接直さない。
 直したい場合は `tools/` の中身を直して作り直す。
+
+### 路線ごとにフォルダを分けてある
+
+```
+data/
+  lines.json          どの路線があるか（手で書く）
+  choshi/             銚子電鉄 ← 作品そのもの（設計書 1 章）
+  yurakucho/          有楽町線 ← GPS を試すためだけの試験用
+  source/             中間生成物（大きいものは .gitignore 済み）
+```
+
+`data/lines.json` に路線が 2 つ以上あると、画面上部の帯（ⓘ で出る）の
+**路線名を押して切り替えられる**ようになる。1 つしかないときはただの文字のまま。
+URL に `?line=yurakucho` を付けても切り替わる。
+
+有楽町線は**作品の対象ではない**。絶景スポットも時刻表も `tools/make-test-line.js` が
+作った作り物で、中身に意味はない。作品が対象にしているのは銚子電鉄だけ（設計書 1 章）。
 
 ---
 
@@ -96,20 +120,81 @@ docs/               設計書・将来構想・ADR
 
 ```
 node tools/fetch-osm.js            OpenStreetMap から線路と駅を取ってくる
-node tools/build-route.js data/source/overpass_raw.json data/route.json
+node tools/build-route.js data/source/overpass_raw.json data/choshi/route.json
                                    バラバラの線路をつなぎ、駅の位置を計算する
 
 node tools/fetch-elevation.js      国土地理院から標高を取ってくる（DEM5A、欠けはDEM10Bで補完）
 node tools/build-terrain.js        標高を地形の色の濃淡に変える
 node tools/fetch-hillshade.js      国土地理院の陰影起伏図タイルを貼り合わせる（地形の立体感）
+                                   → data/source/terrain-hillshade.png（配信用ではない。下記）
 
 node tools/fetch-features.js       工場・農地・海岸線を取ってくる
 node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計算する
 ```
 
-最後の `build-spot-geometry.js` は `data/spots.json` を書き換えない。
+`fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
+別の路線を作るときだけ引数を渡す（下記）。
+
+### 試験用の路線を足す
+
+GPS まわり（モードの切替・上り下りの判定・車窓側・通知の先行時間）は、実際に
+電車に乗らないと確かめられない。銚子は遠いので、近くの路線で先に試すための道具がある。
+
+```
+node tools/fetch-relation.js 443269 data/source/yurakucho_raw.json
+                                   OSM の route relation を取ってくる
+node tools/build-route-from-relation.js data/source/yurakucho_raw.json data/yurakucho/route.json
+                                   relation を route.json に変換する
+
+node tools/fetch-elevation.js data/yurakucho/route.json data/source/yurakucho-elevation-grid.json
+node tools/build-terrain.js   data/source/yurakucho-elevation-grid.json data/yurakucho/route.json data/yurakucho/terrain.json
+node tools/fetch-hillshade.js data/source/yurakucho-hillshade.png data/yurakucho/route.json 15
+
+node tools/make-test-line.js  data/yurakucho/route.json data/yurakucho
+                                   作り物の絶景スポットと時刻表を用意する
+```
+
+最後に `data/lines.json` へ 1 件足すと、画面に出るようになる。
+
+**relation を使うのは地下鉄で駅名が他社と重なるため。** 銚子電鉄のやり方（範囲内の線路を
+全部拾って名前で選り分ける）は、たとえば「池袋」で引くと OSM 上の駅ノードが 6 件あって
+成り立たない。relation ならどの駅がその路線のものかを OSM 側が決めてくれている。
+
+**陰影の縮尺は路線の長さで変える。** 銚子電鉄（6.4km）は縮尺 16 で 216 枚。
+有楽町線（28.4km）を同じ縮尺でやると 1890 枚・1.15 億画素になって現実的でないので 15 にした。
+画面に映る細かさは、路線が長いぶん引いて見るので大きくは変わらない。
+
+**`make-test-line.js` は絶景スポットを「答えを知っている位置」に置く。** 実在の景色から
+座標を起こすのではなく、線路の左右どちらに何メートル離すかを指定して置く。
+そうすると「下りで右と出るはず」が事前に分かるので、現地で画面を見て正誤を判定できる。
+実在の絶景を並べても、正解を知らないのだから試験にならない。
+
+最後の `build-spot-geometry.js` は `data/choshi/spots.json` を書き換えない。
 計算した参考値を `data/source/spot-geometry.json` に置くだけ。
-その数字を見て、`data/spots.json` は人が書く。
+その数字を見て、`data/choshi/spots.json` は人が書く。
+
+### 陰影の絵だけ、最後に WebP へ変換する
+
+`fetch-hillshade.js` を実行し直したときは、この一手も必要。
+忘れると、地図の陰影が古いままになる（エラーは出ない）。
+
+```
+python -c "from PIL import Image; Image.open('data/source/terrain-hillshade.png').save('data/choshi/terrain-hillshade.webp','WEBP',quality=80,method=6)"
+```
+
+配信するのは `data/<路線>/terrain-hillshade.webp` のほうで、`data/source/` の PNG は元材料。
+
+| | 大きさ |
+|---|---|
+| PNG（元材料） | 1,447 KB |
+| WebP（配信するもの） | 241 KB |
+
+この 1 枚が初回読み込みの 84% を占めていた。駅でモバイル回線で開く作品なので、
+ここを削るのが一番効く。不透明度 0.85 で重ねる背景の陰影なので、劣化は目に見えない。
+
+変換を別の一手にしてあるのは、`tools/` を依存パッケージなしの Node で通している
+（[ADR-0002](docs/adr/0002-フレームワークとサーバーを持たない.md)）ため。Node だけでは WebP を書き出せない。
+`cwebp -q 80` でも同じものが作れる。
 
 ---
 
@@ -122,7 +207,7 @@ node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計
    「全駅時刻表（印刷用）」の PDF を落とす。
 2. PDF の左半分が下り（銚子→外川）、右半分が上り（外川→銚子）。
    赤い「JR線銚子駅到着／発車」の欄は JR の乗換時刻なので、**書き写さない**。
-3. `data/schedule.json` の `列車` を書き換える。`改正日` も直す。
+3. `data/choshi/schedule.json` の `列車` を書き換える。`改正日` も直す。
    PDF の見出しにある「令和◯年◯月◯日ダイヤ改正」が銚子電鉄のダイヤの日付。
    右下に別の日付が書かれていることがあるが、そちらは JR の改正日。
 4. 書き終えたら必ず確かめる。
@@ -173,7 +258,7 @@ node tools/check-schedule.js
       発車待ちの時刻表・見どころリストを区間・方向に絞り込み、車窓側は片方だけ表示。
       車上モードの接近通知も区間内のスポットだけに絞る（通過判定・成因カード・旅の記録は区間外でも今まで通り）。
       実際のGPS判定と食い違ったら、乗車中に一度だけ確認して設定を直せる
-- [ ] **成因カードの中身** ── `data/spots.json` の `panels` が 6 スポットとも空。
+- [ ] **成因カードの中身** ── `data/choshi/spots.json` の `panels` が 6 スポットとも空。
       1 スポット 400 字ほどを 5〜6 コマに分けて書く。画像は任意。
       仕組みは動いているので、書けばそのまま出る（テスト走行で確かめ済み）
 - [ ] 乗車前のオフライン事前キャッシュ（設計書 9.3）

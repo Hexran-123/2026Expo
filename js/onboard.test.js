@@ -20,7 +20,7 @@ const {
 } = globalThis.Onboard;
 
 const read = (name) =>
-  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', name), 'utf8'));
+  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'choshi', name), 'utf8'));
 const route = read('route.json');
 const spots = read('spots.json').spots;
 const schedule = read('schedule.json');

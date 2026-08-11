@@ -18,7 +18,9 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 データ生成スクリプトは `tools/` にある（Node.js、依存パッケージなし）。ふだんは実行不要。
 手順と各スクリプトの役割は [README.md](README.md) を参照。
 
-**`data/spots.json` は人が手で書くファイル。** それ以外の `data/` 配下は自動生成なので直接編集しない。
+**`data/choshi/spots.json` と `data/lines.json` は人が手で書くファイル。** それ以外の `data/` 配下は自動生成なので直接編集しない。
+
+`data/` は路線ごとにフォルダを分けてある。`data/choshi/` が作品そのもの。`data/yurakucho/` は GPS の挙動を手元で確かめるための**試験用**で、絶景スポットも時刻表も `tools/make-test-line.js` が作った作り物である。作品の対象路線は銚子電鉄だけ（設計書 1 章）。
 
 ### 主要ドキュメント
 

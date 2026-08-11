@@ -15,7 +15,7 @@ require('./schedule.js');
 const { nextDepartures, scheduledDistance, runningTrains, toClock } = globalThis.Schedule;
 
 const read = (name) =>
-  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', name), 'utf8'));
+  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'choshi', name), 'utf8'));
 const schedule = read('schedule.json');
 const route = read('route.json');
 

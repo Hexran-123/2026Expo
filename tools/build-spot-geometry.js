@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'route.json');
+const ROUTE_PATH = path.join(__dirname, '..', 'data', 'choshi', 'route.json');
 const FEATURES_PATH = path.join(__dirname, '..', 'data', 'source', 'features_raw.json');
 const OUT_PATH = path.join(__dirname, '..', 'data', 'source', 'spot-geometry.json');
 

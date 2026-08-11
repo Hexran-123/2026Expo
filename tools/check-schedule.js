@@ -14,8 +14,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const SCHEDULE_PATH = path.join(__dirname, '..', 'data', 'schedule.json');
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'route.json');
+const SCHEDULE_PATH = path.join(__dirname, '..', 'data', 'choshi', 'schedule.json');
+const ROUTE_PATH = path.join(__dirname, '..', 'data', 'choshi', 'route.json');
 
 /** 銚子から外川まで、実際には 19〜22 分。これを外れたら書き間違いを疑う */
 const RIDE_MIN = 15;

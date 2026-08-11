@@ -34,6 +34,12 @@
 
   /* --- 枠組み --- */
   --panel:   rgba(255, 255, 255, 0.82);
+  /*
+   * すりガラスをやめているあいだ（地図を指で動かしている数百ミリ秒）の
+   * 置きかえ。ぼかしが無くなるぶん後ろの地図が生で透けて文字が読みづらく
+   * なるので、そのぶんだけ濃くしてある。
+   */
+  --panel-solid: rgba(255, 255, 255, 0.93);
   --ink:     #2B2A28;
   --ink-soft:#6B6862;
 
@@ -362,17 +368,99 @@ body {
 }
 
 /* ------------------------------------------------------------------
-   初期表示に戻すボタン
+   指で地図を触っているあいだの、軽いモード
+
+   この作品でいちばん描くのに費用がかかるのは、枠組みのすりガラス・
+   陸が海に落とす影・陰影起伏図のなめらかな拡大縮小の 3 つ。どれも
+   「止まっているときの見え方」のためのもので、指を動かしている最中に
+   読んでいる人はいない。触っているあいだだけ落として、離したら戻す。
+   止まっている画面の見た目は変わらない（js/main.js の createMotionFlag）。
    ------------------------------------------------------------------ */
 
-.reset-view {
-  position: absolute;
-  right: 14px;
-  /* 下の帯（天候とテーマの絞り込み）の少し上に置く */
-  bottom: 132px;
+/*
+ * すりガラスをやめる。透け具合が変わらないよう、
+ * ぼかしのぶんだけ地の色を濃くして置きかえる。
+ */
+.screen--moving .bar,
+.screen--moving .reset-view,
+.screen--moving .shoot {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--panel-solid);
+}
 
-  width: 44px;   /* 揺れる車内でも押せる大きさ */
-  height: 44px;
+/* 陸が海に落とす影。海岸線をまるごとぼかし直すのをやめる */
+.screen--moving .coast-shadow {
+  filter: none;
+}
+
+/*
+ * 陰影起伏図は消さない（地形が消えると、どこを見ているか分からなくなる）。
+ * なめらかに引き伸ばすのをやめて、粗いまま出す。動いている最中の
+ * 数百ミリ秒だけなので、粗さは目に留まらない。
+ */
+.screen--moving .hillshade {
+  image-rendering: pixelated;
+}
+
+/* 動かしているあいだ、影の付け直しもやめる */
+.screen--moving .map-furniture {
+  filter: none;
+}
+
+/* ------------------------------------------------------------------
+   ひし形＋絵の小さな印（js/main.js の diamondMark）
+
+   地図のバッジ・発車待ちの見どころ・テーマの絞り込み・下敷きの見出しで、
+   同じ形と同じ色を使いまわす。文字で「地形」と書くかわりにこれを置く。
+   ------------------------------------------------------------------ */
+
+.mark-badge {
+  fill: var(--mark-color);
+}
+
+.mark-glyph {
+  /* 絵の色。ひし形の上に載るので白。反転させたいところは color だけ変える */
+  color: #FFFFFF;
+  fill: none;
+  stroke: currentColor;
+  /* 絵は 0.68 倍に縮めてあるので、そのぶん太く描く（画面上は約 2.2px） */
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*
+ * 塗りで描くところ（テーマの絵）。
+ *
+ * 山や工場を細い線で描くと、この大きさでは輪郭が潰れて
+ * 「山」ではなく「M の字」に見えた。影絵にすると小さくても形が残る。
+ */
+.mark-glyph .solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ------------------------------------------------------------------
+   地図の上に浮かぶ丸ボタン（現在位置へ戻す・撮る）
+
+   地図の右端に縦へ積むのは、この 2 つだけにしてある。三つ並ぶと、
+   地図より先にボタンの列が目に入る。作品名と出典を呼び出すボタンは
+   下の帯の中へ移した（.bar-tools）。しかも「現在位置へ戻す」は
+   追いかけているあいだ引っこむので、ふだん見えるのは 0〜2 個。
+
+   丸そのものは 38px だが、押せる範囲は ::before で 48px まで広げてある。
+   揺れる車内で押し間違えないための大きさ（設計書 4 章）は、
+   見た目を小さくしても手放さない。
+   ------------------------------------------------------------------ */
+
+.reset-view,
+.shoot {
+  position: absolute;
+  right: 16px;
+
+  width: 38px;
+  height: 38px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -383,23 +471,202 @@ body {
   background: var(--panel);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
   color: var(--ink-soft);
   cursor: pointer;
-  transition: color 0.15s ease, transform 0.1s ease;
+  transition: transform 0.1s ease;
 }
 
-.reset-view:active {
-  transform: scale(0.94);
+/* 見た目より広い、押せるだけの範囲 */
+.reset-view::before,
+.shoot::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
 }
 
-.reset-view svg {
-  width: 22px;
-  height: 22px;
+/*
+ * 置き場所は画面が変わっても動かさない。
+ *
+ * 以前は下の帯のすぐ上に置いていたが、帯の高さは中身で 78px〜128px と
+ * 変わるので、画面が変わるたびにボタンが上下していた。しかも撮るボタンが
+ * 無い画面（乗車前・発車待ち）では戻すボタンが一段せり上がるので、
+ * 「同じ右下の丸ひとつ」なのに置き場所が 78px ちがって見えていた。
+ *
+ * そこで、帯ではなく画面の下端からの決まった距離に置く。
+ * 150px は「下の帯がいちばん高いとき（見どころ 1 行 = 128px）＋
+ * 帯じたいの浮き 10px ＋ すきま 12px」。帯が低い画面ではそのぶん
+ * 帯との間が空くが、そこは地図が見えるだけで、何も困らない。
+ *
+ * max() を噛ませているのは保険。端末の文字設定を大きくすると帯も高くなる。
+ * そのときだけ、帯にもぐらないよう押し上げる（js/main.js の trackBottomBar）。
+ */
+
+/* 戻すボタンは下の段。乗車前も車上も、ここから動かない */
+.reset-view {
+  bottom: max(150px, calc(var(--bottom-bar, 128px) + 22px));
+}
+
+/*
+ * 撮るボタンはそのひとつ上。戻すボタンとは 50px 空ける
+ * （押せる範囲 48px どうしが触れないため。見た目の丸は 38px なので
+ * あいだは 12px 空いて見える）。
+ */
+.shoot {
+  bottom: max(200px, calc(var(--bottom-bar, 128px) + 72px));
+}
+
+.reset-view:active,
+.shoot:active {
+  transform: scale(0.93);
+}
+
+/*
+ * 現在位置を追いかけているあいだは薄くする（js/main.js の setFollowing）。
+ *
+ * 追っているときに押しても何も起きないボタンなので、control としては
+ * 眠っている。地図を指で動かして追従が外れたとき、はっきり出てくる。
+ * 引っこめないのは、置き場所を動かさないため。
+ */
+.reset-view--following {
+  opacity: 0.42;
+}
+
+.reset-view svg,
+.shoot svg {
+  width: 19px;
+  height: 19px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 1.9;
   stroke-linecap: round;
+}
+
+/* ------------------------------------------------------------------
+   下の帯のいちばん下の段（テーマの絞り込みと、出典の呼び出し）
+   ------------------------------------------------------------------ */
+
+.bar-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/*
+ * 作品名と出典を呼び出すボタン。
+ * 地図の右端に積まず、この段の空いている右側に置く（高さが増えない）。
+ */
+.chrome-toggle {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  opacity: 0.65;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+/* ここも、見た目より広く押せるようにする */
+.chrome-toggle::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.chrome-toggle[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.chrome-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+
+/* ⓘ の点。線ではなく丸なので、塗りで描く */
+.chrome-toggle-dot {
+  fill: currentColor;
+  stroke-width: 2.4;
+}
+
+/* ------------------------------------------------------------------
+   方位と縮尺
+
+   自作の地図には地理院地図のような目盛りが無い。「次の絶景まで
+   どのくらいか」を目分量で掴めるように、約束ごとだけを置いておく。
+   北はつねに上（makeProjection）なので、方位の針は回さない。
+   ------------------------------------------------------------------ */
+
+.map-furniture {
+  position: absolute;
+  left: 16px;
+  /* 戻すボタンと同じ高さ。ここも画面が変わっても動かさない */
+  bottom: max(150px, calc(var(--bottom-bar, 128px) + 22px));
+
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+
+  color: var(--ink-soft);
+  /* 地図の色の上でも読めるように、白いふちを回す */
+  filter:
+    drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 5px rgba(255, 255, 255, 0.75));
+  /* 見るだけのもの。地図の操作を邪魔しない */
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s ease;
+}
+
+.compass {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+.compass-needle {
+  fill: currentColor;
+}
+
+.compass-n {
+  fill: currentColor;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.scale {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+/* 両端だけ立てた帯。地図の目盛りの決まった形 */
+.scale-bar {
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-top: none;
+}
+
+.scale-label {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* ------------------------------------------------------------------
@@ -439,12 +706,26 @@ body {
   right: auto;
 }
 
+/*
+ * 作品名の帯。ふだんは畳んである（js/main.js の createChrome）。
+ *
+ * 題・路線名・区間・出典は、開いたときに一度伝われば足りる。
+ * 乗っているあいだ画面の上を占めつづけると、地図と接近の通知の場所を削る。
+ */
 .bar--top {
   top: 10px;
   padding: 10px 16px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  transition: transform 0.26s ease, opacity 0.26s ease;
+}
+
+/* 畳んでいく途中。消えきってから hidden が付き、下の帯が繰り上がる */
+.bar--away {
+  transform: translateY(-14px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .bar--bottom {
@@ -453,9 +734,11 @@ body {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s ease;
 }
 
-/* 下敷きが出ているあいだは、下の帯と戻すボタンは画面の外へどく */
+/* 下敷きが出ているあいだは、下の帯・ボタン・方位と縮尺は画面の外へどく */
 .screen--carded .bar--bottom,
-.screen--carded .reset-view {
+.screen--carded .reset-view,
+.screen--carded .shoot,
+.screen--carded .map-furniture {
   transform: translateY(calc(100% + 24px));
   opacity: 0;
   pointer-events: none;
@@ -472,6 +755,34 @@ body {
   margin: 0;
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+/*
+ * 路線が 2 つ以上あるときだけ、路線名が押せるボタンになる（試験用。ADR-0004 の
+ * 範囲外で、作品の対象路線は銚子電鉄だけ＝設計書 1 章）。
+ *
+ * 見た目は文字のまま変えない。増えるのは末尾の ⇄ 一文字だけにする。
+ * 帯の高さも文字の大きさも動かさないので、他の要素の置き場所に影響しない
+ * （設計書 4.1「置き場所は一つに決めて、二度と動かさない」）。
+ */
+button.line-name {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+button.line-name::after {
+  content: ' ⇄';
+  opacity: 0.75;
+}
+
+button.line-name:active {
+  opacity: 0.6;
 }
 
 /*
@@ -636,9 +947,10 @@ body {
    ------------------------------------------------------------------ */
 
 .lookout-title {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 6px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
   color: var(--ink-soft);
 }
 
@@ -647,38 +959,35 @@ body {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
-.lookout-list li {
+/*
+ * 1 スポット 1 行。
+ *
+ * ホームで見ている数分のあいだに要るのは「次に来るのはどれで、
+ * どちらの窓か」だけなので、折り返さずに読み切れる形にする。
+ * 続けて来るスポットがあるときだけ、行が増える（LOOKOUT_CLUSTER_METERS）。
+ */
+.lookout-item {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
-  font-size: 14px;
+  gap: 10px;
+  min-width: 0;
+  font-size: 15px;
 }
 
-/* 地図のバッジと同じひし形。色を見ればテーマがわかる（設計書 5.4） */
-.lookout-diamond {
-  width: 10px;
-  height: 10px;
+/* 地図のバッジと同じ印。ホームで覚えた形が、そのまま地図で探す手がかりになる */
+.lookout-mark {
+  width: 26px;
+  height: 26px;
   flex: none;
-  background: var(--spot-color);
-  transform: rotate(45deg);
 }
 
-/* 今日の天気に合うスポットだけ、ひし形に地図バッジと同じ暖色のフチを付ける */
-.lookout-item--weather-good .lookout-diamond {
-  outline: 2px solid #E8B84B;
-  outline-offset: 1px;
-}
-
-/* 天気の一言。名前の下に折り返して出す（車窓側の欄と場所を取り合わないように） */
-.lookout-weather {
-  flex-basis: 100%;
-  padding-left: 19px;
-  font-size: 12px;
-  color: #8A6F2E;
+/* 今日の天気に合うスポットは、地図バッジと同じ暖色のふちを付けるだけ */
+.lookout-item--weather-good .mark-badge {
+  stroke: #E8B84B;
+  stroke-width: 2.5;
 }
 
 .lookout-name {
@@ -689,13 +998,20 @@ body {
   white-space: nowrap;
 }
 
-/* 上り・下りの車窓側。乗る向きが決まっていないので両方書く */
+/*
+ * どちらの窓を見ればいいか。この欄がこの行のいちばんの用事なので、
+ * 添え書きではなく、押せそうな形の札にして目を留める。
+ */
 .lookout-sides {
   margin-left: auto;
   flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
   font-size: 12.5px;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------
@@ -795,6 +1111,21 @@ body {
   opacity: 0.22;
 }
 
+/*
+ * 乗る前・降りたあとの印。
+ *
+ * 位置は分かっているので出すが、進行方向の矢印は出さない。ホームを
+ * 歩いているあいだの向きは乗る向きとは関係がなく、まだ決まっていない
+ * ことを決まったように見せてしまうため。
+ */
+.here--still .here-arrow {
+  display: none;
+}
+
+.here--still .here-halo {
+  opacity: 0.16;
+}
+
 /* ------------------------------------------------------------------
    車上モードの足もと（設計書 4.3）
    ------------------------------------------------------------------ */
@@ -834,28 +1165,11 @@ body {
    戻すボタンの上に置き、同じ大きさ・同じ形にそろえる。
    ------------------------------------------------------------------ */
 
-.shoot {
-  position: absolute;
-  right: 14px;
-  /* 戻すボタン（bottom: 132px）のさらに上。下の帯とは重ねない */
-  bottom: 186px;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border-radius: 50%;
-  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  transition: transform 0.12s ease;
-}
-
-.shoot:active {
-  transform: scale(0.94);
-}
+/*
+ * 丸の形・大きさ・置き場所は「地図の上に浮かぶ丸ボタン」でまとめて決めてある。
+ * ここに書いていたころは bottom を 186px と決め打ちしていて、
+ * 下の帯が高くなると帯にもぐり、作品名を呼び出すボタンとも重なっていた。
+ */
 
 .shoot input {
   /* 見えないが、ラベル全体が押せるので操作はできる */
@@ -898,51 +1212,57 @@ body {
   color: var(--ink);
 }
 
-/* --- テーマの絞り込み --- */
+/* --- テーマの絞り込み ---
+   テーマ名は出さず、絵だけにする。「地形」「気候と農業」…と横に並べると、
+   押すためのボタンではなく読みものに見え、地図より先に目が行ってしまう。
+   絵とテーマ名は、スポットの下敷きの見出しで結びつく。 */
 .themes {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
 }
 
 .theme-chip {
   /* 揺れる車内で押し間違えないよう、指で押せる大きさを確保する */
-  min-height: 38px;
-  padding: 0 12px;
+  width: 46px;
+  height: 40px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
 
-  border: 1.5px solid currentColor;
-  border-radius: 19px;
+  border: none;
   background: transparent;
   color: var(--chip-color);
-
-  font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
-/* 選ばれているテーマは塗りつぶす */
-.theme-chip[aria-pressed="true"] {
-  background: var(--chip-color);
-  color: #FFFFFF;
+.theme-chip:active {
+  transform: scale(0.92);
 }
 
-/* 選ばれていないテーマは薄くする */
+.chip-mark {
+  width: 28px;
+  height: 28px;
+}
+
+/*
+ * 選ばれていないテーマは、ひし形を塗らずに輪郭だけにする。
+ * 薄くするだけだと、絵しかない小さな的では on / off が読み取れない。
+ */
 .theme-chip[aria-pressed="false"] {
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
-/* ひし形の目印。地図のバッジと同じ形にして、色とテーマを結びつける */
-.chip-diamond {
-  width: 9px;
-  height: 9px;
-  background: currentColor;
-  transform: rotate(45deg);
-  flex: none;
+.theme-chip[aria-pressed="false"] .mark-badge {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.theme-chip[aria-pressed="false"] .mark-glyph {
+  color: inherit;
 }
 
 /* ------------------------------------------------------------------
@@ -992,13 +1312,30 @@ body {
 
 .card-theme {
   margin: 0 0 6px;
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 5px;
+  border-radius: 12px;
   background: var(--card-color);
   color: #FFFFFF;
   font-size: 12px;
   font-weight: 600;
+}
+
+/* 札の上では色が反転する。ひし形を白で塗り、絵をテーマ色で描く */
+.card-theme-mark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.card-theme-mark .mark-badge {
+  fill: #FFFFFF;
+}
+
+.card-theme-mark .mark-glyph {
+  color: var(--mark-color);
 }
 
 .card-name {

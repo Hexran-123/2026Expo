@@ -103,13 +103,48 @@
       </svg>
     </button>
 
+    <!--
+      方位と縮尺。
+
+      この地図は自作のイラストで、地理院地図のような目盛りが無い。
+      「森のトンネルまでどのくらいか」「海はどちら側か」を目分量で
+      掴めるように、地図の約束ごとだけは置いておく。
+
+      北はつねに上（makeProjection が maxLat - lat で置いている）。
+      地図は回さないので、方位の針も回さない。
+      縮尺の帯は拡大に合わせて js/main.js が書き換える。
+    -->
+    <div class="map-furniture" id="map-furniture">
+      <svg class="compass" viewBox="0 0 34 34" aria-label="北はつねに画面の上">
+        <path class="compass-needle" d="M17,4 L22.5,20 L17,16.6 L11.5,20 Z"/>
+        <text class="compass-n" x="17" y="30.5">N</text>
+      </svg>
+      <div class="scale">
+        <div class="scale-bar" id="scale-bar"></div>
+        <span class="scale-label" id="scale-label"></span>
+      </div>
+    </div>
+
     <!-- 画面の上に積むもの。上から順に並ぶ -->
     <div class="top-stack">
 
-      <!-- 作品名と路線名 -->
-      <header class="bar bar--top">
+      <!--
+        作品名・路線名・乗車区間・出典。
+
+        自動では出さない。開いたときも、区間を決めた直後も畳んだまま。
+        出るのは下の帯の ⓘ を押したときだけで、5 秒たてばまた畳む。
+        乗っているあいだ画面の上を占めつづけると、地図と接近の通知が
+        使える高さを削るため（js/main.js の createChrome）。
+      -->
+      <header class="bar bar--top bar--away" id="chrome-bar" hidden>
         <h1 class="title">車窓絶景ナビ</h1>
-        <p class="line-name">銚子電鉄</p>
+        <!--
+          路線名。data/lines.json に路線が 2 つ以上あるときだけ、押して
+          切り替えられるようになる（js/main.js の setUpLineSwitch）。
+          1 つしかないときはただの文字のままにする。押せない見た目のものを
+          押せるように見せない。中身は JS が入れる。
+        -->
+        <p class="line-name" id="line-name"></p>
         <!-- 乗車区間（設計書・feature-spec「乗車区間の設定」）。押すと選び直せる -->
         <button type="button" class="plan-chip" id="plan-chip" hidden></button>
         <!--
@@ -205,8 +240,30 @@
         <span class="riding-count" id="riding-count"></span>
       </div>
 
-      <!-- テーマの絞り込みボタン。中身は js/main.js が作る -->
-      <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
+      <!--
+        帯のいちばん下の段。テーマの絞り込みと、作品名の帯を呼び出すボタン。
+
+        呼び出すボタンをここに置いているのは、地図の右端に縦へ積まないため。
+        車上モードでは右端にカメラと「現在位置へ」が並ぶので、そこへ三つめを
+        足すと、地図より先にボタンの列が目に入る。この段には余白があり、
+        高さも増えない。
+
+        出典を隠しきりにはできない（ODbL・地理院タイル利用規約が明示を求める。
+        ADR-0003）ので、どの画面からでも 1 手で辿れる場所には残す。
+      -->
+      <div class="bar-tools">
+        <!-- テーマの絞り込みボタン。中身は js/main.js が作る -->
+        <nav class="themes" id="themes" aria-label="テーマの絞り込み"></nav>
+
+        <button type="button" class="chrome-toggle" id="chrome-toggle"
+                aria-label="作品名と出典を出す" aria-expanded="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 11.2v5.4"/>
+            <circle class="chrome-toggle-dot" cx="12" cy="7.9" r="0.1"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!--

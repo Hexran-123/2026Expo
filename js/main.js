@@ -52,6 +52,45 @@ const GLYPHS = {
     </g>`,
 };
 
+/*
+ * テーマそのものを表す絵。4 つのテーマに 1 つずつ。
+ *
+ * 絞り込みボタンから文字を外すために作った。「地形」「気候と農業」
+ * 「産業と水運」「海と空」と並べると、押すためのボタンではなく
+ * 読みものに見えてしまい、地図より先に目が行ってしまう。
+ *
+ * 一つ一つのスポットの絵（GLYPHS）とは役割が違う。あちらは
+ * 「その景色が何か」、こちらは「どの括りか」を指す。だから山・波のように、
+ * 説明を読まなくても括りが察せる形だけを使う。
+ * GLYPHS と同じく、中心を (0,0) とした 20×20 くらいの大きさで描く。
+ */
+const THEME_GLYPHS = {
+  // 山なみ。土地の起伏そのもの
+  '地形': `<path class="solid" d="M-8.6,5.4 L-3.4,-5.8 L0.4,1.2 L3.8,-3.8 L8.6,5.4 Z"/>`,
+  // 双葉。畑と、そこで育つもの
+  '気候と農業': `<path d="M0,7.6 L0,-1.4"/>
+                 <path class="solid" d="M0,1.2 q-7,0 -7,-6 q7,0 7,6 Z"/>
+                 <path class="solid" d="M0,-1.6 q7,0 7,-6 q-7,0 -7,6 Z"/>`,
+  // 煙突のある建物と、その足もとの水。醤油蔵と、それを支えた水運
+  '産業と水運': `<path class="solid"
+                   d="M-8.4,3 L-8.4,-4 L-2.6,-1.2 L-2.6,-4 L3.2,-1.2 L3.2,3 Z
+                      M4.9,3 L4.9,-7.6 L8.4,-7.6 L8.4,3 Z"/>
+                 <path class="solid" d="M-7.8,5 q3.9,-3.2 7.8,0 t7.8,0 L7.8,8 L-7.8,8 Z"/>`,
+  /*
+   * 雲と、その下の海。
+   *
+   * 空を日（丸）で表すと、下の海の帯と合わせて「泳ぐ人」に見えてしまった
+   * （丸の下に横帯があると、頭と肩に読める）。横に広い雲にすると、
+   * その読みが起きない。海は細い線 2 本だと小さいうちにくっつくので面で塗る。
+   */
+  '海と空': `<circle class="solid" cx="-3.4" cy="-3.4" r="2.6"/>
+             <circle class="solid" cx="0.6" cy="-5" r="3.4"/>
+             <circle class="solid" cx="4.4" cy="-3.2" r="2.6"/>
+             <rect class="solid" x="-6" y="-3.6" width="10.4" height="3.4" rx="1.7"/>
+             <path class="solid"
+               d="M-8.4,2.6 q2.8,-2 5.6,0 t5.6,0 t5.6,0 L8.4,7.6 L-8.4,7.6 Z"/>`,
+};
+
 /** 絞り込みの設定をブラウザに覚えさせるときの名前 */
 const STORAGE_KEY = 'choshi-navi/themes';
 
@@ -99,8 +138,19 @@ const WALKING_SPEED_LIMIT = 3;
 /** 発車待ちで出す、次の発車の本数 */
 const DEPARTURE_COUNT = 2;
 
-/** 発車待ちで出す、見どころの数（最大3件、線路上で近い順） */
-const LOOKOUT_COUNT = 3;
+/*
+ * 発車待ちで出す見どころは、いちばん近い 1 件だけ。
+ *
+ * 3 件並べていたころは、どれを待てばいいのかが読み取れなかった。
+ * ホームで見ている数分のあいだに要るのは「次に来るのはどれで、
+ * どちらの窓か」だけで、その先は乗ってから接近通知が順に教えてくれる。
+ *
+ * 一時は「600m 以内に続くときだけ 2 行」という例外を置いていたが、
+ * やめた。行が増えたり減ったりすると下の帯の高さが変わり、その上に
+ * 置いてある丸ボタンと方位縮尺まで動く。画面が変わるたびにボタンの
+ * 位置が変わるほうが、1 行で足りない不便より重い。
+ */
+const LOOKOUT_COUNT = 1;
 
 /** 発車待ちの表示を作り直す間隔（ミリ秒）。発車時刻をまたいだら次の列車に繰り上げる */
 const DEPARTURE_REFRESH_MS = 20000;
@@ -128,6 +178,40 @@ function svg(tag, attributes = {}) {
     element.setAttribute(name, value);
   }
   return element;
+}
+
+/**
+ * 地図のバッジと同じ「ひし形＋白い絵」の小さな印を作る。
+ *
+ * 地図の上のバッジ・発車待ちの見どころ・絞り込みボタン・下敷きの見出しで、
+ * 同じ形と同じ色を使いまわすためのもの。文字で「地形」と書くかわりに
+ * これを置く。色だけだと 4 つの区別が付かないが、形が入れば付く。
+ *
+ * @param {string} glyph  中に描く絵（GLYPHS か THEME_GLYPHS の値）
+ * @param {string} color  ひし形の色（THEMES[...].color）
+ */
+function diamondMark(glyph, color, className) {
+  const mark = svg('svg', {
+    class: className,
+    viewBox: '-14 -14 28 28',
+    'aria-hidden': 'true',
+  });
+  mark.style.setProperty('--mark-color', color);
+
+  // ひし形は ±12。まわりの 2 は、天気の合図でふちを付けるときの余白
+  mark.appendChild(svg('path', { class: 'mark-badge', d: 'M0,-12 L12,0 L0,12 L-12,0 Z' }));
+
+  /*
+   * 絵は ±8.5 で描いてあり、そのままではひし形の角からはみ出す。
+   * 0.68 倍に縮めると、いちばん角に近い絵（切通しのトンネルの足)でも
+   * 線の太さを足して収まる。
+   * 線の太さは縮めたぶんだけ CSS 側で太くしてある（.mark-glyph）。
+   */
+  const inner = svg('g', { class: 'mark-glyph', transform: 'scale(0.68)' });
+  inner.innerHTML = glyph || '';
+  mark.appendChild(inner);
+
+  return mark;
 }
 
 /** JSON ファイルを読む */
@@ -174,6 +258,50 @@ function makeProjection(projection) {
       x: ((lon - bounds.minLon) / spanLon) * width,
       y: ((bounds.maxLat - lat) / spanLat) * height, // 北が上なので引き算
     };
+  };
+}
+
+/**
+ * 地図の 1 単位が実際の何メートルにあたるか。
+ *
+ * makeProjection は経度と緯度をそれぞれ別に引き伸ばしている（正距円筒）。
+ * 銚子の緯度（約 35.7 度）で作った data/terrain.json では、
+ * 縦横どちらで測っても 1 単位 ≒ 5.47m と一致するので、縮尺の帯は 1 本でよい。
+ * 縦横がずれる緯度・範囲へ路線を広げるときは、ここを見直すこと。
+ */
+function metersPerUnit(projection) {
+  const { bounds, width } = projection;
+  const midLatitude = ((bounds.minLat + bounds.maxLat) / 2) * (Math.PI / 180);
+  const metersPerDegreeLon = 111320 * Math.cos(midLatitude);
+  return ((bounds.maxLon - bounds.minLon) / width) * metersPerDegreeLon;
+}
+
+/**
+ * 縮尺の帯を、拡大に合わせて書き換える。
+ *
+ * 帯の長さを固定して数字を変えるのではなく、数字のほうを
+ * 10m・20m・50m…と切りのよい値から選び、帯の長さで合わせる。
+ * 「103m」のような端数は読むのに手間がかかるだけで、目分量の役に立たない。
+ */
+function createScaleBar(projection) {
+  const bar = document.getElementById('scale-bar');
+  const label = document.getElementById('scale-label');
+  const perUnit = metersPerUnit(projection);
+
+  /** 帯の長さの上限（画素）。地図を隠さない大きさ */
+  const MAX_WIDTH = 96;
+  const STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000];
+
+  return function update(unitsPerPixel) {
+    const metersPerPixel = unitsPerPixel * perUnit;
+
+    let meters = STEPS[0];
+    for (const step of STEPS) {
+      if (step / metersPerPixel <= MAX_WIDTH) meters = step;
+    }
+
+    bar.style.width = `${(meters / metersPerPixel).toFixed(1)}px`;
+    label.textContent = meters >= 1000 ? `${meters / 1000}km` : `${meters}m`;
   };
 }
 
@@ -256,11 +384,17 @@ function drawTerrain(container, terrain) {
   // 海と陸の境目を、いちばん低い段階の輪でなぞる
   container.appendChild(svg('path', { d: terrain.bands[0].path, class: 'coast' }));
 
-  // 地形の陰影（国土地理院の陰影起伏図タイルを貼り合わせたもの。tools/fetch-hillshade.js）。
-  // 色の帯の上に重ねて立体感を出す。海の部分は透明なので、下の水色がそのまま透ける。
+  /*
+   * 地形の陰影（国土地理院の陰影起伏図タイルを貼り合わせたもの。tools/fetch-hillshade.js）。
+   * 色の帯の上に重ねて立体感を出す。海の部分は透明なので、下の水色がそのまま透ける。
+   *
+   * WebP なのは大きさのため。同じ絵が PNG では 1,447KB、WebP では 241KB で、
+   * これ 1 枚が初回読み込みの 84% を占めていた。駅でモバイル回線で開く作品なので、
+   * ここは効く。もとが不透明度 0.85 で重ねる背景の陰影なので、劣化は目に見えない。
+   */
   container.appendChild(
     svg('image', {
-      href: 'data/terrain-hillshade.png',
+      href: `${currentLine.dir}/terrain-hillshade.webp`,
       x: 0,
       y: 0,
       width: terrain.projection.width,
@@ -594,7 +728,7 @@ function createView(mapElement, projection, initialBox, onChange) {
       'viewBox',
       `${left.toFixed(1)} ${top.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`
     );
-    onChange(unitsPerPixel / basisPerPixel, zoom());
+    onChange(unitsPerPixel / basisPerPixel, zoom(), unitsPerPixel);
   }
 
   /** 画面上の一点を動かさないまま、倍率を変える */
@@ -699,7 +833,7 @@ function createView(mapElement, projection, initialBox, onChange) {
  * 指 1 本ならずらす、2 本ならその間隔の変化で拡大縮小する。
  * ホイールは、指が使えないパソコン向け。
  */
-function setUpGestures(mapElement, view, onTap) {
+function setUpGestures(mapElement, view, onTap, motion) {
   const active = new Map();
   let previousSpread = 0;
   let movedDistance = 0;
@@ -717,6 +851,7 @@ function setUpGestures(mapElement, view, onTap) {
   mapElement.addEventListener('pointerdown', (event) => {
     mapElement.setPointerCapture(event.pointerId);
     view.stopAnimation(); // 動いている途中でも、指の操作を優先する
+    motion.begin();
     active.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (active.size === 1) {
@@ -758,6 +893,7 @@ function setUpGestures(mapElement, view, onTap) {
     // 何もないところを押したときは null を渡す（カードを閉じるため）。
     if (active.size === 0 && movedDistance < 6) onTap(tapTarget);
     if (active.size < 2) previousSpread = 0;
+    if (active.size === 0) motion.end();
     tapTarget = null;
   }
   mapElement.addEventListener('pointerup', release);
@@ -767,8 +903,11 @@ function setUpGestures(mapElement, view, onTap) {
     'wheel',
     (event) => {
       event.preventDefault();
+      motion.begin();
       // 1 回まわすぶんの変化量は端末差が大きいので、ゆるやかに効かせる
       view.zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.002));
+      // ホイールには「離した」がないので、止まったら自分で戻す
+      motion.endSoon();
     },
     { passive: false }
   );
@@ -814,7 +953,17 @@ function setUpThemeFilter(container, mapSpots, onApply) {
     chip.className = 'theme-chip';
     chip.dataset.theme = name;
     chip.style.setProperty('--chip-color', theme.color);
-    chip.innerHTML = `<span class="chip-diamond"></span>${theme.short}`;
+
+    /*
+     * 絵だけにして、テーマ名は出さない。
+     *
+     * 名前が読めなくなるぶんは、押さえたときの説明（title）と、
+     * 読み上げ用の名前（aria-label）で補う。スポットの下敷きには
+     * 同じ印と一緒にテーマ名が出るので、そこで絵と名前が結びつく。
+     */
+    chip.appendChild(diamondMark(THEME_GLYPHS[name], theme.color, 'chip-mark'));
+    chip.title = name;
+    chip.setAttribute('aria-label', name);
 
     chip.addEventListener('click', () => {
       if (hidden.has(name)) hidden.delete(name);
@@ -828,6 +977,166 @@ function setUpThemeFilter(container, mapSpots, onApply) {
   apply();
 
   return { isHidden: (theme) => hidden.has(theme) };
+}
+
+// ------------------------------------------------------------------
+// 作品名の帯の出し入れ
+//
+// 題・路線名・乗車区間・出典は、乗っているあいだずっと要る情報ではない。
+// 画面の上を占めつづけると、地図と接近の通知が使える高さを削る。
+//
+// そこで、自動では一切出さない。開いたときも、区間を決めた直後も畳んだまま。
+// 出るのは下の帯の ⓘ を押したときだけで、5 秒たてばまた畳む。
+// 「押したときだけ」の一つの決まりにしてあるので、いつ出るのか迷わない。
+// ------------------------------------------------------------------
+
+/** 出したあと、ひとりでに畳むまでの時間（ミリ秒） */
+const CHROME_VISIBLE_MS = 5000;
+
+/** 畳む動きにかける時間（ミリ秒）。css/style.css の .bar--top と合わせる */
+const CHROME_FADE_MS = 260;
+
+// ------------------------------------------------------------------
+// 指で地図を触っているあいだの、軽いモード
+// ------------------------------------------------------------------
+
+/** ホイールを回し終えたと判断するまでの時間（ミリ秒） */
+const MOTION_SETTLE_MS = 220;
+
+/**
+ * 指で地図を動かしているあいだだけ、重い装飾を止める札。
+ *
+ * この作品でいちばん描くのに費用がかかるのは、次の 3 つ。
+ *
+ * - 枠組みのすりガラス（backdrop-filter: blur(14px)）。10 か所ある。
+ *   後ろの地図が動くたびに、その 10 か所ぜんぶをぼかし直す。
+ * - 陸が海に落とす影（SVG の feGaussianBlur）。海岸線という
+ *   長い figure をまるごとぼかし直す。
+ * - 陰影起伏図（1000×1461 の絵）のなめらかな拡大縮小。
+ *
+ * どれも「止まっているときの見え方」のためのもので、指を動かしている
+ * 最中に読んでいる人はいない。触っているあいだだけ落として、
+ * 指を離したら戻す。止まっている画面の見た目は 1 ミリも変わらない。
+ */
+function createMotionFlag(screenElement) {
+  let timer = null;
+
+  function clear() {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  }
+
+  return {
+    begin() {
+      clear();
+      screenElement.classList.add('screen--moving');
+    },
+    end() {
+      clear();
+      screenElement.classList.remove('screen--moving');
+    },
+    /** 「離した」が来ない操作（ホイール）用。少し待ってから戻す */
+    endSoon() {
+      clear();
+      timer = setTimeout(() => {
+        timer = null;
+        screenElement.classList.remove('screen--moving');
+      }, MOTION_SETTLE_MS);
+    },
+  };
+}
+
+/**
+ * 下の帯の高さを測って、その上に置くものの位置へ渡す。
+ *
+ * ふだんは使われない。丸ボタンと方位縮尺は画面の下端からの決まった距離に
+ * 置いてあり（css の max() の左側）、帯の高さでは動かさない。
+ *
+ * ここで測った値が効くのは、端末の文字設定を大きくするなどして
+ * 帯が想定より高くなったときだけ。そのときだけ、帯にもぐって
+ * 見えなくならないよう押し上げる。
+ */
+function trackBottomBar(screenElement) {
+  const bar = screenElement.querySelector('.bar--bottom');
+
+  function apply() {
+    const height = Math.round(bar.getBoundingClientRect().height);
+    screenElement.style.setProperty('--bottom-bar', `${height}px`);
+  }
+
+  apply();
+  if (typeof ResizeObserver === 'function') new ResizeObserver(apply).observe(bar);
+  else window.addEventListener('resize', apply);
+}
+
+function createChrome() {
+  const bar = document.getElementById('chrome-bar');
+  const toggle = document.getElementById('chrome-toggle');
+  let timer = null;
+
+  function clearTimer() {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  }
+
+  function show() {
+    clearTimer();
+    bar.hidden = false;
+    // hidden を外した直後だと、動きの始まりの状態が飛ばされる
+    requestAnimationFrame(() => bar.classList.remove('bar--away'));
+    /*
+     * 呼び出すボタンは消さない。下の帯の中に居るので、消すと
+     * テーマの絞り込みが横に伸びて、帯そのものが動いて見える。
+     */
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+
+  function hide() {
+    clearTimer();
+    if (bar.hidden) return;
+    bar.classList.add('bar--away');
+    toggle.setAttribute('aria-expanded', 'false');
+    /*
+     * 消えきってから場所を空ける。先に hidden にすると、下に積んである
+     * 発車待ちの帯が動きの途中で跳ね上がる。
+     */
+    timer = setTimeout(() => {
+      if (bar.classList.contains('bar--away')) bar.hidden = true;
+      timer = null;
+    }, CHROME_FADE_MS);
+  }
+
+  /** 出したまま、しばらくしたら畳む */
+  function showBriefly() {
+    show();
+    timer = setTimeout(hide, CHROME_VISIBLE_MS);
+  }
+
+  toggle.addEventListener('click', () => {
+    if (bar.hidden) showBriefly();
+    else hide();
+  });
+
+  /*
+   * 出典を読んでいるあいだ、帯をひとりでに畳ませないための一時停止と、
+   * 読み終えたところでの数え直し。帯を新たに出すものではない
+   * （出ているときにしか呼ばれない）。
+   */
+  function hold() {
+    clearTimer();
+  }
+
+  function foldLater() {
+    clearTimer();
+    if (!bar.hidden) timer = setTimeout(hide, CHROME_VISIBLE_MS);
+  }
+
+  // 帯そのものを押しても畳む（中のボタンを押したときは、そちらを優先する）
+  bar.addEventListener('click', (event) => {
+    if (event.target === bar) hide();
+  });
+
+  return { hide, hold, foldLater };
 }
 
 // ------------------------------------------------------------------
@@ -883,7 +1192,23 @@ function stationAt(route, coords) {
 // いつでも優先される（食い違えば一度だけ気づかせるだけ）。
 // ------------------------------------------------------------------
 
-function loadPlan() {
+/** きょうの日付（YYYY-MM-DD）。区間がその日のものかを見るのに使う */
+function today() {
+  const now = new Date();
+  const two = (value) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+}
+
+/**
+ * 前に決めた区間を、日付ごと読む。
+ *
+ * 区間は「その日の乗車」の設定であって、恒久の設定ではない。
+ * 日付を見ずに残していたころは、翌日ちがう区間に乗るのにアプリを開いても
+ * 黙って前回の範囲で絞り込んでいた（時刻表は前回の向きだけ、見どころも
+ * 通知も前回の範囲だけ）。しかも区間は上の帯の中にしか出ていないので、
+ * 気づく手がかりが無かった。
+ */
+function loadSavedPlan() {
   try {
     const saved = localStorage.getItem(PLAN_KEY);
     return saved ? JSON.parse(saved) : null;
@@ -892,9 +1217,21 @@ function loadPlan() {
   }
 }
 
+/**
+ * きょう決めた区間。日をまたいでいれば null（＝もう一度聞く）。
+ *
+ * 同じ日のうちは今まで通り聞かない。往復で開き直すときや、トンネルや
+ * 圏外でページが読み込み直されたときに、そのつど聞かれては使えない。
+ */
+function loadPlan() {
+  const saved = loadSavedPlan();
+  return saved && saved.date === today() ? saved : null;
+}
+
 function savePlan(plan) {
   try {
-    localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+    // 日付を添える。翌日に開いたときは、これを見て聞き直す（loadPlan）
+    localStorage.setItem(PLAN_KEY, JSON.stringify({ ...plan, date: today() }));
   } catch {
     // 保存できない設定のブラウザでも、その場での動きは変えない
   }
@@ -971,6 +1308,32 @@ function setScaleTransform(element, k) {
   element.setAttribute('transform', `translate(${x} ${y}) scale(${k}) translate(${-x} ${-y})`);
 }
 
+/**
+ * 発車待ちに出す見どころを選ぶ。
+ *
+ * 乗る向きが決まっていれば、その先にあるものだけを近い順に見る。
+ * うしろに置いてきたものは「この先の見どころ」ではないため。
+ * 区間が未設定で向きがわからないときだけ、この駅の前後から近い順に見る。
+ */
+function pickLookouts(route, plan, spots, station) {
+  const inRange = withinPlan(route, plan, spots);
+
+  const ahead = plan
+    ? inRange.filter((spot) => (plan.direction === '下り'
+      ? spot.distanceAlong > station.distanceAlong
+      : spot.distanceAlong < station.distanceAlong))
+    : inRange;
+
+  return ahead
+    .slice()
+    .sort(
+      (a, b) =>
+        Math.abs(a.distanceAlong - station.distanceAlong) -
+        Math.abs(b.distanceAlong - station.distanceAlong)
+    )
+    .slice(0, LOOKOUT_COUNT);
+}
+
 /** 「上り 左／下り 右」。どちらの向きでも見えるスポットは、そう書く。 */
 function sidesText(spot) {
   if (spot.sideUp === '両' && spot.sideDown === '両') return 'どちらの窓でも';
@@ -1026,24 +1389,20 @@ function createStationPanel(route, schedule, spots, themeFilter, getWeather, get
   function renderLookout(station) {
     const plan = getPlan();
 
-    /*
-     * 近い順に並べる。乗車区間が設定されていれば、その区間内のスポットだけに絞る
-     * （feature-spec「乗車区間の設定」US4）。区間が無ければ今まで通り、
-     * 乗る向きが決まっていない前提でこの駅の前後から近いものを出す。
-     */
-    const nearby = withinPlan(route, plan, spots.filter((spot) => !themeFilter.isHidden(spot.theme)))
-      .sort(
-        (a, b) =>
-          Math.abs(a.distanceAlong - station.distanceAlong) -
-          Math.abs(b.distanceAlong - station.distanceAlong)
-      )
-      .slice(0, LOOKOUT_COUNT);
+    const nearby = pickLookouts(
+      route, plan, spots.filter((spot) => !themeFilter.isHidden(spot.theme)), station
+    );
 
     lookoutList.replaceChildren();
     for (const spot of nearby) {
-      const diamond = document.createElement('span');
-      diamond.className = 'lookout-diamond';
-      diamond.style.setProperty('--spot-color', THEMES[spot.theme].color);
+      const item = document.createElement('li');
+      item.className = 'lookout-item';
+
+      /*
+       * 地図のバッジとまったく同じ印を置く。ホームで覚えた形が、
+       * そのまま地図の上で探す手がかりになる。テーマは色が指す。
+       */
+      item.appendChild(diamondMark(GLYPHS[spot.icon], THEMES[spot.theme].color, 'lookout-mark'));
 
       const name = document.createElement('span');
       name.className = 'lookout-name';
@@ -1060,21 +1419,18 @@ function createStationPanel(route, schedule, spots, themeFilter, getWeather, get
         ? windowSideText(plan.direction === '下り' ? spot.sideDown : spot.sideUp)
         : sidesText(spot);
 
-      const item = document.createElement('li');
-      item.append(diamond, name, sides);
+      item.append(name, sides);
 
       /*
-       * 天気に合うスポットだけ、一言添える。
-       * 合わない（bad）側はここでは何も言わない。悪い予告は地図バッジの
-       * 弱め表現だけで十分で、リストにまで否定的な言葉を並べると
-       * 「これから乗る区間の見どころ」という前向きな案内の趣旨とずれる。
+       * 天気に合うスポットは、印のふちを暖色にするだけにとどめる。
+       * 以前は「今日はよく見えそう」と 2 行目に書いていたが、
+       * ここは 1 行で読み切れることに意味がある欄なので、
+       * 言葉ではなく地図バッジと同じ見た目の合図に寄せる。
+       * 合わない（bad）側はここでは何も言わない（前向きな案内の趣旨とずれる）。
        */
       if (weatherMatch(spot, getWeather()) === 'good') {
         item.classList.add('lookout-item--weather-good');
-        const hint = document.createElement('span');
-        hint.className = 'lookout-weather';
-        hint.textContent = '今日はよく見えそう';
-        item.appendChild(hint);
+        item.title = '今日はよく見えそう';
       }
 
       lookoutList.appendChild(item);
@@ -1176,7 +1532,11 @@ function createOriginCard(screenElement) {
     count = spot.panels.length;
 
     const theme = THEMES[spot.theme];
-    themeElement.textContent = spot.theme;
+    // 予習用の下敷きと同じ札。絵とテーマ名がここでも結びつく
+    themeElement.replaceChildren(
+      diamondMark(THEME_GLYPHS[spot.theme], theme.color, 'card-theme-mark'),
+      document.createTextNode(spot.theme)
+    );
     themeElement.style.setProperty('--card-color', theme.color);
     nameElement.textContent = spot.name;
 
@@ -1369,8 +1729,16 @@ function createTrip(route, spots, schedule, parts) {
   let lastRealAlong = null;
   /** 前回この関数を通ったときの地点。スポットを跨いだかどうかを見るのに使う */
   let lastUpdateAlong = null;
-  /** 車上モードに入ったときの地点。終点でまとめて拾う範囲を決めるのに使う */
+  /** 車上モードに入ったときの地点。降りる駅でまとめて拾う範囲を決めるのに使う */
   let boardedAlong = null;
+  /**
+   * 降りる駅に着いて、旅を終えたか。
+   *
+   * 途中の駅で降りると、乗ってきた電車は目の前を走り去っていく。その動きを
+   * 「また乗った」と読ませないための札。旅の記録を閉じるか、区間を選び直すまで
+   * 立てたままにする（resume で下ろす）。
+   */
+  let finished = false;
   /** 乗車区間の食い違いを、このトリップですでに確認したか（1トリップにつき最大1回） */
   let mismatchChecked = false;
   /** 路線から外れはじめた時刻。15 秒続いたら降りたとみなす */
@@ -1385,6 +1753,28 @@ function createTrip(route, spots, schedule, parts) {
   let nextStopShown = null;
   /** 追いかけているか。指で地図を動かすとやめる */
   let following = true;
+
+  /**
+   * 「現在位置へ戻す」ボタンの濃さを、追いかけているかどうかに合わせる。
+   *
+   * 車上モードでは、地図を指で動かすまで現在位置を追いかけている
+   * （設計書 4.3）。追っているあいだは押しても何も起きないので薄くし、
+   * 地図を動かして外れたらはっきり出す。押せば戻る、という合図になる。
+   *
+   * 引っこめてしまわないのは、置き場所を動かさないため。このボタンは
+   * 右端の下の段に居つづける約束なので、消すと上のカメラだけが残って
+   * 下に穴が空く。濃さだけで伝える。
+   */
+  const followButton = document.getElementById('reset-view');
+
+  function setFollowing(value) {
+    following = value;
+    followButton.classList.toggle('reset-view--following', value && mode === '車上');
+    followButton.setAttribute(
+      'aria-label',
+      mode === '車上' ? '現在位置へ戻す' : '路線全体に戻す'
+    );
+  }
   /**
    * 入るときに寄せたい倍率。届くまでは追従のたびにこれを渡す。
    * 渡さないと、追従が「いまの倍率のまま」を目標にしてしまい、
@@ -1419,11 +1809,24 @@ function createTrip(route, spots, schedule, parts) {
     noticeBar.hidden = false;
   }
 
-  function showHere() {
+  /**
+   * 現在位置の印を出す。
+   *
+   * @param {boolean} [follow] 地図をそこへ寄せるか。
+   *   車上モードでだけ true。乗る前は、地図を見ている人の見え方を横取りしない。
+   */
+  function showHere(follow = true) {
     if (along === null) {
       setHidden(hereMarker, true);
       return;
     }
+
+    /*
+     * 乗る前は控えめな印にする（進行方向の矢印を出さない）。
+     * ホームを歩いているあいだの「向き」は乗る向きとは関係がないので、
+     * 矢印を出すと、まだ決まっていないことを決まったように見せてしまう。
+     */
+    hereMarker.classList.toggle('here--still', mode !== '車上');
     /*
      * 軌道上の距離から、地図の座標へ戻す。区間の途中を線形補間する
      * （pointAtDistance）。駅の印も同じ関数で置いているので、駅に
@@ -1467,7 +1870,7 @@ function createTrip(route, spots, schedule, parts) {
      */
     setScaleTransform(hereMarker, getK());
 
-    if (!following) return;
+    if (!follow || !following) return;
     view.goTo(spot.x, spot.y, wantedZoom, 900);
     // 目当ての倍率まで届いたら、あとは利用者の見え方を尊重する
     if (wantedZoom !== undefined && Math.abs(view.zoom() - wantedZoom) < 0.3) {
@@ -1535,7 +1938,7 @@ function createTrip(route, spots, schedule, parts) {
     // 天候のひとことは乗車前のもの。車上では足もとの表示に場所を譲る
     document.getElementById('weather').hidden = true;
     wakeLock.on();
-    following = true;
+    setFollowing(true);
     // 前の乗車の名残りを持ちこさない
     offRouteSince = null;
     delayShown = null;
@@ -1566,6 +1969,7 @@ function createTrip(route, spots, schedule, parts) {
   function leaveRiding(next) {
     if (mode !== '車上') return;
     mode = next;
+    setFollowing(false);
     riding.hidden = true;
     shootButton.hidden = true;
     setHidden(hereMarker, true);
@@ -1577,13 +1981,26 @@ function createTrip(route, spots, schedule, parts) {
     if (next === '乗車前') document.getElementById('weather').hidden = false;
   }
 
-  /** 終点に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
-  function arrive() {
+  /**
+   * 旅を終える駅の名前。
+   *
+   * 乗車区間を決めてあれば、その降りる駅（feature-spec「乗車区間の設定」）。
+   * 銚子→笠上黒生のように途中で降りる人にとっては、そこが旅の終わりであって、
+   * 線路の終点ではない。区間が無いときだけ、進んでいる向きの終点を使う。
+   */
+  function destinationName() {
+    const plan = getPlan();
+    if (plan) return plan.alight;
+    return direction === '下り' ? '外川' : '銚子';
+  }
+
+  /** 降りる駅に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
+  function arrive(station) {
     /*
      * 電波が届かない区間で拾いそこねたぶんを、ここで記録に足す。
      *
-     * 足すのは、乗った地点から終点までのあいだにあるものだけ。乗る前に
-     * 通り過ぎている区間のものまで足すと、見ていない景色が記録に並ぶ。
+     * 足すのは、乗った地点から降りる駅までのあいだにあるものだけ。乗る前や、
+     * 降りたあとの区間のものまで足すと、見ていない景色が記録に並ぶ。
      *
      * 成因カードは出さない（silent）。出すと、着いた瞬間に残りのぶんだけ
      * カードが立て続けに開き、そのうえへ旅の記録がかぶさる。
@@ -1594,8 +2011,22 @@ function createTrip(route, spots, schedule, parts) {
         ? spot.distanceAlong < boardedAlong
         : spot.distanceAlong > boardedAlong);
       if (beforeBoarding) continue;
+
+      const afterAlighting = direction === '下り'
+        ? spot.distanceAlong > station.distanceAlong
+        : spot.distanceAlong < station.distanceAlong;
+      if (afterAlighting) continue;
+
       markPassed(spot, { detected: false, silent: true });
     }
+    finished = true;
+    /*
+     * 開いたままの成因カード・下敷きを畳んでから記録を出す。
+     * 残しておくと、記録を閉じたときに、降りる直前に読んでいたカードが
+     * そのまま出てきて、いつのものか分からなくなる。
+     */
+    spotCard.close();
+    originCard.close();
     leaveRiding('降車後');
     onRecord({ mode: '降車後', passed: passedLog, direction });
   }
@@ -1666,19 +2097,36 @@ function createTrip(route, spots, schedule, parts) {
         }
       }
 
-      // 終点に着いたか。終点駅の 80m 以内で、かつ停まっている
+      // 降りる駅に着いたか。その駅の 80m 以内で、かつ停まっている
       const station = stationAt(route, coords);
-      if (station && (station.name === '銚子' || station.name === '外川')) {
-        const isEndOfLine =
-          (direction === '下り' && station.name === '外川') ||
-          (direction === '上り' && station.name === '銚子');
-        if (isEndOfLine) {
-          arrive();
-          return;
-        }
+      if (station && station.name === destinationName()) {
+        arrive(station);
+        return;
       }
 
       updateRiding(timestamp);
+      return;
+    }
+
+    /*
+     * 乗る前・降りたあとでも、線路の上にいるなら現在位置の印は出しておく。
+     *
+     * 出していなかったころは、地図を動かすと自分がどこにいるのか
+     * 分からなくなった。ホームで見どころを予習しているときこそ、
+     * 「いま自分はここ」と「絶景はあそこ」の距離を掴みたい。
+     *
+     * 地図を寄せはしない（follow = false）。乗る前は、見ている人が
+     * 決めた見え方を横取りしないため（設計書 4.1）。
+     */
+    if (onRoute) showHere(false);
+    else setHidden(hereMarker, true);
+
+    /*
+     * 降りたあとは、電車が走り去る動きにつられて乗り直さない。
+     * 発車待ちの帯だけは出しておく（記録を閉じたとき、次の電車が見える）。
+     */
+    if (finished) {
+      stationPanel.update(stationAt(route, coords) || null);
       return;
     }
 
@@ -1820,17 +2268,24 @@ function createTrip(route, spots, schedule, parts) {
   // ---- 地図を指で動かしたら追うのをやめる（設計書 4.3）----
 
   function stopFollowing() {
-    following = false;
+    setFollowing(false);
   }
 
   return {
     onPosition,
     onStale,
     stopFollowing,
-    resumeFollowing() { following = true; showHere(); },
+    resumeFollowing() { setFollowing(true); showHere(); },
     mode: () => mode,
     passedLog: () => passedLog,
     isPassed: (id) => passed.has(id),
+    /**
+     * 旅を終えた扱いを解く。
+     *
+     * 旅の記録を閉じたとき（＝まだ乗っていると本人が言ったとき）と、
+     * 区間を選び直したときに呼ぶ。
+     */
+    resume() { finished = false; },
   };
 }
 
@@ -1913,7 +2368,13 @@ function watchPosition(trip) {
 // そのため「この地点はよく見える」とは書かず、その日の空模様だけを伝える。
 // ------------------------------------------------------------------
 
-const JMA_CHIBA = 'https://www.jma.go.jp/bosai/forecast/data/forecast/120000.json';
+/*
+ * 予報の区分は路線ごとに違う（銚子電鉄なら千葉県、有楽町線なら東京都）。
+ * どの区分を引くかは data/lines.json の weatherArea に書いてある。
+ */
+function forecastUrl() {
+  return `https://www.jma.go.jp/bosai/forecast/data/forecast/${currentLine.weatherArea}.json`;
+}
 
 /** 天気の言葉から、車窓のひとことを選ぶ */
 function windowHint(weather) {
@@ -1929,7 +2390,7 @@ function windowHint(weather) {
  * 取れなければ例外を投げる（呼び出し側で「わからない」として扱う）。
  */
 async function fetchTodayWeather() {
-  const forecast = await loadJson(JMA_CHIBA);
+  const forecast = await loadJson(forecastUrl());
 
   // 銚子は「北東部」。見つからなければ最初の区分を使う。
   const areas = forecast[0].timeSeries[0].areas;
@@ -1999,7 +2460,14 @@ function createSpotCard(screenElement, view, getWeather) {
   function open(spot, anchor) {
     openedId = spot.id;
 
-    themeElement.textContent = spot.theme;
+    /*
+     * テーマの札には、絞り込みボタンと同じ絵を添える。
+     * ボタンから文字を外したので、絵とテーマ名が結びつく場所がここになる。
+     */
+    themeElement.replaceChildren(
+      diamondMark(THEME_GLYPHS[spot.theme], THEMES[spot.theme].color, 'card-theme-mark'),
+      document.createTextNode(spot.theme)
+    );
     themeElement.style.setProperty('--card-color', THEMES[spot.theme].color);
     nameElement.textContent = spot.name;
     placeElement.textContent = spot.location;
@@ -2074,17 +2542,109 @@ function createSpotCard(screenElement, view, getWeather) {
 }
 
 // ------------------------------------------------------------------
+// どの路線を出すか（data/lines.json）
+//
+// 作品そのものが対象にしているのは銚子電鉄だけである（設計書 1 章）。
+// それでも路線を選べるようにしてあるのは、GPS まわりの振る舞い
+// （モードの切替、上り下りの判定、車窓側、通知の先行時間）を、
+// 銚子まで行かずに近くの路線で確かめるため。
+//
+// role が "test" の路線は試験用で、絶景スポットも時刻表も作り物である
+// （tools/make-test-line.js が作る）。作品の内容と取り違えないこと。
+//
+// 選んだ路線は localStorage に覚える。URL に ?line=... を付けると
+// そちらが優先される。現地で切り替えるときに使う。
+// ------------------------------------------------------------------
+
+const LINE_KEY = 'choshi-navi/line';
+
+/** いま出している路線。data/lines.json の 1 件がそのまま入る */
+let currentLine = null;
+
+async function resolveLine() {
+  const registry = await loadJson('data/lines.json');
+  const byId = new Map(registry.lines.map((line) => [line.id, line]));
+
+  const asked = new URLSearchParams(location.search).get('line');
+
+  let saved = null;
+  try {
+    saved = localStorage.getItem(LINE_KEY);
+  } catch {
+    // 覚えられないブラウザでも、既定の路線で動く
+  }
+
+  const line =
+    byId.get(asked) || byId.get(saved) || byId.get(registry.default) || registry.lines[0];
+
+  try {
+    localStorage.setItem(LINE_KEY, line.id);
+  } catch {
+    // 覚えられなくても、今回の表示には困らない
+  }
+
+  return { registry, line };
+}
+
+/*
+ * 路線名を出す。路線が 2 つ以上あるときだけ、押して切り替えられるようにする。
+ *
+ * 切り替えは読み込み直しで行う。地形・線路・駅・絶景スポット・時刻表・
+ * 陰影の絵まで全部が入れ替わるうえ、地図の縮尺も路線の大きさから決めている。
+ * 部分的に差し替えるより、読み直すほうが確かで、書く量も少ない。
+ * 試験用の仕掛けに、作品側の複雑さを持ち込まない。
+ */
+function setUpLineSwitch(registry, line) {
+  const label = document.getElementById('line-name');
+  if (!label) return;
+
+  label.textContent = line.name;
+
+  // 路線が 1 つしかないなら、ただの文字のままにする。
+  // 押せないものを押せるように見せない。
+  if (registry.lines.length < 2) return;
+
+  const index = registry.lines.findIndex((l) => l.id === line.id);
+  const next = registry.lines[(index + 1) % registry.lines.length];
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'line-name';
+  button.id = 'line-name';
+  button.textContent = line.name;
+  button.setAttribute('aria-label', `路線を切り替える。いまは ${line.name}、押すと ${next.name}`);
+
+  button.addEventListener('click', () => {
+    try {
+      localStorage.setItem(LINE_KEY, next.id);
+    } catch {
+      // 覚えられないブラウザでも、下の ?line= で伝わる
+    }
+    // ?line= が残っていると保存した値より優先されるので、こちらも書き換える
+    const url = new URL(location.href);
+    url.searchParams.set('line', next.id);
+    location.href = url.toString();
+  });
+
+  label.replaceWith(button);
+}
+
+// ------------------------------------------------------------------
 // 組み立て
 // ------------------------------------------------------------------
 
 async function main() {
   const mapElement = document.getElementById('map');
 
+  // 路線が決まらないとデータの置き場所も決まらないので、これだけ先に読む
+  const { registry, line } = await resolveLine();
+  currentLine = line;
+
   const [terrain, route, spotsFile, schedule] = await Promise.all([
-    loadJson('data/terrain.json'),
-    loadJson('data/route.json'),
-    loadJson('data/spots.json'),
-    loadJson('data/schedule.json'),
+    loadJson(`${line.dir}/terrain.json`),
+    loadJson(`${line.dir}/route.json`),
+    loadJson(`${line.dir}/spots.json`),
+    loadJson(`${line.dir}/schedule.json`),
   ]);
 
   const project = makeProjection(terrain.projection);
@@ -2148,8 +2708,29 @@ async function main() {
    * 画面は 4 倍に引き伸ばされているので、見た目の大きさは変わらない。
    * 初期表示では k = 1 なので、拡大縮小を足す前とまったく同じ見た目になる。
    */
-  function onViewChange(k, zoom) {
+  const updateScaleBar = createScaleBar(terrain.projection);
+
+  /** 前回この処理をやりきったときの倍率。同じなら、やり直す必要がない */
+  let appliedK = null;
+
+  function onViewChange(k, zoom, unitsPerPixel) {
     currentK = k;
+
+    /*
+     * 倍率が変わっていない ── つまり、ただ地図を動かしただけなら、
+     * ここから下はぜんぶ要らない。
+     *
+     * 下でやっているのは「画面上の大きさを変えないための作り直し」で、
+     * どれも倍率だけで決まる。指で動かしているあいだ毎フレームやると、
+     * 17 個の要素の transform 書き換え・--k の書き換え（これは地図の中で
+     * calc(var(--k)) を使っているすべての線と文字の再計算を呼ぶ）・
+     * 陸の影のぼかし幅の書き換えが、動かすたびに走る。
+     * パンは指で触るいちばん多い操作なので、ここが効く。
+     */
+    if (k === appliedK) return;
+    appliedK = k;
+
+    updateScaleBar(unitsPerPixel);
     for (const element of scalables) setScaleTransform(element, k);
 
     // 線の太さと文字の大きさは CSS 側で calc() を使って合わせる
@@ -2175,6 +2756,18 @@ async function main() {
 
   // 地図が動かせる状態になったので、読み込み中の表示を退ける
   document.getElementById('loading').hidden = true;
+
+  // 題・路線名・区間・出典の帯。ふだんは畳んでおく
+  const chrome = createChrome();
+
+  // 路線名。2 路線以上あれば、ここが切り替えのボタンになる
+  setUpLineSwitch(registry, line);
+
+  // 右下のボタンと方位・縮尺を、下の帯の高さに合わせて置く
+  trackBottomBar(document.querySelector('.screen'));
+
+  // 指で地図を触っているあいだ、重い装飾を落とす
+  const motion = createMotionFlag(document.querySelector('.screen'));
 
   // --- 絶景スポットを押すと出る下敷き ---
 
@@ -2219,8 +2812,9 @@ async function main() {
       // 何もないところを押したら閉じる
       card.close();
       originCard.close();
+      chrome.hide();
     }
-  });
+  }, motion);
 
   // キーボードでも開けるようにする（バッジは role="button" にしてある）
   for (const spotElement of spotsLayer.querySelectorAll('.spot')) {
@@ -2294,9 +2888,15 @@ async function main() {
 
   /** 選び直すときに開く。初回（未設定）は閉じるボタンを出さない（スキップさせないため） */
   function openPlanSetup() {
-    if (currentPlan) {
-      planBoard.value = currentPlan.board;
-      planAlight.value = currentPlan.alight;
+    /*
+     * 日をまたいで聞き直すときも、前回の区間を入れておく。
+     * 毎日おなじ区間で通う人に、同じ駅を選び直させないため。
+     * 同じでよければ「決定」を押すだけで済む。
+     */
+    const filled = currentPlan || loadSavedPlan();
+    if (filled) {
+      planBoard.value = filled.board;
+      planAlight.value = filled.alight;
     }
     planClose.hidden = !currentPlan;
     updatePlanValidity();
@@ -2308,6 +2908,8 @@ async function main() {
     savePlan(plan);
     updatePlanChip();
     if (stationPanel) stationPanel.refresh();
+    // 区間を選び直したら、それは次の旅。前の旅の「終わった」札を下ろす
+    if (trip) trip.resume();
   }
 
   planBoard.addEventListener('change', updatePlanValidity);
@@ -2332,13 +2934,24 @@ async function main() {
   // --- 出典（設計書 8.3）---
 
   const credits = document.getElementById('credits');
+
+  /*
+   * 出典を開けるのは、上の帯の中の「出典」からだけ。つまりここへ来るときは
+   * 帯が出ている。読んでいるあいだに帯がひとりでに畳まれないよう時計を止め、
+   * 閉じたところで数え直す。帯を新たに出しているわけではない。
+   */
   document.getElementById('credits-open')
-    .addEventListener('click', () => { credits.hidden = false; });
-  document.getElementById('credits-close')
-    .addEventListener('click', () => { credits.hidden = true; });
+    .addEventListener('click', () => { credits.hidden = false; chrome.hold(); });
+
+  function closeCredits() {
+    credits.hidden = true;
+    chrome.foldLater();
+  }
+
+  document.getElementById('credits-close').addEventListener('click', closeCredits);
   // 外側を押しても閉じる。読み終えたらすぐ地図へ戻れるように
   credits.addEventListener('click', (event) => {
-    if (event.target === credits) credits.hidden = true;
+    if (event.target === credits) closeCredits();
   });
 
   // --- 発車待ち（設計書 4.2）と車上モード（設計書 4.3）---
@@ -2401,6 +3014,9 @@ async function main() {
     setPlan,
     getK,
   });
+
+  // 記録を閉じたら、まだ乗っているとみなして車上モードへ戻れるようにする
+  journal.onClose(() => trip.resume());
 
   // 地図を指で動かしたら、現在位置を追うのをやめる（設計書 4.3）
   mapElement.addEventListener('pointerdown', () => trip.stopFollowing());

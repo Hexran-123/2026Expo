@@ -15,6 +15,18 @@
  *
  * 使い方:  node tools/fetch-hillshade.js
  *
+ * 書き出し先は data/source/ で、これは配信するファイルではない。
+ * 配信するのは data/terrain-hillshade.webp のほう。
+ *
+ *   PNG  1,447KB  ←  この道具が書き出すもの（data/source/）
+ *   WebP   241KB  ←  実際に配信するもの（data/）
+ *
+ * これ 1 枚が初回読み込みの 84% を占めていて、駅でモバイル回線で開く作品に
+ * とっては重すぎた。不透明度 0.85 で重ねる背景の陰影なので、WebP の劣化は
+ * 目に見えない。この道具は依存パッケージなしの Node で書いてあり
+ * （ADR-0002）、WebP を書き出せないので、変換は別の一手にしてある。
+ * 手順は README.md を参照。
+ *
  * 出典: 国土地理院 陰影起伏図タイル
  *       https://maps.gsi.go.jp/development/ichiran.html#hillshademap
  */
@@ -23,12 +35,30 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'route.json');
+/*
+ * 使い方:  node tools/fetch-hillshade.js [出力先.png] [route.json] [縮尺]
+ *
+ * 引数はどれも省略できる。省略したときは銚子電鉄のときの値になるので、
+ * 今までの `node tools/fetch-hillshade.js` はそのまま同じ結果になる。
+ *
+ * 縮尺を変えられるようにしてあるのは、路線の長さで必要な枚数が変わるため。
+ * 銚子電鉄（6.4km）は縮尺16で 216 枚。有楽町線（28.4km）だと 1890 枚になり、
+ * 貼り合わせた絵が 1.15 億画素まで膨らんで現実的でない。長い路線では
+ * 縮尺を落とす。画面に映る細かさは、路線が長いぶん引いて見るので大きく変わらない。
+ */
 const OUT_PATH = process.argv[2]
   ? path.resolve(process.argv[2])
-  : path.join(__dirname, '..', 'data', 'terrain-hillshade.png');
+  : path.join(__dirname, '..', 'data', 'source', 'terrain-hillshade.png');
+const ROUTE_PATH = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(__dirname, '..', 'data', 'choshi', 'route.json');
 
-const ZOOM = 16;
+const ZOOM = process.argv[4] ? Number(process.argv[4]) : 16;
+
+if (!Number.isInteger(ZOOM) || ZOOM < 8 || ZOOM > 18) {
+  console.error(`縮尺が変（${process.argv[4]}）。8〜18 の整数で指定すること。`);
+  process.exit(1);
+}
 
 // data/source/elevation-grid.json（地形の色分けに使う標高データ）と
 // 同じ範囲になるよう、同じ余白を使う。
