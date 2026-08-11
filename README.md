@@ -78,6 +78,7 @@ data/
     route.json      路線の形と 10 駅の位置        ← 自動生成
     terrain.json    地形の濃淡                    ← 自動生成
     terrain-hillshade.webp  地形の陰影            ← 自動生成
+    preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
   yurakucho/        有楽町線（GPS を試すための試験用。中身は作り物）
@@ -104,9 +105,21 @@ data/
   source/             中間生成物（大きいものは .gitignore 済み）
 ```
 
-`data/lines.json` に路線が 2 つ以上あると、画面上部の帯（ⓘ で出る）の
-**路線名を押して切り替えられる**ようになる。1 つしかないときはただの文字のまま。
-URL に `?line=yurakucho` を付けても切り替わる。
+`data/lines.json` に路線が 2 つ以上あると、こうなる。
+
+- **起動したとき、まだどれも選んでいなければ路線選択画面が出る。**
+  路線ごとに地形つきの小さな地図が並び、位置情報が取れれば現在地とそこからの距離も出る。
+  一度選べば覚えるので、二度目からは出ない。
+- 選び直すときは、画面上部の帯（ⓘ で出る）の**路線名を押す**。
+- URL に `?line=yurakucho` を付けても切り替わる。この場合は選択画面を出さない。
+
+路線が 1 つしかないときは選択画面も切り替えボタンも出ない（路線名はただの文字）。
+応募時に試験用の路線を `lines.json` から外せば、自動的にその状態になる。
+
+選択画面が読むのは `data/<路線>/preview.json` だけ。地図画面が使う `terrain.json` と
+`route.json` をそのまま読むと二路線で 302 KB（gzip 112 KB）あり、まだ何も選んでいない
+画面としては重い。`preview.json` は輪郭を必要なぶんまで粗くしたもので、二路線あわせて
+47 KB（gzip 21 KB）。陰影起伏図はこの画面では読まない。
 
 有楽町線は**作品の対象ではない**。絶景スポットも時刻表も `tools/make-test-line.js` が
 作った作り物で、中身に意味はない。作品が対象にしているのは銚子電鉄だけ（設計書 1 章）。
@@ -130,7 +143,35 @@ node tools/fetch-hillshade.js      国土地理院の陰影起伏図タイルを
 
 node tools/fetch-features.js       工場・農地・海岸線を取ってくる
 node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計算する
+
+node tools/build-preview.js        路線選択画面に出す小さな地図を作る
+                                   （terrain.json か route.json を作り直したら、これも作り直す）
 ```
+
+### サーバーなしで見せる 1 枚を作る
+
+この作品は `data/*.json` を `fetch` で読むので `file://` では動かない。
+見てもらうたびに「サーバーを立ててください」と言うのは重いので、
+CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
+
+```
+demo/choshi.html      銚子電鉄（作品そのもの）  0.66 MB
+demo/yurakucho.html   有楽町線（試験用）        2.14 MB
+```
+
+**ダブルクリックで開くだけで動く。**通信は一切しない。
+走行は本体付属のシミュレーター（`?demo=1` と同じ）なので、乗らなくても
+車上モード・通知・成因カードまで見られる。
+
+作り直すとき:
+
+```
+node tools/build-demo.js choshi    demo/choshi.html
+node tools/build-demo.js yurakucho demo/yurakucho.html
+```
+
+`css/`・`js/`・`data/` を直したら作り直すこと。**`demo/*.html` を手で直さない。**
+路線 id に `all` を渡すと両方入った 1 枚になり、路線選択画面も出る。
 
 `fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
 別の路線を作るときだけ引数を渡す（下記）。
