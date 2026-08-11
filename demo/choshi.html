@@ -2567,17 +2567,31 @@ Element.prototype.setAttributeNS = function (ns, name, value) {
  * 本体は URL の ?demo=1 を見て走行シミュレーターに切り替える。
  * 1 枚の HTML を直接開く使い方では URL に引数を付けられないので、
  * 読み取り口のほうを差し替える。
+ *
+ * demo=1 を足すだけにして、URL に元からある引数は残す。
+ * 丸ごと 'demo=1' に置き換えていたころは ?line= が消えていたので、
+ * 路線名を押して切り替えても（本体は ?line= を付けて読み直す）
+ * 行き先が伝わらず、そのつど路線選択画面に戻っていた。
  */
 const RealParams = window.URLSearchParams;
 window.URLSearchParams = function (init) {
-  if (init === window.location.search || init === '' || init === undefined) init = 'demo=1';
-  return new RealParams(init);
+  const params = new RealParams(init === undefined ? '' : init);
+  if (init === window.location.search || init === '' || init === undefined) {
+    params.set('demo', '1');
+  }
+  return params;
 };
 window.URLSearchParams.prototype = RealParams.prototype;
 
 
-/* 開くたびに最初の画面から始める */
-try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
+/*
+ * 開くたびに最初の画面から始める。
+ * ただし ?line= を付けて開いたとき（路線名を押して切り替えた直後）は、
+ * 選び直させない。行き先はもう決まっている。
+ */
+if (!/[?&]line=/.test(location.search)) {
+  try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
+}
 </script>
 <script>/* === js/schedule.js === */
 /*
@@ -5488,7 +5502,15 @@ function today() {
 function loadSavedPlan() {
   try {
     const saved = localStorage.getItem(PLAN_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const plan = saved ? JSON.parse(saved) : null;
+    /*
+     * 別の路線で決めた区間は、この路線には無い駅でできている。
+     * 路線を切り替えたあと、これを持ち越していたころは、銚子電鉄の地図に
+     * 「和光市→平和台」の区間が出たまま、区間の設定も聞かれなかった。
+     * 路線名を書いていない古い記録は、路線が 1 つだったころのものなので通す。
+     */
+    if (plan && plan.line && currentLine && plan.line !== currentLine.id) return null;
+    return plan;
   } catch {
     return null;
   }
@@ -5507,8 +5529,12 @@ function loadPlan() {
 
 function savePlan(plan) {
   try {
-    // 日付を添える。翌日に開いたときは、これを見て聞き直す（loadPlan）
-    localStorage.setItem(PLAN_KEY, JSON.stringify({ ...plan, date: today() }));
+    // 日付と路線を添える。翌日に開いたときは日付を見て聞き直し（loadPlan）、
+    // 別の路線に切り替えたときは路線を見て捨てる（loadSavedPlan）
+    localStorage.setItem(
+      PLAN_KEY,
+      JSON.stringify({ ...plan, date: today(), line: currentLine ? currentLine.id : undefined })
+    );
   } catch {
     // 保存できない設定のブラウザでも、その場での動きは変えない
   }

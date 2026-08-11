@@ -176,17 +176,31 @@ ${USE_GPS ? `
  * 本体は URL の ?demo=1 を見て走行シミュレーターに切り替える。
  * 1 枚の HTML を直接開く使い方では URL に引数を付けられないので、
  * 読み取り口のほうを差し替える。
+ *
+ * demo=1 を足すだけにして、URL に元からある引数は残す。
+ * 丸ごと 'demo=1' に置き換えていたころは ?line= が消えていたので、
+ * 路線名を押して切り替えても（本体は ?line= を付けて読み直す）
+ * 行き先が伝わらず、そのつど路線選択画面に戻っていた。
  */
 const RealParams = window.URLSearchParams;
 window.URLSearchParams = function (init) {
-  if (init === window.location.search || init === '' || init === undefined) init = 'demo=1';
-  return new RealParams(init);
+  const params = new RealParams(init === undefined ? '' : init);
+  if (init === window.location.search || init === '' || init === undefined) {
+    params.set('demo', '1');
+  }
+  return params;
 };
 window.URLSearchParams.prototype = RealParams.prototype;
 `}
 
-/* 開くたびに最初の画面から始める */
-try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
+/*
+ * 開くたびに最初の画面から始める。
+ * ただし ?line= を付けて開いたとき（路線名を押して切り替えた直後）は、
+ * 選び直させない。行き先はもう決まっている。
+ */
+if (!/[?&]line=/.test(location.search)) {
+  try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
+}
 `;
 
 /*

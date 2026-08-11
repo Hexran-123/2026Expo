@@ -155,18 +155,25 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/choshi.html         銚子電鉄（作品そのもの）      0.66 MB
-demo/yurakucho.html      有楽町線（試験用）            2.14 MB
-demo/yurakucho-gps.html  有楽町線・実機の位置情報版    2.12 MB
+demo/all.html            両路線（路線選択画面から始まる）2.54 MB
+demo/choshi.html         銚子電鉄（作品そのもの）      0.67 MB
+demo/yurakucho.html      有楽町線（試験用）            2.15 MB
+demo/yurakucho-gps.html  有楽町線・実機の位置情報版    2.13 MB
 ```
 
 **ダブルクリックで開くだけで動く。**通信は一切しない。
 走行は本体付属のシミュレーター（`?demo=1` と同じ）なので、乗らなくても
 車上モード・通知・成因カードまで見られる。
 
+`demo/all.html` だけは**路線選択画面から始まる**。人に見せるならこれ。
+開くたびに選び直せるよう、覚えた路線は開いたときに忘れる。
+地図に入ったあとも、上の帯の路線名を押せば切り替えられる（読み込み直しになる）。
+1 路線だけの 3 枚は、選ぶ余地が無いので選択画面を出さない。
+
 作り直すとき:
 
 ```
+node tools/build-demo.js all       demo/all.html
 node tools/build-demo.js choshi    demo/choshi.html
 node tools/build-demo.js yurakucho demo/yurakucho.html
 node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
@@ -193,8 +200,7 @@ node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
 スマートフォンで試すときは `file://` ではなく、GitHub Pages
 （<https://hexran-123.github.io/2026Expo/>）などの https 経由で開くこと。
 
-`css/`・`js/`・`data/` を直したら作り直すこと。**`demo/*.html` を手で直さない。**
-路線 id に `all` を渡すと両方入った 1 枚になり、路線選択画面も出る。
+`css/`・`js/`・`data/` を直したら 4 枚とも作り直すこと。**`demo/*.html` を手で直さない。**
 
 `fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
 別の路線を作るときだけ引数を渡す（下記）。
