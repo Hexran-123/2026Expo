@@ -19,13 +19,26 @@
   --theme-sea-sub:     #7FC4D9;
 
   /* --- 地形の濃淡（設計書 5.2）---
-     台地は濃く、低地は淡く、水域は青。等高線も数値も出さない。 */
-  --land-0:  #F3EBD8;  /* 低地・沖積地（銚子駅のあたり） */
-  --land-8:  #E7DFC3;
-  --land-16: #D7D6AC;
-  --land-24: #C2CB97;  /* 台地の上（キャベツ畑） */
-  --land-32: #A9BC80;
-  --land-45: #90AC6B;  /* 愛宕山まわり */
+     台地は濃く、低地は淡く、水域は青。等高線も数値も出さない。
+
+     色の順番は国土地理院の色別標高図にそろえてある。
+     低い＝緑 → 黄 → 橙 → 茶＝高い。日本の地図帳の段彩と同じ向き。
+
+     区分（0/8/16/24/32/45m）は tools/build-terrain.js の BANDS そのもので、
+     路線ごとに変わらない絶対値。24m は銚子でも有楽町線でも同じ色になる。
+
+     地理院の標準区分（最下位が 0〜100m）をそのまま当てられないのは、
+     この作品の全域がその 1 階級に収まるため（銚子 最高 73.6m、
+     有楽町線 54.1m、100m 超は両線とも 0.00%）。全面が単色になって
+     地形が消えてしまう。そこで区分だけ作品の範囲に合わせている。
+     地理院の「自分で作る色別標高図」と同じ考え方。
+     詳しくは ai/artifacts/路線の切り替え/mockup-decision-路線選択.md。 */
+  --land-0:  #E2EACB;  /* 低地・沖積地（銚子駅のあたり） */
+  --land-8:  #D2E0B4;
+  --land-16: #C6D69C;
+  --land-24: #C7CC85;  /* 台地の上（キャベツ畑） */
+  --land-32: #C9B96D;
+  --land-45: #C29A5A;  /* 愛宕山まわり */
   --water:   #9DC3D7;
 
   /* --- 路線 --- */
@@ -33,6 +46,15 @@
   --station: #FFFFFF;
 
   /* --- 枠組み --- */
+  /*
+   * 画面の「紙」の色。ダイアログや旅の記録の地に使う。
+   *
+   * もとは --land-0 を流用していたが、地形の色を地理院の段彩に合わせて
+   * 低地＝緑にしたときに、地図とは関係のないダイアログまで緑になった。
+   * 地図の色と画面の紙は別のものなので、ここで分けてある。
+   * 値は段彩を変える前の --land-0 と同じ。
+   */
+  --paper:   #F3EBD8;
   --panel:   rgba(255, 255, 255, 0.82);
   /*
    * すりガラスをやめているあいだ（地図を指で動かしている数百ミリ秒）の
@@ -44,6 +66,19 @@
   --ink-soft:#6B6862;
 
   --radius:  14px;
+
+  /* --- 書体 ---
+     Webフォントは使わない（ADR-0002）。端末に入っているものだけで組む。
+
+     --font-body    角ゴシック。本文と画面の枠組み。
+     --font-map     丸みのある字体。地図の駅名と、地図を見せる画面の見出し。
+                    BIZ UDPGothic は Windows 10/11 標準のUDフォント、
+                    Hiragino Maru Gothic ProN は macOS/iOS 標準。
+                    どちらも無ければ --font-body と同じ列に落ちる。 */
+  --font-body: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+               "Noto Sans JP", "Meiryo", sans-serif;
+  --font-map:  "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic",
+               "Noto Sans JP", "Meiryo", sans-serif;
 }
 
 /* ------------------------------------------------------------------
@@ -70,8 +105,7 @@ body {
   margin: 0;
   background: #24262B;
   color: var(--ink);
-  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
-               "Noto Sans JP", "Meiryo", sans-serif;
+  font-family: var(--font-body);
   /* 揺れる車内でも読めるように、文字は小さくしすぎない */
   font-size: 15px;
   line-height: 1.6;
@@ -91,7 +125,14 @@ body {
   max-height: 932px;
   margin: 0 auto;
   overflow: hidden;
-  background: var(--water);
+  /*
+   * 地形データの外側に出る色。
+   * ここを水色にしていたころは、標高を調べていない範囲まで海に見えた
+   * （有楽町線は東西に長く、縦長の画面では上下が大きく余る）。
+   * 「調べていない」と「海」は別のことなので、地は紙の色にする。
+   * 本物の海は js/main.js が .map-sea の四角で塗る。
+   */
+  background: var(--paper);
 }
 
 @media (min-height: 960px) {
@@ -140,7 +181,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: var(--water);
+  /* 消えた瞬間に地の色が変わって見えないよう、.screen と同じにする */
+  background: var(--paper);
 }
 
 .loading-spinner {
@@ -180,6 +222,15 @@ body {
 }
 
 /* --- 地形。低いほうから順に上へ重ねて塗る --- */
+
+/*
+ * 標高を調べた範囲。海はこの色が帯の隙間から透けることで描かれる。
+ * この四角の外は「調べていない」ので、海の色では塗らない。
+ */
+.map-sea {
+  fill: var(--water);
+}
+
 .band {
   stroke: none;
 }
@@ -237,14 +288,10 @@ body {
 
 .station-label {
   /*
-   * 丸みのある字体を先に置く。角ゴシック（Hiragino Kaku Gothic ProN が
-   * body の既定）は駅名だけ浮いて見えるため、ここだけ地図の柔らかい配色に
-   * 馴染む書体にする。BIZ UDPGothic は Windows 10/11 に標準搭載のUDフォント、
-   * Hiragino Maru Gothic ProN は macOS/iOS 標準。どちらも無ければ body と
-   * 同じフォールバック列に落ちる（Webフォントは使わない。ADR-0002）。
+   * 丸みのある字体。角ゴシック（--font-body）だと駅名だけ浮いて見えるので、
+   * ここは地図の柔らかい配色に馴染む書体にする。
    */
-  font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic",
-               "Noto Sans JP", "Meiryo", sans-serif;
+  font-family: var(--font-map);
   font-size: 17px;
   font-weight: 600;
   fill: var(--ink);
@@ -824,7 +871,7 @@ button.line-name:active {
   max-width: 360px;
   max-height: 80vh;
   overflow-y: auto;
-  background: var(--land-0);
+  background: var(--paper);
   border-radius: var(--radius);
   padding: 28px 22px 22px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
@@ -1459,6 +1506,60 @@ button.line-name:active {
   line-height: 1.75;
 }
 
+/*
+ * 累積人気の記章（ADR-0004）。一コマ目の頭にだけ出る。
+ *
+ * 遅れて差し込まれるので、開きながら現れるようにしてある。
+ * いきなり足すと、読んでいる本文が下へ飛ぶ。
+ *
+ * 届かなければこの要素は作られない。空の枠は残さない（設計書 9.3）。
+ */
+.origin-badge {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.24s ease, opacity 0.24s ease, margin-bottom 0.24s ease;
+}
+
+.origin-badge--in {
+  max-height: 24px;
+  opacity: 1;
+  margin-bottom: 10px;
+}
+
+.origin-badge-marks {
+  display: inline-flex;
+  gap: 3px;
+}
+
+/*
+ * 段の数だけ並ぶひし形。地図の絶景スポットバッジと同じ形にしてある。
+ * 不透明度と彩度はテーマの絞り込みと天候にすでに使っているので、
+ * ここでは「数」だけで段を表す（ai/artifacts/利用者投稿/screen-spec 参照）。
+ */
+.origin-badge-marks i {
+  width: 8px;
+  height: 8px;
+  background: var(--card-color, var(--ink-soft));
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .origin-badge {
+    transition: none;
+  }
+}
+
 .origin-foot {
   margin: 14px 18px 0;
   padding-top: 12px;
@@ -1518,7 +1619,7 @@ button.line-name:active {
   z-index: 10;
   display: flex;
   flex-direction: column;
-  background: var(--land-0);
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -1588,7 +1689,7 @@ button.line-name:active {
   position: relative;
   font-size: 12px;
   color: var(--ink-soft);
-  background: var(--land-0);
+  background: var(--paper);
   padding: 0 4px;
   flex: none;
 }
@@ -1658,6 +1759,235 @@ button.line-name:active {
 }
 
 /* ------------------------------------------------------------------
+   路線選択（開始画面）
+
+   路線が 2 つ以上あって、まだどれも選んでいないときだけ出す。
+   一度選べば覚えるので、二度目からは出ない。応募時に試験用の路線を
+   外せば data/lines.json は 1 件になり、この画面は自動的に出なくなる。
+
+   決定の経緯は ai/artifacts/路線の切り替え/mockup-decision-路線選択.md。
+   ------------------------------------------------------------------ */
+
+.line-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 25;                 /* 乗車区間の設定（20）より前に出す */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 32px 20px;
+  background: var(--paper);
+}
+
+.line-picker-inner {
+  width: 100%;
+  max-width: 390px;
+  margin: 0 auto;
+}
+
+/*
+ * 地図を見せる画面なので、見出しと路線名は地図の駅名と同じ丸ゴシックにする。
+ * 角ゴシックのままだと、下に並ぶ地図と字が別のものに見える。
+ */
+.line-picker-title {
+  margin: 0 0 6px;
+  font-family: var(--font-map);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.line-picker-hint {
+  margin: 0 0 22px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/*
+ * 路線のカード。1 枚が 1 路線。
+ * 地図を角丸で切るので overflow: hidden、そのぶん padding は中の .line-card-body で持つ。
+ */
+.line-card {
+  display: block;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.line-card:active {
+  transform: scale(0.985);
+}
+
+.line-card:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* 試験用の路線を、作品の路線と同じ重みに見せない */
+.line-card--test {
+  opacity: 0.86;
+}
+
+/*
+ * プレビュー。
+ * preserveAspectRatio="…slice"（js/main.js が付ける）ではみ出しを切り、
+ * 枠をいつも地図で埋める。meet にすると路線の縦横比のぶん余白が出る。
+ */
+/*
+ * 画面の高さに合わせて縮める。
+ *
+ * 162px 固定だと iPhone SE（高さ 667px）で 40px はみ出し、
+ * 凡例が下に隠れて「絶対値だ」という根拠が見えなくなる。
+ * 20vh まで縮めると SE でもカード 2 枚と凡例が収まり、
+ * 背の高い端末では 162px で頭打ちになる。
+ */
+.line-preview {
+  display: block;
+  width: 100%;
+  height: clamp(112px, 18vh, 162px);
+  background: var(--water);
+}
+
+/* 背の低い端末では、画面の上下の余白も詰める */
+@media (max-height: 720px) {
+  .line-picker { padding: 18px 20px; }
+  .line-picker-title { font-size: 20px; }
+  .line-picker-hint { margin-bottom: 14px; }
+}
+
+/* プレビューが来るまでの場所取り。カードの高さが動かないようにする */
+.line-preview--empty {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.line-preview-rail {
+  fill: none;
+  stroke: var(--rail);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line-preview-halo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line-preview-stop {
+  fill: var(--station);
+  stroke: var(--rail);
+  stroke-width: 1.4;
+}
+
+.line-preview-end {
+  fill: var(--rail);
+}
+
+/* 現在地。地図の中の点 */
+.line-here-ring { fill: none; stroke: #FFFFFF; stroke-width: 3; }
+.line-here-dot  { fill: var(--theme-sea); }
+.line-here-wave { fill: none; stroke: var(--theme-sea); stroke-width: 2.5; opacity: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .line-here-wave { animation: line-here-pulse 2.2s ease-out infinite; }
+}
+
+@keyframes line-here-pulse {
+  0%   { r: 6;  opacity: 0.75; }
+  100% { r: 26; opacity: 0; }
+}
+
+.line-card-body {
+  padding: 13px 17px 15px;
+}
+
+.line-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.line-card-name {
+  font-family: var(--font-map);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.line-card-badge {
+  padding: 2px 8px;
+  border: 1px solid var(--ink-soft);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.line-card-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* 現在地が分かったときだけ出す一行 */
+.line-card-here {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.line-card-here--near {
+  color: var(--theme-sea);
+  font-weight: 600;
+}
+
+/* 標高の凡例。絶対値だと言う以上、根拠を画面に出す */
+.line-legend {
+  margin: 18px 0 0;
+}
+
+.line-legend-title {
+  margin: 0 0 5px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.line-legend-bar {
+  display: flex;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.line-legend-cell {
+  flex: 1;
+  height: 12px;
+}
+
+.line-legend-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  /* 目盛りの数字。桁の幅をそろえて、色帯の区切りと縦にそろうようにする */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------
    乗車区間の設定（feature-spec「乗車区間の設定」US1）
 
    保存された区間が無ければ、地図より先にこれを画面いっぱいに出す。
@@ -1680,7 +2010,7 @@ button.line-name:active {
   position: relative;
   width: 100%;
   max-width: 360px;
-  background: var(--land-0);
+  background: var(--paper);
   border-radius: var(--radius);
   padding: 28px 22px 22px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);

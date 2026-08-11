@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>路線選択 — 変体C（新画面を作らない）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: #6E8A93;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+  }
+  .sheet { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 32px 20px; box-sizing: border-box; }
+  .lead-note {
+    font-size: 13px; color: #EAE4D6; line-height: 1.7; margin: 0 0 24px;
+    background: rgba(0,0,0,0.22); padding: 12px 14px; border-radius: 10px;
+  }
+  .lead-note strong { color: #fff; }
+  .foot { font-size: 12px; color: #EAE4D6; line-height: 1.7; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <p class="lead-note">
+    変体C ─ <strong>新しい画面を作らない。</strong>いまも起動時に出ている「どこからどこまで乗りますか？」
+    のダイアログ（<code>index.html</code> の <code>.plan-card</code>）に、路線の行を 1 つ足すだけ。
+    手数は増えず、読み込みも <code>lines.json</code> の 1 KB しか増えない。地図のプレビューは出せない。
+  </p>
+
+  <!-- 既存の .plan / .plan-card をそのまま使う（新しい元件を作らない） -->
+  <section class="plan" style="position:static; background:none; padding:0;">
+    <div class="plan-card">
+      <h2 class="plan-title">どこから どこまで 乗りますか？</h2>
+      <p class="plan-hint">区間に合わせて、時刻表・見どころ・通知を絞ります。</p>
+
+      <!-- ★ ここが増える行。既存の .plan-field をそのまま使う -->
+      <label class="plan-field">
+        路線
+        <select id="line" aria-label="路線"></select>
+      </label>
+
+      <label class="plan-field">
+        乗る駅
+        <select id="board" aria-label="乗る駅"></select>
+      </label>
+      <label class="plan-field">
+        降りる駅
+        <select id="alight" aria-label="降りる駅"></select>
+      </label>
+      <p class="plan-error" id="err" hidden>同じ駅は選べません。</p>
+      <button type="button" class="plan-submit" id="go">決定</button>
+    </div>
+  </section>
+
+  <p class="foot" id="weight">読み込み中…</p>
+</div>
+
+<script>
+let bytes = 0;
+async function load(path) {
+  const res = await fetch('/' + path);
+  const text = await res.text();
+  bytes += text.length;
+  return JSON.parse(text);
+}
+
+const lineSelect = document.getElementById('line');
+const board = document.getElementById('board');
+const alight = document.getElementById('alight');
+const err = document.getElementById('err');
+let registry = null;
+
+/*
+ * 路線を変えると駅の一覧も入れ替わる。
+ * 駅を出すには route.json が要るので、選んだ路線のぶんだけ読む。
+ * 開いた時点では 1 路線ぶんしか読まない——これが変体 A・B との違い。
+ */
+async function fillStations(line) {
+  board.innerHTML = '<option>読み込み中…</option>';
+  alight.innerHTML = '';
+  const route = await load(line.dir + '/route.json');
+  const options = route.stations.map((s) => `<option>${s.name}</option>`).join('');
+  board.innerHTML = options;
+  alight.innerHTML = options;
+  alight.selectedIndex = route.stations.length - 1;
+  check();
+  document.getElementById('weight').textContent =
+    `ここまでに読んだ量: ${(bytes / 1024).toFixed(0)} KB（地形も陰影も読んでいない）`;
+}
+
+function check() {
+  const same = board.value === alight.value;
+  err.hidden = !same;
+  document.getElementById('go').disabled = same;
+}
+
+board.addEventListener('change', check);
+alight.addEventListener('change', check);
+
+lineSelect.addEventListener('change', () => {
+  fillStations(registry.lines[lineSelect.selectedIndex]);
+});
+
+document.getElementById('go').addEventListener('click', () => {
+  location.href = '/?line=' + registry.lines[lineSelect.selectedIndex].id;
+});
+
+(async () => {
+  registry = await load('data/lines.json');
+  lineSelect.innerHTML = registry.lines
+    .map((l) => `<option>${l.name}${l.role === 'test' ? '（試験用）' : ''}</option>`)
+    .join('');
+  await fillStations(registry.lines[0]);
+})();
+</script>
+</body>
+</html>

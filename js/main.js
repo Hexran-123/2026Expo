@@ -362,6 +362,28 @@ function headingAt(route, points, distanceAlong) {
 /** 地形の濃淡を敷く。低いほうから順に上へ重ねる。 */
 function drawTerrain(container, terrain) {
   /*
+   * まず、標高を調べた範囲だけを水色で塗る。
+   *
+   * 海は「帯が無いところ」として、下地の色が透けることで描いている。
+   * その下地を画面いっぱいに敷いてしまうと、標高を調べていない範囲まで
+   * 海になる。銚子は路線が南北に長く画面とかたちが合うので目立たなかったが、
+   * 有楽町線は東西に長いため、縦長の画面では上下に大きく余る。そこが
+   * 一面の水色になり、内陸の東京が海に見えていた。
+   *
+   * この四角の外は「調べていない」であって「海」ではない。
+   * 外側は .screen の地の色（紙の色）がそのまま出る。
+   */
+  container.appendChild(
+    svg('rect', {
+      x: 0,
+      y: 0,
+      width: terrain.projection.width,
+      height: terrain.projection.height,
+      class: 'map-sea',
+    })
+  );
+
+  /*
    * いちばん下に、陸のかたちが海へ落とす影を敷く。
    * このあと帯を不透明で塗るので、陸の内側に入った影は隠れ、
    * 海側にはみ出したぶんだけが縁として残り、陸が一段高く見える。
@@ -392,17 +414,26 @@ function drawTerrain(container, terrain) {
    * これ 1 枚が初回読み込みの 84% を占めていた。駅でモバイル回線で開く作品なので、
    * ここは効く。もとが不透明度 0.85 で重ねる背景の陰影なので、劣化は目に見えない。
    */
-  container.appendChild(
-    svg('image', {
-      href: `${currentLine.dir}/terrain-hillshade.webp`,
-      x: 0,
-      y: 0,
-      width: terrain.projection.width,
-      height: terrain.projection.height,
-      preserveAspectRatio: 'none',
-      class: 'hillshade',
-    })
-  );
+  /*
+   * 陰影の絵を持たない路線では、この層そのものを作らない。
+   *
+   * 透明な絵を代わりに置いてはいけない。mix-blend-mode: overlay は
+   * 透明な絵に対しても働き、地形の色に色被りが出る（実際に、地図全体が
+   * ピンクがかった）。無いものは置かない。
+   */
+  if (currentLine.hillshade !== false) {
+    container.appendChild(
+      svg('image', {
+        href: `${currentLine.dir}/terrain-hillshade.webp`,
+        x: 0,
+        y: 0,
+        width: terrain.projection.width,
+        height: terrain.projection.height,
+        preserveAspectRatio: 'none',
+        class: 'hillshade',
+      })
+    );
+  }
 }
 
 /** 線路を引く */
@@ -1524,6 +1555,62 @@ function createOriginCard(screenElement) {
   backButton.addEventListener('click', () => scrollToPanel(currentIndex() - 1));
   nextButton.addEventListener('click', () => scrollToPanel(currentIndex() + 1));
 
+  /*
+   * 一コマ目に、これまで何人が読んだかの記章を出す（ADR-0004）。
+   *
+   * 待たせない。カードはもう出ていて、記章は届いたら足す。
+   * 届かなければ何も起きない——エラーも、空の枠も出さない（設計書 9.3）。
+   */
+  function showPopularity(spot) {
+    if (!global_Popularity()) return;
+
+    /*
+     * 試験用の路線では数えない。有楽町線の絶景スポットも時刻表も
+     * tools/make-test-line.js が作った作り物で、これを数に混ぜると
+     * 公開する数字が作品の実態を表さなくなる。
+     * （id の形が違うのでサーバー側でも弾かれるが、無駄に投げない）
+     */
+    if (!currentLine || currentLine.role !== 'product') return;
+
+    const firstPanel = panelsElement.firstElementChild;
+    if (!firstPanel) return;
+
+    Popularity.record(spot.id).then((opens) => {
+      // 待っているあいだに閉じられた・別のカードへ移った
+      if (openedId !== spot.id) return;
+
+      const level = Popularity.levelFor(opens);
+      // まだ 5 に届いていない。数が乏しいうちは何も言わない
+      if (level === 0) return;
+
+      const badge = document.createElement('p');
+      badge.className = 'origin-badge';
+      badge.style.setProperty('--card-color', THEMES[spot.theme].color);
+
+      // 段の数だけひし形を並べる。地図のバッジと同じ形で、
+      // 「この絶景の」印であることが読まなくても分かるようにする
+      const marks = document.createElement('span');
+      marks.className = 'origin-badge-marks';
+      marks.setAttribute('aria-hidden', 'true');
+      for (let i = 0; i < level; i += 1) marks.appendChild(document.createElement('i'));
+
+      /*
+       * 「のべ」を付けているのは、同じ人が日をまたいで開けば
+       * 二度数えるため。実人数ではない。
+       */
+      badge.append(marks, document.createTextNode(`のべ ${opens} 人が読んだ`));
+
+      firstPanel.insertBefore(badge, firstPanel.firstChild);
+      // 差し込んでから開かせる。読んでいる本文が急に下へ飛ぶのを避ける
+      requestAnimationFrame(() => badge.classList.add('origin-badge--in'));
+    });
+  }
+
+  /** js/popularity.js が読み込まれているか。消しても作品は動く */
+  function global_Popularity() {
+    return typeof Popularity !== 'undefined';
+  }
+
   function open(spot) {
     // 中身がまだ書かれていないスポットでは、空のカードを出さない
     if (!Array.isArray(spot.panels) || spot.panels.length === 0) return false;
@@ -1571,6 +1658,7 @@ function createOriginCard(screenElement) {
 
     panelsElement.scrollLeft = 0;
     updatePager();
+    showPopularity(spot);
 
     screenElement.classList.add('screen--carded');
     card.hidden = false;
@@ -2561,6 +2649,24 @@ const LINE_KEY = 'choshi-navi/line';
 /** いま出している路線。data/lines.json の 1 件がそのまま入る */
 let currentLine = null;
 
+function rememberLine(line) {
+  try {
+    localStorage.setItem(LINE_KEY, line.id);
+  } catch {
+    // 覚えられなくても、今回の表示には困らない
+  }
+}
+
+/*
+ * どの路線を出すかを決める。
+ *
+ * URL の ?line= か、前に選んだものがあればそれを使う。
+ * どちらも無く、路線が 2 つ以上あるときだけ line を null で返す。
+ * 呼び出し側はそのとき開始画面（路線選択）を出して、人に選んでもらう。
+ *
+ * 路線が 1 つしかないなら選ぶ余地が無いので、黙って決める。
+ * 応募時に試験用の路線を外せばこの状態になり、開始画面は出なくなる。
+ */
 async function resolveLine() {
   const registry = await loadJson('data/lines.json');
   const byId = new Map(registry.lines.map((line) => [line.id, line]));
@@ -2574,16 +2680,337 @@ async function resolveLine() {
     // 覚えられないブラウザでも、既定の路線で動く
   }
 
-  const line =
-    byId.get(asked) || byId.get(saved) || byId.get(registry.default) || registry.lines[0];
-
-  try {
-    localStorage.setItem(LINE_KEY, line.id);
-  } catch {
-    // 覚えられなくても、今回の表示には困らない
+  const decided = byId.get(asked) || byId.get(saved);
+  if (decided) {
+    rememberLine(decided);
+    return { registry, line: decided };
   }
 
+  if (registry.lines.length >= 2) {
+    return { registry, line: null };
+  }
+
+  const line = byId.get(registry.default) || registry.lines[0];
+  rememberLine(line);
   return { registry, line };
+}
+
+// ------------------------------------------------------------------
+// 路線選択（開始画面）
+//
+// 決定の経緯は ai/artifacts/路線の切り替え/mockup-decision-路線選択.md。
+//
+// 読むのは data/<路線>/preview.json だけ。地図画面が使う terrain.json と
+// route.json をそのまま読むと二路線で 302 KB（gzip 112 KB）あり、
+// まだ何も選んでいない画面としては重い。preview.json は輪郭を
+// 開始画面に要るぶんまで粗くしたもので、二路線あわせて gzip 21 KB。
+// 作るのは tools/build-preview.js。陰影起伏図はここでは読まない。
+// ------------------------------------------------------------------
+
+/** 開いた直後に、路線全体からどれだけ寄るか */
+const PICKER_ZOOM = 1.9;
+const PICKER_ZOOM_MS = 1500;
+
+/** 「この路線のそば」と言ってよい距離（m） */
+const PICKER_NEAR_METERS = 1000;
+
+function readableDistance(meters) {
+  if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+  if (meters < 10000) return `${(meters / 1000).toFixed(1)} km`;
+  return `${Math.round(meters / 1000)} km`;
+}
+
+/** 線路までの最短距離。駅間のどこに居ても「線からどれだけ離れているか」が出る */
+function metersToTrack(track, lat, lon) {
+  let best = Infinity;
+  for (const [pointLat, pointLon] of track) {
+    const d = distanceMeters(lat, lon, pointLat, pointLon);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+function svgEl(name, attributes) {
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const [key, value] of Object.entries(attributes)) {
+    element.setAttribute(key, value);
+  }
+  return element;
+}
+
+/*
+ * 1 路線ぶんの小さな地図を作る。
+ *
+ * preserveAspectRatio="…slice" にしてあるので、路線の縦横比と枠の縦横比が
+ * 違っても余白は出ず、はみ出したぶんが切れる。
+ */
+function buildLinePreview(preview) {
+  const { width, height, bounds } = preview.projection;
+  const toX = (lon) => ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * width;
+  const toY = (lat) => ((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * height;
+  const inside = (lat, lon) =>
+    lon >= bounds.minLon && lon <= bounds.maxLon && lat >= bounds.minLat && lat <= bounds.maxLat;
+
+  const svg = svgEl('svg', {
+    class: 'line-preview',
+    viewBox: `0 0 ${width} ${height}`,
+    preserveAspectRatio: 'xMidYMid slice',
+    role: 'img',
+  });
+
+  for (const band of preview.bands) {
+    svg.appendChild(svgEl('path', { class: `band band--${band.minElevation}`, d: band.path }));
+  }
+
+  const d = preview.track
+    .map(([lat, lon], i) => `${i === 0 ? 'M' : 'L'}${toX(lon).toFixed(1)} ${toY(lat).toFixed(1)}`)
+    .join('');
+  svg.appendChild(svgEl('path', { class: 'line-preview-halo', d }));
+  svg.appendChild(svgEl('path', { class: 'line-preview-rail', d }));
+
+  preview.stations.forEach(([lat, lon], i) => {
+    const isEnd = i === 0 || i === preview.stations.length - 1;
+    svg.appendChild(svgEl('circle', {
+      class: `line-preview-stop${isEnd ? ' line-preview-end' : ''}`,
+      cx: toX(lon).toFixed(1),
+      cy: toY(lat).toFixed(1),
+      r: isEnd ? 7 : 4.5,
+    }));
+  });
+
+  return { svg, width, height, toX, toY, inside, track: preview.track, herePoint: null };
+}
+
+/*
+ * 現在地の点を、すでに出来ている地図に足す。
+ *
+ * 位置情報は地図より遅れて届く。そのたびに地図を作り直すと、
+ * 有楽町線なら 4000 点あまりの輪郭を組み直すことになるので、
+ * 点だけを足す。枠の中に居ないときは何も足さない。
+ */
+function setPreviewHere(view, here) {
+  const old = view.svg.querySelector('.line-here-group');
+  if (old) old.remove();
+  view.herePoint = null;
+
+  if (!here || !view.inside(here.lat, here.lon)) return;
+
+  view.herePoint = { cx: view.toX(here.lon), cy: view.toY(here.lat) };
+  const group = svgEl('g', { class: 'line-here-group' });
+  for (const [cls, r] of [['line-here-wave', 6], ['line-here-ring', 8], ['line-here-dot', 6.5]]) {
+    group.appendChild(svgEl('circle', {
+      class: cls,
+      cx: view.herePoint.cx.toFixed(1),
+      cy: view.herePoint.cy.toFixed(1),
+      r,
+    }));
+  }
+  view.svg.appendChild(group);
+}
+
+/*
+ * 路線全体から寄り先へ動かす。
+ * 動きを減らす設定の人には動かさず、寄った先だけ出す。
+ */
+function playPreviewZoom(view, here) {
+  const { svg, width, height, herePoint } = view;
+
+  /*
+   * 寄り先。
+   *
+   * 現在地そのものへ寄せてはいけない。現在地が線路から 1.4 km 離れている
+   * だけで路線が枠の外へ出た（実測）。寄せるのは「現在地にいちばん近い
+   * 線路の上の点」で、こうすると線が中ほどを通り、現在地はその脇に乗る。
+   * 現在地が無ければ路線の真ん中。どちらにしても寄り先は必ず線路の上。
+   */
+  let focus = view.track[Math.floor(view.track.length / 2)];
+  if (herePoint && here) {
+    let best = Infinity;
+    for (const point of view.track) {
+      const d = distanceMeters(here.lat, here.lon, point[0], point[1]);
+      if (d < best) {
+        best = d;
+        focus = point;
+      }
+    }
+  }
+  const target = { cx: view.toX(focus[1]), cy: view.toY(focus[0]) };
+
+  // 現在地が寄り先の枠からはみ出すと点が縁で切れるので、そのぶん枠を広げる
+  let zoom = PICKER_ZOOM;
+  if (herePoint) {
+    const needX = (Math.abs(herePoint.cx - target.cx) + width * 0.06) * 2 / width;
+    const needY = (Math.abs(herePoint.cy - target.cy) + height * 0.06) * 2 / height;
+    const needed = Math.max(needX, needY);
+    if (needed > 1 / zoom) zoom = Math.max(1, 1 / Math.min(1, needed));
+  }
+
+  const wide = { x: 0, y: 0, w: width, h: height };
+  const near = {
+    w: width / zoom,
+    h: height / zoom,
+    x: target.cx - width / zoom / 2,
+    y: target.cy - height / zoom / 2,
+  };
+  // 地図の外を映さない
+  near.x = Math.max(0, Math.min(near.x, width - near.w));
+  near.y = Math.max(0, Math.min(near.y, height - near.h));
+
+  const apply = (b) =>
+    svg.setAttribute('viewBox', `${b.x.toFixed(1)} ${b.y.toFixed(1)} ${b.w.toFixed(1)} ${b.h.toFixed(1)}`);
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    apply(near);
+    return;
+  }
+
+  const started = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - started) / PICKER_ZOOM_MS);
+    const e = 1 - (1 - t) ** 3;
+    apply({
+      x: wide.x + (near.x - wide.x) * e,
+      y: wide.y + (near.y - wide.y) * e,
+      w: wide.w + (near.w - wide.w) * e,
+      h: wide.h + (near.h - wide.h) * e,
+    });
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/*
+ * 開始画面を出し、選ばれた路線が決まるまで待つ。
+ *
+ * カードの枠と路線名は preview.json を待たずに先に出す。地図は届いた順に
+ * 差し込む。位置情報も別で待ち、取れたら距離の行と現在地の点を足す。
+ * 取れなくても画面には何も出さない（ADR-0004 の切り離しの約束）。
+ */
+function pickLine(registry) {
+  const section = document.getElementById('line-picker');
+  const cards = document.getElementById('line-picker-cards');
+  const legend = document.getElementById('line-legend-bar');
+
+  for (const meters of [0, 8, 16, 24, 32, 45]) {
+    const cell = document.createElement('span');
+    cell.className = 'line-legend-cell';
+    cell.style.background = `var(--land-${meters})`;
+    legend.appendChild(cell);
+  }
+
+  const slots = registry.lines.map((line) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'line-card' + (line.role === 'test' ? ' line-card--test' : '');
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'line-preview line-preview--empty';
+    card.appendChild(placeholder);
+
+    const body = document.createElement('div');
+    body.className = 'line-card-body';
+    body.innerHTML =
+      `<div class="line-card-head">
+         <span class="line-card-name"></span>
+         ${line.role === 'test' ? '<span class="line-card-badge">試験用</span>' : ''}
+       </div>
+       <p class="line-card-meta"></p>`;
+    body.querySelector('.line-card-name').textContent = line.name;
+    card.appendChild(body);
+
+    cards.appendChild(card);
+    return { line, card, preview: null, view: null };
+  });
+
+  section.hidden = false;
+
+  // 位置情報。届いたら、そのとき出ている地図に足す
+  let here = null;
+
+  /** その路線から現在地までの距離を、カードに一行で足す */
+  const updateHereRow = (slot) => {
+    if (!slot.preview || !here) return;
+
+    let row = slot.card.querySelector('.line-card-here');
+    if (!row) {
+      row = document.createElement('p');
+      row.className = 'line-card-here';
+      slot.card.querySelector('.line-card-body').appendChild(row);
+    }
+    const d = metersToTrack(slot.preview.track, here.lat, here.lon);
+    const near = d <= PICKER_NEAR_METERS;
+    row.classList.toggle('line-card-here--near', near);
+    row.textContent = near
+      ? `いま この路線のそば（${readableDistance(d)}）`
+      : `現在地から ${readableDistance(d)}`;
+  };
+
+  /*
+   * 位置情報が地図より後に届いたとき。
+   * 地図は作り直さず、現在地の点を足して寄り直すだけにする。
+   */
+  const applyHere = () => {
+    for (const slot of slots) {
+      if (!slot.preview || !slot.view) continue;
+      updateHereRow(slot);
+      setPreviewHere(slot.view, here);
+      playPreviewZoom(slot.view, here);
+    }
+  };
+
+  // 地図は路線ごとに、届いた順から差し込む
+  for (const slot of slots) {
+    loadJson(`${slot.line.dir}/preview.json`)
+      .then((preview) => {
+        slot.preview = preview;
+
+        const km = (preview.summary.lengthMeters / 1000).toFixed(1);
+        slot.card.querySelector('.line-card-meta').textContent =
+          `${km} km ・ ${preview.summary.stationCount} 駅 ・ ${preview.summary.from} 〜 ${preview.summary.to}`;
+
+        const view = buildLinePreview(preview);
+        view.svg.setAttribute('aria-label', `${slot.line.name}の地形と路線`);
+        setPreviewHere(view, here);          // 位置情報が地図より先に届いていた場合
+        slot.card.replaceChild(view.svg, slot.card.firstChild);
+        slot.view = view;
+        playPreviewZoom(view, here);
+        updateHereRow(slot);
+      })
+      .catch(() => {
+        /*
+         * 地図が出せなくても、カードは残して選べるようにする。
+         * ここで画面を止めると、路線を選ぶことすらできなくなる。
+         */
+        slot.card.querySelector('.line-card-meta').textContent = '（地図を読み込めませんでした）';
+      });
+  }
+
+  /*
+   * 位置情報は地図の読み込みを頼んだあとで訊く。
+   * 先に訊くと、許可を出すまでのあいだ地図の取得が始まらないことがある。
+   */
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        here = { lat: position.coords.latitude, lon: position.coords.longitude };
+        applyHere();
+      },
+      () => {
+        // 取れなくてもこの画面には何も出さない。カードはそのまま選べる
+      },
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+    );
+  }
+
+  return new Promise((resolve) => {
+    for (const slot of slots) {
+      slot.card.addEventListener('click', () => {
+        rememberLine(slot.line);
+        section.hidden = true;
+        resolve(slot.line);
+      });
+    }
+  });
 }
 
 /*
@@ -2637,7 +3064,10 @@ async function main() {
   const mapElement = document.getElementById('map');
 
   // 路線が決まらないとデータの置き場所も決まらないので、これだけ先に読む
-  const { registry, line } = await resolveLine();
+  const { registry, line: resolved } = await resolveLine();
+
+  // 決まっていなければ、開始画面を出して選んでもらう。選ぶまでここで待つ
+  const line = resolved || (await pickLine(registry));
   currentLine = line;
 
   const [terrain, route, spotsFile, schedule] = await Promise.all([

@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>路線選択 — 変体B2（地形つき・寄る・現在地・絶対標高色）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  /* ------------------------------------------------------------------
+     ★提案1 標高の色を「絶対値」＋「地理院の段彩の向き」にそろえる
+
+     いまの css/style.css は 低地=ベージュ → 台地=オリーブ で、色相が
+     93°→125°（黄寄り→緑）へ進む。地理院の色別標高図は逆向きで、
+     低地=緑 → 高地=黄 → 橙 → 茶 と進む。
+
+     ただし地理院の標準区分は最下位階級が 0〜100m。この作品は銚子が
+     最高 73.6m、有楽町線が 54.1m で、100m 超は両線とも 0.00%。
+     標準の区分をそのまま当てると全面が単色になり、地形が消える。
+     そこで「区分は作品の範囲に合わせ（地理院の“自分で作る色別標高図”と
+     同じ考え方）、色の向きだけ地理院にそろえる」。
+
+     区分 0/8/16/24/32/45m は tools/build-terrain.js の BANDS そのままで、
+     もともと路線ごとに変わらない絶対値。つまり 24m は両線で同じ色になる。
+
+     計測（CIE Lab ΔE）:
+                       テーマ色との最小ΔE   隣接する帯どうしの最小ΔE
+       いまの色              17.5                    6.5
+       この色                28.8                    8.4
+     どちらも改善する。明るさ L* は 91→66 の単調減のままなので、
+     style.css:22 の「台地は濃く、低地は淡く」も保たれる。
+     ------------------------------------------------------------------ */
+  .sheet {
+    --land-0:  #E2EACB;  /* 低地・沖積地 */
+    --land-8:  #D2E0B4;
+    --land-16: #C6D69C;
+    --land-24: #C7CC85;  /* 台地の上 */
+    --land-32: #C9B96D;
+    --land-45: #C29A5A;  /* 愛宕山まわり */
+  }
+
+  body {
+    margin: 0;
+    background: #EFEADD;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+  }
+  .sheet { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 40px 20px 32px; box-sizing: border-box; }
+
+  .lead-title { font-size: 24px; font-weight: 700; margin: 0 0 8px; letter-spacing: 0.02em; }
+  .lead-note  { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 20px; }
+
+  .line-card {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 0; margin: 0 0 16px;
+    border: none; border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    cursor: pointer; text-align: left;
+    font: inherit; color: inherit;
+    overflow: hidden;                 /* 地図を角丸で切る */
+    transition: transform 0.1s ease;
+  }
+  .line-card:active { transform: scale(0.985); }
+  .line-card--test  { opacity: 0.86; }
+
+  .line-card-body { padding: 14px 18px 16px; }
+  .line-card-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .line-card-name { font-size: 20px; font-weight: 700; }
+  .line-card-meta { font-size: 13px; color: var(--ink-soft); margin: 0; }
+  .line-card-badge {
+    font-size: 11px; font-weight: 600; color: var(--ink-soft);
+    border: 1px solid var(--ink-soft); border-radius: 999px; padding: 2px 8px;
+  }
+  /* 現在地が分かったときだけ出す一行 */
+  .line-card-here { font-size: 13px; font-weight: 600; margin: 6px 0 0; color: var(--theme-sea); }
+
+  /*
+   * ★提案2 プレビューは常に地図で埋める（余白を作らない）
+   * preserveAspectRatio="…slice" にすると、はみ出したぶんが切れる代わりに
+   * 枠がいつも地図で満たされる。変体Bの有楽町線で右側に出ていた
+   * 何もない地の色が、これで消える。
+   */
+  .preview { display: block; width: 100%; height: 190px; background: var(--water); }
+  .skeleton { display: block; width: 100%; height: 190px; background: rgba(0,0,0,0.06); }
+
+  .preview-rail { fill: none; stroke: var(--rail); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .preview-halo { fill: none; stroke: rgba(255,255,255,0.85); stroke-width: 5.5; stroke-linecap: round; stroke-linejoin: round; }
+  .preview-stop { fill: var(--station); stroke: var(--rail); stroke-width: 1.4; }
+  .preview-end  { fill: var(--rail); }
+
+  /* ★提案3 現在地。地図の中の点なので、拡大しても大きさが変わらないように別レイヤーで描く */
+  .here-ring { fill: none; stroke: #FFFFFF; stroke-width: 3; }
+  .here-dot  { fill: var(--theme-sea); }
+  .here-wave { fill: none; stroke: var(--theme-sea); stroke-width: 2.5; opacity: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .here-wave { animation: here-pulse 2.2s ease-out infinite; }
+  }
+  @keyframes here-pulse {
+    0%   { r: 6;  opacity: 0.75; }
+    100% { r: 26; opacity: 0; }
+  }
+
+  /* 標高の凡例。地理院の段彩に合わせたと言う以上、根拠を画面に出す */
+  .legend { display: flex; align-items: center; gap: 0; margin: 22px 0 0; }
+  .legend-cell { flex: 1; height: 14px; }
+  .legend-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+  .legend-title { font-size: 12px; color: var(--ink-soft); margin: 0 0 6px; }
+
+  .tools { margin: 24px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.9; }
+  .tools button {
+    font: inherit; padding: 6px 12px; margin-right: 8px;
+    border: 1px solid var(--ink-soft); border-radius: 999px;
+    background: rgba(255,255,255,0.7); cursor: pointer;
+  }
+  .foot { font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1 class="lead-title">どの路線を見ますか？</h1>
+  <p class="lead-note">
+    変体B2 ─ 地形つき。開いた直後に <strong>路線全体から中心へ寄る</strong>。
+    寄っているあいだも枠は地図で埋まったまま（はみ出しは切る）。
+    位置情報が取れたら <strong>現在地</strong>を重ね、路線から離れていれば距離を出す。
+    標高の色は<strong>絶対値</strong>で、低い＝緑→高い＝橙茶（地理院の段彩の向き）。
+  </p>
+
+  <div id="cards"></div>
+
+  <p class="legend-title">標高（両路線で共通の絶対値）</p>
+  <div class="legend" id="legend"></div>
+  <div class="legend-scale"><span>0 m</span><span>8</span><span>16</span><span>24</span><span>32</span><span>45 m 以上</span></div>
+
+  <div class="tools">
+    <button type="button" id="replay">寄りをもう一度</button>
+    <button type="button" id="toggle-fit">はみ出しを切らない</button><br>
+    現在地の確認用：
+    <button type="button" data-at="35.7150,140.8450">銚子の線上</button>
+    <button type="button" data-at="35.7000,139.7500">東京（線から離れた所）</button>
+    <button type="button" data-at="35.1700,136.8800">名古屋（両線から遠い）</button>
+  </div>
+
+  <p class="foot" id="weight">読み込み中…</p>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   読み込み
+   ------------------------------------------------------------------ */
+let bytes = 0;
+async function load(path) {
+  const res = await fetch('/' + path);
+  const text = await res.text();
+  bytes += text.length;
+  return JSON.parse(text);
+}
+
+/* ------------------------------------------------------------------
+   地理
+   ------------------------------------------------------------------ */
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000, toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad, dLon = (lon2 - lon1) * toRad;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/* 軌道までの最短距離。駅間のどこに居ても「線からどれだけ離れているか」が出る */
+function metersToTrack(track, lat, lon) {
+  let best = Infinity;
+  for (const [tLat, tLon] of track) {
+    const d = distanceMeters(lat, lon, tLat, tLon);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+function readableDistance(m) {
+  if (m < 1000) return Math.round(m / 10) * 10 + ' m';
+  if (m < 10000) return (m / 1000).toFixed(1) + ' km';
+  return Math.round(m / 1000) + ' km';
+}
+
+/* ------------------------------------------------------------------
+   プレビュー
+   ------------------------------------------------------------------ */
+function projector(terrain) {
+  const p = terrain.projection, b = p.bounds;
+  return {
+    w: p.width, h: p.height,
+    x: (lon) => ((lon - b.minLon) / (b.maxLon - b.minLon)) * p.width,
+    y: (lat) => ((b.maxLat - lat) / (b.maxLat - b.minLat)) * p.height,
+    contains: (lat, lon) =>
+      lon >= b.minLon && lon <= b.maxLon && lat >= b.minLat && lat <= b.maxLat,
+  };
+}
+
+function buildPreview(terrain, route, here) {
+  const P = projector(terrain);
+
+  const bands = terrain.bands
+    .map((band) => `<path class="band band--${band.minElevation}" d="${band.path}"/>`)
+    .join('');
+
+  const d = route.track
+    .map(([lat, lon], i) => (i === 0 ? 'M' : 'L') + P.x(lon).toFixed(2) + ' ' + P.y(lat).toFixed(2))
+    .join(' ');
+
+  const stops = route.stations.map((s, i) => {
+    const isEnd = i === 0 || i === route.stations.length - 1;
+    return `<circle class="preview-stop${isEnd ? ' preview-end' : ''}"
+                    cx="${P.x(s.lon).toFixed(2)}" cy="${P.y(s.lat).toFixed(2)}" r="${isEnd ? 7 : 4.5}"/>`;
+  }).join('');
+
+  /* 現在地は枠の中に入っているときだけ描く */
+  let hereMark = '', herePoint = null;
+  if (here && P.contains(here.lat, here.lon)) {
+    herePoint = { cx: P.x(here.lon), cy: P.y(here.lat) };
+    const hx = P.x(here.lon).toFixed(2), hy = P.y(here.lat).toFixed(2);
+    hereMark =
+      `<g class="here">
+         <circle class="here-wave" cx="${hx}" cy="${hy}" r="6"/>
+         <circle class="here-ring" cx="${hx}" cy="${hy}" r="8"/>
+         <circle class="here-dot"  cx="${hx}" cy="${hy}" r="6.5"/>
+       </g>`;
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'preview');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', (route.lineName || '') + 'の地形と路線');
+  svg.innerHTML = bands +
+    `<path class="preview-halo" d="${d}"/><path class="preview-rail" d="${d}"/>` + stops + hereMark;
+
+  /*
+   * 寄り先。
+   *
+   * 現在地そのものへ寄せると、現在地が線路から少し離れているだけで
+   * 路線が枠の外へ出てしまう（1.4 km 離れた地点で実際にそうなった）。
+   * そこで寄せるのは「現在地にいちばん近い線路の上の点」。
+   * こうすると線が中ほどを通り、現在地の点はその脇に乗る。
+   * 現在地が無いときは路線の真ん中。どちらの場合も、寄った先は必ず線路の上。
+   */
+  let focus = route.track[Math.floor(route.track.length / 2)];
+  if (here && P.contains(here.lat, here.lon)) {
+    let best = Infinity;
+    for (const point of route.track) {
+      const d = distanceMeters(here.lat, here.lon, point[0], point[1]);
+      if (d < best) { best = d; focus = point; }
+    }
+  }
+  const target = { cx: P.x(focus[1]), cy: P.y(focus[0]) };
+
+  return { svg, P, target, herePoint };
+}
+
+/* ------------------------------------------------------------------
+   寄りの動き
+
+   はじめ  = 地形データの全体（slice で枠を埋めるので、長い路線は上下が切れる）
+   おわり  = 上の target を中心に 1.9 倍
+   途中で枠の外へ出ないように、いつもデータの内側へ収める。
+   ------------------------------------------------------------------ */
+const ZOOM = 1.9, DURATION = 1500;
+let sliceMode = true;
+
+function clampBox(box, P) {
+  const w = Math.min(box.w, P.w), h = Math.min(box.h, P.h);
+  return {
+    x: Math.max(0, Math.min(box.x, P.w - w)),
+    y: Math.max(0, Math.min(box.y, P.h - h)),
+    w, h,
+  };
+}
+
+function animate(view) {
+  const { svg, P, target, herePoint } = view;
+  const from = { x: 0, y: 0, w: P.w, h: P.h };
+
+  /*
+   * 寄り先の枠は線路の上が中心。ただし現在地がその枠からはみ出すと
+   * 点が縁で切れるので、はみ出すぶんだけ枠を（中心を保ったまま）広げる。
+   * 広げても全体より大きくはしない。
+   */
+  let zoom = ZOOM;
+  if (herePoint) {
+    const marginX = Math.abs(herePoint.cx - target.cx) + P.w * 0.06;
+    const marginY = Math.abs(herePoint.cy - target.cy) + P.h * 0.06;
+    const needed = Math.max(marginX * 2 / P.w, marginY * 2 / P.h);
+    if (needed > 1 / zoom) zoom = Math.max(1, 1 / Math.min(1, needed));
+  }
+
+  const to = clampBox({
+    x: target.cx - P.w / zoom / 2,
+    y: target.cy - P.h / zoom / 2,
+    w: P.w / zoom, h: P.h / zoom,
+  }, P);
+
+  const set = (b) => svg.setAttribute('viewBox', `${b.x.toFixed(1)} ${b.y.toFixed(1)} ${b.w.toFixed(1)} ${b.h.toFixed(1)}`);
+
+  /* 動きを減らす設定の人には、動かさず寄った先だけ見せる */
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { set(to); return; }
+
+  const started = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  (function step(now) {
+    const t = Math.min(1, (now - started) / DURATION), e = ease(t);
+    set({
+      x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e,
+      w: from.w + (to.w - from.w) * e, h: from.h + (to.h - from.h) * e,
+    });
+    if (t < 1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+/* ------------------------------------------------------------------
+   組み立て
+   ------------------------------------------------------------------ */
+const state = { lines: [], here: null, views: [] };
+
+function render() {
+  const cards = document.getElementById('cards');
+  cards.innerHTML = '';
+  state.views = [];
+
+  for (const item of state.lines) {
+    const { line, route, terrain } = item;
+    const km = (route.totalLength / 1000).toFixed(1);
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'line-card' + (line.role === 'test' ? ' line-card--test' : '');
+    card.addEventListener('click', () => { location.href = '/?line=' + line.id; });
+
+    const view = buildPreview(terrain, route, state.here);
+    view.svg.setAttribute('preserveAspectRatio', sliceMode ? 'xMidYMid slice' : 'xMidYMid meet');
+    card.appendChild(view.svg);
+
+    /* 現在地が分かっていれば、この路線からどれだけ離れているかを言う */
+    let hereLine = '';
+    if (state.here) {
+      const d = metersToTrack(route.track, state.here.lat, state.here.lon);
+      hereLine = d <= 1000
+        ? `<p class="line-card-here">いま この路線のそば（${readableDistance(d)}）</p>`
+        : `<p class="line-card-here" style="color:var(--ink-soft);font-weight:400">現在地から ${readableDistance(d)}</p>`;
+    }
+
+    const body = document.createElement('div');
+    body.className = 'line-card-body';
+    body.innerHTML =
+      `<div class="line-card-head">
+         <span class="line-card-name">${line.name}</span>
+         ${line.role === 'test' ? '<span class="line-card-badge">試験用</span>' : ''}
+       </div>
+       <p class="line-card-meta">${km} km ・ ${route.stations.length} 駅 ・ ${route.stations[0].name} 〜 ${route.stations[route.stations.length - 1].name}</p>
+       ${hereLine}`;
+    card.appendChild(body);
+
+    cards.appendChild(card);
+    state.views.push(view);
+  }
+
+  /* 枠に入ってから寄る */
+  requestAnimationFrame(() => state.views.forEach(animate));
+}
+
+/* ------------------------------------------------------------------
+   現在地。取れなくても何も出さない（ADR-0004 の「失敗しても画面に出さない」）
+   ------------------------------------------------------------------ */
+function askLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { state.here = { lat: pos.coords.latitude, lon: pos.coords.longitude }; render(); },
+    () => {},
+    { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+  );
+}
+
+/* 確認用のボタン。本番には無い */
+document.querySelectorAll('[data-at]').forEach((b) => {
+  b.addEventListener('click', () => {
+    const [lat, lon] = b.dataset.at.split(',').map(Number);
+    state.here = { lat, lon };
+    render();
+  });
+});
+document.getElementById('replay').addEventListener('click', () => state.views.forEach(animate));
+document.getElementById('toggle-fit').addEventListener('click', (e) => {
+  sliceMode = !sliceMode;
+  e.target.textContent = sliceMode ? 'はみ出しを切らない' : 'はみ出しを切る';
+  render();
+});
+
+/* 凡例 */
+document.getElementById('legend').innerHTML =
+  [0, 8, 16, 24, 32, 45]
+    .map((m) => `<span class="legend-cell" style="background:var(--land-${m})"></span>`)
+    .join('');
+
+(async () => {
+  const started = performance.now();
+  const registry = await load('data/lines.json');
+  for (const line of registry.lines) {
+    state.lines.push({
+      line,
+      route:   await load(line.dir + '/route.json'),
+      terrain: await load(line.dir + '/terrain.json'),
+    });
+  }
+  render();
+  document.getElementById('weight').textContent =
+    `この画面が読んだ量: ${(bytes / 1024).toFixed(0)} KB / ${Math.round(performance.now() - started)} ms（陰影起伏図は読んでいない）`;
+  askLocation();
+})();
+</script>
+</body>
+</html>
