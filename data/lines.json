@@ -1,5 +1,5 @@
 {
-  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。",
+  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。 陰影起伏図（terrain-hillshade.webp）を用意していない路線には \"hillshade\": false を書く。 透明な絵で代用してはいけない（mix-blend-mode: overlay が効いて地図全体に色被りが出る）。",
   "default": "choshi",
   "lines": [
     {

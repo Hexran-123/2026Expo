@@ -23,7 +23,9 @@
 |---|---|---|
 | `index.html` / `css/style.css` / `js/main.js` | 画面の骨組み・見た目・動き | ビルド不要、直接配信 |
 | `data/spots.json` | 絶景スポットの情報 | **人が手で書く唯一のファイル**。他の `data/` は自動生成 |
-| `data/route.json` / `data/terrain.json` / `data/terrain-hillshade.png` | 路線形状・地形濃淡・陰影 | `tools/` で自動生成、直接編集しない |
+| `data/lines.json` | どの路線があるか（`role: product` / `test`） | **手で書く**。2件以上あると起動時に路線選択画面が出る |
+| `data/<路線>/route.json` / `terrain.json` / `terrain-hillshade.webp` | 路線形状・地形濃淡・陰影（地図画面用） | `tools/` で自動生成、直接編集しない |
+| `data/<路線>/preview.json` | 路線選択画面の小さな地図（輪郭を粗くしたもの） | `tools/build-preview.js` で自動生成。二路線で gzip 21 KB |
 | `tools/*.js` | データ生成スクリプト（Node.js、依存なし） | 実行手順は README 参照 |
 | `docs/設計書.md` | 唯一の真実の源（機能・画面・データ・技術構成） | 変更提案前に必読 |
 | `docs/将来構想.md` | 今回作らないものの一覧 | ここに書かれた機能を実装対象と誤認しないこと |
@@ -35,4 +37,4 @@
 | 指令 | 用途 | 備註 |
 |---|---|---|
 | `python -m http.server 8080` | ローカルでサイトを開く | `file://` では `fetch` が失敗するため必須 |
-| `node tools/fetch-osm.js` → `build-route.js` → `fetch-elevation.js` → `build-terrain.js` → `fetch-hillshade.js` → `fetch-features.js` → `build-spot-geometry.js` | データの作り直し（順序厳守） | ふだんは実行不要。README 参照 |
+| `node tools/fetch-osm.js` → `build-route.js` → `fetch-elevation.js` → `build-terrain.js` → `fetch-hillshade.js` → `fetch-features.js` → `build-spot-geometry.js` → `build-preview.js` | データの作り直し（順序厳守） | ふだんは実行不要。README 参照 |

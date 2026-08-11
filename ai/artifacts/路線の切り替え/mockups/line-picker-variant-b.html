@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>路線選択 — 変体B（地形つき・重い）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: var(--land-0);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+  }
+  .sheet { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 40px 20px 32px; box-sizing: border-box; }
+
+  .lead-title { font-size: 24px; font-weight: 700; margin: 0 0 8px; letter-spacing: 0.02em; }
+  .lead-note  { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 32px; }
+
+  .line-card {
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 20px; margin: 0 0 16px;
+    border: none; border-radius: var(--radius);
+    background: rgba(255,255,255,0.82);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    cursor: pointer; text-align: left;
+    font: inherit; color: inherit;
+    transition: transform 0.1s ease;
+  }
+  .line-card:active { transform: scale(0.985); }
+
+  .line-card-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .line-card-name { font-size: 20px; font-weight: 700; }
+  .line-card-meta { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  .line-card-badge {
+    font-size: 11px; font-weight: 600;
+    color: var(--ink-soft);
+    border: 1px solid var(--ink-soft);
+    border-radius: 999px; padding: 2px 8px;
+  }
+  .line-card--test { opacity: 0.86; }
+
+  .preview {
+    display: block; width: 100%; height: 172px;
+    background: var(--water);
+    border-radius: 8px;
+  }
+  .preview-rail { fill: none; stroke: var(--rail); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .preview-halo { fill: none; stroke: rgba(255,255,255,0.8); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .preview-stop { fill: var(--station); stroke: var(--rail); stroke-width: 1.2; }
+  .preview-end  { fill: var(--rail); }
+
+  .skeleton { display: block; width: 100%; height: 172px; border-radius: 8px; background: rgba(0,0,0,0.06); }
+
+  .foot { font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1 class="lead-title">どの路線を見ますか？</h1>
+  <p class="lead-note">
+    変体B ─ プレビューに <strong>地形の濃淡</strong>まで入れる。読むのは <code>route.json</code> と
+    <code>terrain.json</code>（二路線あわせて約 300 KB）。<strong>陰影起伏図（1.4 MB）は読まない。</strong>
+    地図らしさは出るが、選ぶ前の待ち時間が延びる。
+  </p>
+
+  <div id="cards"></div>
+
+  <p class="foot" id="weight">読み込み中…</p>
+</div>
+
+<script>
+/* 地形の帯は terrain.json が SVG のパスとして持っている（tools/build-terrain.js） */
+function terrainSvg(terrain, route) {
+  const p = terrain.projection;
+  const b = p.bounds;
+  const x = (lon) => ((lon - b.minLon) / (b.maxLon - b.minLon)) * p.width;
+  const y = (lat) => ((b.maxLat - lat) / (b.maxLat - b.minLat)) * p.height;
+
+  const bands = terrain.bands.map((band) =>
+    `<path class="band band--${band.minElevation}" d="${band.path}"/>`).join('');
+
+  const d = route.track.map(([lat, lon], i) =>
+    (i === 0 ? 'M' : 'L') + x(lon).toFixed(2) + ' ' + y(lat).toFixed(2)).join(' ');
+
+  const stops = route.stations.map((s, i) => {
+    const isEnd = i === 0 || i === route.stations.length - 1;
+    return `<circle class="preview-stop${isEnd ? ' preview-end' : ''}"
+                    cx="${x(s.lon).toFixed(2)}" cy="${y(s.lat).toFixed(2)}"
+                    r="${isEnd ? 7 : 4.5}"/>`;
+  }).join('');
+
+  return `<svg class="preview" viewBox="0 0 ${p.width} ${p.height}"
+               preserveAspectRatio="xMidYMid meet" role="img">
+            ${bands}
+            <path class="preview-halo" d="${d}"/><path class="preview-rail" d="${d}"/>${stops}
+          </svg>`;
+}
+
+let bytes = 0;
+async function load(path) {
+  const res = await fetch('/' + path);
+  const text = await res.text();
+  bytes += text.length;
+  return JSON.parse(text);
+}
+
+(async () => {
+  const started = performance.now();
+  const registry = await load('data/lines.json');
+  const cards = document.getElementById('cards');
+
+  // 先に枠と名前だけ出す。地図が来るまで画面が空にならないようにする
+  const slots = registry.lines.map((line) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'line-card' + (line.role === 'test' ? ' line-card--test' : '');
+    card.innerHTML =
+      `<div class="line-card-head">
+         <span class="line-card-name">${line.name}</span>
+         ${line.role === 'test' ? '<span class="line-card-badge">試験用</span>' : ''}
+       </div>
+       <p class="line-card-meta">読み込み中…</p>
+       <span class="skeleton"></span>`;
+    card.addEventListener('click', () => { location.href = '/?line=' + line.id; });
+    cards.appendChild(card);
+    return { line, card };
+  });
+
+  for (const { line, card } of slots) {
+    const route = await load(line.dir + '/route.json');
+    const terrain = await load(line.dir + '/terrain.json');
+    const km = (route.totalLength / 1000).toFixed(1);
+    card.querySelector('.line-card-meta').textContent =
+      `${km} km ・ ${route.stations.length} 駅 ・ ${route.stations[0].name} 〜 ${route.stations[route.stations.length - 1].name}`;
+    card.querySelector('.skeleton').outerHTML = terrainSvg(terrain, route);
+  }
+
+  document.getElementById('weight').textContent =
+    `この画面が読んだ量: ${(bytes / 1024).toFixed(0)} KB / ${Math.round(performance.now() - started)} ms（陰影起伏図は読んでいない）`;
+})();
+</script>
+</body>
+</html>

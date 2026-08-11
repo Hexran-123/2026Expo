@@ -16,7 +16,7 @@
 
 - 選定的 style tile：地図イラスト＋半透明白パネルのオーバーレイUI（設計書4章）
 - 色彩情緒：土地の質感に根ざした落ち着いた自然色（台地の緑、畑の黄土、醤油樽の紺、海の青）。原色を避け、テーマ＝地理的意味を色で伝える。
-- 字體個性：本文は Hiragino Kaku Gothic ProN / Yu Gothic / Noto Sans JP 等のシステム標準ゴシック。装飾書体は使わない（車内で瞬時に読める可読性優先）。駅名（`.station-label`）だけは丸みのあるUDフォント（Hiragino Maru Gothic ProN / BIZ UDPGothic）を先に置き、角ゴシックより柔らかく地図に馴染む見た目にする（2026-08-04、ユーザーFBにより変更）。
+- 字體個性：本文は Hiragino Kaku Gothic ProN / Yu Gothic / Noto Sans JP 等のシステム標準ゴシック。装飾書体は使わない（車内で瞬時に読める可読性優先）。丸みのあるUDフォント（`--font-map`＝Hiragino Maru Gothic ProN / BIZ UDPGothic）を、角ゴシックより柔らかく地図に馴染む見た目として併用する（2026-08-04、ユーザーFBにより変更）。使い所は**駅名（`.station-label`）と、地図を見せる画面の見出し・路線名（`.line-picker-title` / `.line-card-name`）**の二つだけ。本文には使わない。
 - 圓角／陰影傾向：大きめの角丸（14px基調）＋すりガラス風の半透明パネル（`backdrop-filter: blur`）。影は柔らかく低コントラスト。
 - 密度：ゆったり（揺れる車内で押し間違えないよう、タップ領域は最小44px）。
 - 亮／暗模式：ライトのみ（暗モード非対応。地図は常に明るい配色で地形が読めることを優先）。
@@ -35,10 +35,13 @@
 | 色彩（テーマ・農業） | `--theme-farm` / `-sub` | `#6F8F36` / `#D99A2B` | 気候と農業テーマ |
 | 色彩（テーマ・産業） | `--theme-industry` / `-sub` | `#2E4A6B` / `#B8A88A` | 産業と水運テーマ |
 | 色彩（テーマ・海） | `--theme-sea` / `-sub` | `#2A6E8F` / `#7FC4D9` | 海と空テーマ |
-| 色彩（地形濃淡） | `--land-0` 〜 `--land-45` | `#F3EBD8` 〜 `#90AC6B`（6段階） | 低地→台地。等高線・数値は出さない（設計書5.2） |
+| 色彩（地形濃淡） | `--land-0` 〜 `--land-45` | `#E2EACB` / `#D2E0B4` / `#C6D69C` / `#C7CC85` / `#C9B96D` / `#C29A5A` | **絶対値の段彩**。区分 0/8/16/24/32/45m は `tools/build-terrain.js` の `BANDS` で路線ごとに変わらない。色の順番は国土地理院の色別標高図と同じ向き（低＝緑→黄→橙→茶＝高）。等高線・数値は出さない（設計書5.2）。決定の経緯と計測値は `ai/artifacts/路線の切り替え/mockup-decision-路線選択.md` |
 | 色彩（水域） | `--water` | `#9DC3D7` | |
 | 色彩（路線） | `--rail` / `--station` | `#4A4640` / `#FFFFFF` | |
+| 色彩（紙） | `--paper` | `#F3EBD8` | ダイアログ・旅の記録・路線選択画面の地。**地図の色ではない**。段彩を地理院の向きに変えた際、`--land-0` の流用をやめて分離した |
 | 色彩（枠組み） | `--panel` | `rgba(255,255,255,0.82)` | 半透明パネル地 |
+| 書体（本文） | `--font-body` | Hiragino Kaku Gothic ProN → Hiragino Sans → Yu Gothic → Noto Sans JP → Meiryo | 角ゴシック。本文と画面の枠組み。Webフォントは使わない（ADR-0002） |
+| 書体（地図） | `--font-map` | Hiragino Maru Gothic ProN → BIZ UDPGothic → Yu Gothic → Noto Sans JP → Meiryo | 丸ゴシック。**駅名（`.station-label`）と、地図を見せる画面の見出し・路線名**。無ければ `--font-body` と同じ列に落ちる |
 | 色彩（文字） | `--ink` / `--ink-soft` | `#2B2A28` / `#6B6862` | 本文／補助文字 |
 | 字級 | 基本 15px、駅名17px（終着19px）、下敷き見出し21px、下敷き本文15px | — | 明示的なtype scaleは未定義。既存実装は用途ごとの直値。**PC対応時に正式なscaleへ整理する必要あり（S3の既知ギャップ）** |
 | 字重 | 600（強調）／700（見出し） | — | |
@@ -82,6 +85,9 @@
 | PC向けレイアウト（サイドパネル等） | **未着手** | — | — | — | — | PC向けレイアウトEpicでS5とあわせて新規作成予定 |
 | 投稿スポットバッジ（`.spot--posted`） | mockup核准済・**未実装** | 通常／レイヤー非表示／フォーカス。**天気・テーマの表現は持たない** | `--ink-soft`, `--station`（白地） | 未実装（mockup: `ai/artifacts/利用者投稿/mockups/spot-badge-variant-c.html`） | 未取得 | 利用者投稿Epic |
 | 投稿レイヤートグル（`.posted-toggle`） | mockup核准済・**未実装** | ON（塗り）／OFF（輪郭のみ）／押下／フォーカス | `--ink-soft`, `--panel` | 同上 | 未取得 | 利用者投稿Epic |
+| 路線選択画面（`.line-picker`） | **完了** | 出す（路線2つ以上＋未選択）／出さない（1つ、または選択済み） | `--paper`, `--ink`, `--ink-soft` | `css/style.css`「路線選択（開始画面）」節 | 未取得 | 路線の切り替えEpic |
+| 路線カード（`.line-card`） | **完了** | 通常／押下（`scale(0.985)`）／フォーカス／試験用（`--test`, `opacity:0.86`）／地図待ち（`.line-preview--empty`）／地図取得失敗（カードは残り選べる）／現在地あり（距離の行＋点）／現在地なし（行を出さない） | `--panel-solid`, `--radius`, `--water`, `--land-*`, `--rail`, `--station`, `--theme-sea` | 同上 | 未取得 | 路線の切り替えEpic |
+| 標高凡例（`.line-legend`） | **完了** | 常時（6段階の色帯＋目盛） | `--land-0`〜`--land-45`, `--ink-soft` | 同上 | 未取得 | 路線の切り替えEpic |
 
 （截圖は未取得。screenshotはwebapp-testing skillでの実機/ブラウザ確認時に追加する。）
 

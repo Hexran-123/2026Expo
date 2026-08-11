@@ -16,6 +16,33 @@
   <div class="screen">
 
     <!--
+      路線選択（開始画面）。
+
+      路線が 2 つ以上あって、まだどれも選んでいないときだけ出す。
+      一度選べば localStorage に覚えるので、二度目からは出ない。
+      応募時に試験用の路線を data/lines.json から外せば、路線は 1 件になり
+      この画面は自動的に出なくなる。
+
+      カードと凡例は js/main.js が data/<路線>/preview.json から組み立てる。
+    -->
+    <section class="line-picker" id="line-picker" hidden aria-labelledby="line-picker-title">
+      <div class="line-picker-inner">
+        <h1 class="line-picker-title" id="line-picker-title">どの路線を見ますか？</h1>
+        <p class="line-picker-hint">乗る路線を選んでください。あとから切り替えられます。</p>
+
+        <div id="line-picker-cards"></div>
+
+        <div class="line-legend">
+          <p class="line-legend-title">標高（両路線で共通の絶対値）</p>
+          <div class="line-legend-bar" id="line-legend-bar"></div>
+          <div class="line-legend-scale">
+            <span>0 m</span><span>8</span><span>16</span><span>24</span><span>32</span><span>45 m 以上</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!--
       乗車区間の設定（feature-spec「乗車区間の設定」US1）。
 
       保存された区間が無ければ、地図より先にこれを出し、乗る駅・降りる駅の
@@ -360,6 +387,7 @@
   <script src="js/schedule.js"></script>
   <script src="js/onboard.js"></script>
   <script src="js/journal.js"></script>
+  <script src="js/popularity.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
