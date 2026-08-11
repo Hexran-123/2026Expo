@@ -14,33 +14,45 @@
  *   <image href>     → 陰影の絵を data URI に
  *   URLSearchParams  → ?demo=1 相当にして走行シミュレーターを動かす
  *
- * 使い方:  node tools/build-demo.js [路線id] [出力先.html]
+ * 使い方:  node tools/build-demo.js [路線id] [出力先.html] [--gps]
  * 例:      node tools/build-demo.js choshi    demo/choshi.html
  *          node tools/build-demo.js yurakucho demo/yurakucho.html
+ *          node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
  *
  * 路線を 1 つだけ入れるので、路線選択画面は出ない（data/lines.json が
  * 1 件のときの振る舞いと同じ）。両方入れた 1 枚を作りたいときは
  * 路線id に all を渡す。
+ *
+ * --gps を付けると、走行シミュレーターではなく **実機の位置情報** で動く。
+ * 現地で実際に乗って確かめるための版。位置情報は端末から出ず、どこへも送らない
+ * （この 1 枚は通信そのものをしない）。
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const LINE_ID = process.argv[2] || 'choshi';
-const OUT_PATH = process.argv[3]
-  ? path.resolve(process.argv[3])
-  : path.join(ROOT, 'demo', `${LINE_ID}.html`);
+const args = process.argv.slice(2).filter((a) => a !== '--gps');
+const USE_GPS = process.argv.includes('--gps');
+
+const LINE_ID = args[0] || 'choshi';
+const OUT_PATH = args[1]
+  ? path.resolve(args[1])
+  : path.join(ROOT, 'demo', `${LINE_ID}${USE_GPS ? '-gps' : ''}.html`);
 
 const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 
-/** 本体が読み込む順。この順に埋め込む */
+/**
+ * 本体が読み込む順。この順に埋め込む。
+ * 走行シミュレーターは ?demo=1 のときだけ本体が読むもので、
+ * 実機の位置情報で動かす版（--gps）には要らない。
+ */
 const JS_FILES = [
   'js/schedule.js',
   'js/onboard.js',
   'js/journal.js',
   'js/popularity.js',
-  'js/simulate.js',   // ?demo=1 のときだけ本体が読むもの。ここでは先に入れておく
+  ...(USE_GPS ? [] : ['js/simulate.js']),
   'js/main.js',
 ];
 
@@ -153,6 +165,13 @@ Element.prototype.setAttributeNS = function (ns, name, value) {
   return setAttrNS.call(this, ns, name, value);
 };
 
+${USE_GPS ? `
+/*
+ * この版は実機の位置情報で動かす。?demo=1 を立てないので、本体は
+ * 走行シミュレーターではなく navigator.geolocation.watchPosition を使う。
+ * 位置情報は端末から出ない（この 1 枚は通信そのものをしない）。
+ */
+` : `
 /*
  * 本体は URL の ?demo=1 を見て走行シミュレーターに切り替える。
  * 1 枚の HTML を直接開く使い方では URL に引数を付けられないので、
@@ -164,9 +183,102 @@ window.URLSearchParams = function (init) {
   return new RealParams(init);
 };
 window.URLSearchParams.prototype = RealParams.prototype;
+`}
 
 /* 開くたびに最初の画面から始める */
 try { localStorage.removeItem('choshi-navi/line'); } catch (e) {}
+`;
+
+/*
+ * 位置情報の受け取り具合を出す小さな窓（--gps のときだけ）。
+ *
+ * 現地で確かめるとき、何も起きないのが「断られた」のか「電波が無い」のか
+ * 「線路から離れすぎ」なのかが画面から分からないと、直しようがない。
+ * 本体には手を入れず、ここで別に watchPosition を張って表示だけする。
+ * 有楽町線はほぼ全線が地下なので、取れなくなる様子そのものが見どころ。
+ */
+const GPS_PANEL = String.raw`
+(function () {
+  if (!navigator.geolocation) return;
+
+  const panel = document.createElement('div');
+  panel.className = 'gps-panel';
+  panel.innerHTML =
+    '<div class="gps-head">' +
+      '<b>位置情報</b><span id="gps-state">許可を待っています…</span>' +
+      '<button type="button" id="gps-fold" aria-label="たたむ">▾</button>' +
+    '</div><dl class="gps-body" id="gps-body"></dl>';
+  document.body.appendChild(panel);
+
+  document.getElementById('gps-fold').addEventListener('click', function () {
+    panel.classList.toggle('gps-panel--folded');
+    this.textContent = panel.classList.contains('gps-panel--folded') ? '▴' : '▾';
+  });
+
+  /* 線路までの最短距離。「アプリが自分を線の上と見なせるか」がこれで分かる */
+  const routeKey = Object.keys(window.DEMO_JSON).find(function (k) {
+    return k.endsWith('/route.json');
+  });
+  const track = routeKey ? window.DEMO_JSON[routeKey].track : [];
+
+  function metersBetween(lat1, lon1, lat2, lon2) {
+    const R = 6371000, rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function toTrack(lat, lon) {
+    let best = Infinity;
+    for (let i = 0; i < track.length; i++) {
+      const d = metersBetween(lat, lon, track[i][0], track[i][1]);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  const state = document.getElementById('gps-state');
+  const body = document.getElementById('gps-body');
+  let count = 0;
+
+  function row(label, value) {
+    return '<dt>' + label + '</dt><dd>' + value + '</dd>';
+  }
+
+  navigator.geolocation.watchPosition(
+    function (position) {
+      count += 1;
+      const c = position.coords;
+      const near = track.length ? toTrack(c.latitude, c.longitude) : null;
+      state.textContent = '受信中（' + count + ' 回目）';
+      panel.classList.remove('gps-panel--bad');
+      body.innerHTML =
+        row('緯度経度', c.latitude.toFixed(5) + ', ' + c.longitude.toFixed(5)) +
+        row('精度', Math.round(c.accuracy) + ' m') +
+        row('速さ', c.speed === null ? '—' : (c.speed * 3.6).toFixed(1) + ' km/h') +
+        row('向き', c.heading === null ? '—' : Math.round(c.heading) + '°') +
+        (near === null ? '' : row('線路まで', near < 1000
+          ? Math.round(near) + ' m'
+          : (near / 1000).toFixed(1) + ' km')) +
+        row('最終', new Date(position.timestamp).toLocaleTimeString('ja-JP'));
+    },
+    function (error) {
+      const why = error.code === 1 ? '断られました（端末の設定で許可してください）'
+                : error.code === 2 ? '取れません（地下・屋内では起きます）'
+                : error.code === 3 ? '時間切れ'
+                : '不明';
+      state.textContent = why;
+      panel.classList.add('gps-panel--bad');
+      if (count > 0) {
+        body.insertAdjacentHTML('afterbegin',
+          row('直前まで', count + ' 回受信していました'));
+      }
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+})();
 `;
 
 const TAIL = String.raw`
@@ -233,6 +345,8 @@ if (window.Popularity) {
   }).observe(text, { childList: true, characterData: true, subtree: true });
 })();
 
+${USE_GPS ? GPS_PANEL : ''}
+
 /*
  * 注記は、路線選択画面が出ているあいだだけ残す。
  * そのあとは走行シミュレーターの操作盤と同じ場所に来てしまう。
@@ -275,14 +389,55 @@ const NOTE_CSS = `
 .demo-note button:focus-visible { outline: 2px solid #F3EBD8; outline-offset: 2px; }
 `;
 
+/* 位置情報の窓（--gps のときだけ）。走行シミュレーターの操作盤と同じ場所・同じ見た目にそろえる */
+const GPS_CSS = `
+.gps-panel {
+  position: fixed; left: 10px; bottom: 10px; z-index: 55;
+  width: 232px; max-width: calc(100vw - 20px);
+  padding: 10px 12px 11px;
+  border-radius: 14px;
+  background: rgba(20, 22, 20, 0.88);
+  color: #F3EBD8;
+  font-size: 12px; line-height: 1.5;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+.gps-head { display: flex; align-items: center; gap: 8px; }
+.gps-head b { font-weight: 700; flex: none; }
+.gps-head span { flex: 1; color: #C9C2AE; font-size: 11px; }
+.gps-head button {
+  flex: none; width: 22px; height: 22px; padding: 0;
+  border: none; border-radius: 50%;
+  background: rgba(243, 235, 216, 0.16); color: inherit;
+  font: inherit; line-height: 1; cursor: pointer;
+}
+.gps-head button:hover { background: rgba(243, 235, 216, 0.3); }
+.gps-head button:focus-visible { outline: 2px solid #F3EBD8; outline-offset: 2px; }
+
+/* 取れていないあいだは縁で分かるようにする。文字だけだと見落とす */
+.gps-panel--bad { box-shadow: 0 0 0 2px #C0704A, 0 6px 22px rgba(0, 0, 0, 0.35); }
+
+.gps-body {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px;
+  margin: 8px 0 0;
+}
+.gps-body:empty { display: none; }
+.gps-body dt { color: #A9A292; font-size: 11px; }
+.gps-body dd { margin: 0; font-variant-numeric: tabular-nums; }
+.gps-panel--folded .gps-body { display: none; }
+`;
+
 const title =
   LINE_ID === 'all'
     ? '車窓絶景ナビ ─ 動くデモ'
-    : `車窓絶景ナビ ─ ${lines[0].name} の動くデモ`;
+    : `車窓絶景ナビ ─ ${lines[0].name}${USE_GPS ? '（実機の位置情報で動かす版）' : ' の動くデモ'}`;
+
+const NOTE_TEXT = USE_GPS
+  ? '<b>実機の位置情報で動きます。</b>電車に乗って確かめる用。位置情報は端末から出ず、どこへも送りません。'
+  : '<b>デモ</b> ─ 実物がそのまま動きます。走行は本体付属のシミュレーターで、実機の位置情報は使いません。';
 
 const NOTE_HTML = `
 <div class="demo-note" id="demo-note">
-  <span><b>デモ</b> ─ 実物がそのまま動きます。走行は本体付属のシミュレーターで、実機の位置情報は使いません。</span>
+  <span>${NOTE_TEXT}</span>
   <button type="button" aria-label="この注記を閉じる"
           onclick="document.getElementById('demo-note').remove()">×</button>
 </div>
@@ -299,7 +454,7 @@ const parts = [
   '<meta charset="utf-8">',
   '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
   `<title>${title}</title>`,
-  `<style>\n${css}\n${NOTE_CSS}</style>`,
+  `<style>\n${css}\n${NOTE_CSS}${USE_GPS ? GPS_CSS : ''}</style>`,
   '</head>',
   '<body>',
   body,
@@ -320,6 +475,7 @@ const kb = (n) => `${Math.round(n / 1024)} KB`;
 
 console.log(`書き出し: ${path.relative(ROOT, OUT_PATH)}  ${mb(Buffer.byteLength(html))}`);
 console.log(`  路線  : ${lines.map((l) => l.name).join('・')}`);
+console.log(`  動かし方: ${USE_GPS ? '実機の位置情報（watchPosition）' : '走行シミュレーター（?demo=1 相当）'}`);
 console.log(`  陰影  : ${kb(assetsJson.length)}`);
 console.log(`  データ: ${kb(dataJson.length)}`);
 console.log(`  CSS+JS: ${kb(css.length + Object.values(scripts).reduce((n, s) => n + s.length, 0))}`);
