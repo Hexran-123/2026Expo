@@ -8,3 +8,12 @@
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 中間生成物。tools/ でいつでも作り直せるうえ、非常に大きい。
+#   有楽町線の標高格子は 160MB（銚子電鉄の 10 倍。路線が 4.4 倍長いため）
+#   陰影起伏図の PNG は配信しない。配信するのは同じ絵の WebP（1/6 の大きさ）
+#
+# すでにコミット済みの data/source/elevation-grid.json（銚子電鉄・14.8MB）は
+# 追跡されたまま残る。.gitignore は追跡中のファイルには効かないため。
+data/source/*elevation-grid.json
+data/source/*hillshade*.png

@@ -1,0 +1,24 @@
+{
+  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。",
+  "default": "choshi",
+  "lines": [
+    {
+      "id": "choshi",
+      "name": "銚子電鉄",
+      "dir": "data/choshi",
+      "weatherArea": "120000",
+      "weatherLabel": "千葉県北東部",
+      "role": "product",
+      "note": "作品そのもの。設計書の対象路線（設計書 1 章）。"
+    },
+    {
+      "id": "yurakucho",
+      "name": "有楽町線",
+      "dir": "data/yurakucho",
+      "weatherArea": "130000",
+      "weatherLabel": "東京地方",
+      "role": "test",
+      "note": "GPS の挙動を手元で確かめるための試験用。絶景スポットも時刻表も作り物で、作品の内容ではない。ほぼ全線が地下なので、位置情報が取れないときの振る舞い（設計書 3.3）を確かめる用途に向く。逆に、モード切替・上下判定・車窓側といった正常系はここでは測れない。"
+    }
+  ]
+}

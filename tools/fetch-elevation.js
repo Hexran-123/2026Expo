@@ -23,8 +23,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'route.json');
-const OUT_PATH = path.join(__dirname, '..', 'data', 'source', 'elevation-grid.json');
+/*
+ * 使い方:  node tools/fetch-elevation.js [route.json] [出力先.json]
+ *
+ * 引数は省略できる。省略したときは銚子電鉄のときの値になるので、
+ * 今までの `node tools/fetch-elevation.js` はそのまま同じ結果になる。
+ */
+const ROUTE_PATH = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(__dirname, '..', 'data', 'choshi', 'route.json');
+const OUT_PATH = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(__dirname, '..', 'data', 'source', 'elevation-grid.json');
 
 const FINE_ZOOM = 15;   // DEM5A（5m メッシュ）
 const COARSE_ZOOM = 14; // DEM10B（標準）。FINE_ZOOM のちょうど半分の細かさ。

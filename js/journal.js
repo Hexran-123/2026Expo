@@ -11,8 +11,11 @@
  *   通過の記録 → localStorage（小さい。文字だけ）
  *   写真       → IndexedDB（localStorage は 5MB ほどしかなく、写真 1 枚で埋まる）
  *
- * どちらも端末の中にとどまる。この作品はサーバーを持たないので
- * （ADR-0002）、写真は端末の外へ出しようがない。
+ * どちらも端末の中にとどまる。ここで撮った写真を送る先は、このファイルには無い。
+ *
+ * 作品はサーバーを持つようになったが（ADR-0004）、外へ出るのは利用者が
+ * 投稿を押したときだけである。IndexedDB から外へ読み出してよいのは投稿の
+ * 処理だけで、このファイルからは送らない。この境界を崩さないこと。
  */
 
 (function (global) {
@@ -145,8 +148,20 @@
     let passed = [];
     let photos = [];
 
+    /*
+     * 閉じたことを外へ知らせる。
+     *
+     * 途中の駅で降りたときに開いた記録を閉じるのは、「いや、まだ乗っている」
+     * という合図でもある。呼び出し側（js/main.js）はそれを受けて、
+     * 車上モードへ戻れる状態にする。
+     */
+    const closeHandlers = [];
+
     document.getElementById('journal-close')
-      .addEventListener('click', () => { screen.hidden = true; });
+      .addEventListener('click', () => {
+        screen.hidden = true;
+        for (const handler of closeHandlers) handler();
+      });
     document.getElementById('journal-save')
       .addEventListener('click', () => saveAsImage());
 
@@ -357,6 +372,8 @@
       },
       show,
       savePhoto,
+      /** 記録を閉じたときに呼ばれる */
+      onClose: (handler) => closeHandlers.push(handler),
       /** 前回の乗車の記録。降車後に開き直せるように */
       last: loadTrip,
     };
