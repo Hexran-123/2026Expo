@@ -7,19 +7,34 @@
  *             発車時刻がずれ、遅れの計算が狂うだけで、黙って間違い続ける。
  *             ダイヤ改正のたびに手で書き写す以上、目で見るだけでは足りない。
  *
- * 使い方:  node tools/check-schedule.js
- *          間違いがなければ「OK」とだけ出る。あれば何行目の何かを言う。
+ * 使い方:  node tools/check-schedule.js [schedule.json] [route.json]
+ *          間違いがなければ「OK」とだけ出る。あれば何号の何かを言う。
+ *
+ * 引数は省略できる。省略したときは銚子電鉄を見る。
+ * 試験用の路線を確かめるときは渡すこと:
+ *   node tools/check-schedule.js data/yurakucho/schedule.json data/yurakucho/route.json
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const SCHEDULE_PATH = path.join(__dirname, '..', 'data', 'choshi', 'schedule.json');
-const ROUTE_PATH = path.join(__dirname, '..', 'data', 'choshi', 'route.json');
+const SCHEDULE_PATH = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(__dirname, '..', 'data', 'choshi', 'schedule.json');
+const ROUTE_PATH = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(__dirname, '..', 'data', 'choshi', 'route.json');
 
-/** 銚子から外川まで、実際には 19〜22 分。これを外れたら書き間違いを疑う */
-const RIDE_MIN = 15;
-const RIDE_MAX = 30;
+/*
+ * 全区間の所要時間の目安は、路線の長さから出す。
+ *
+ * 直値で 15〜30 分としていたころは、銚子（6.5km）にしか通用しなかった。
+ * 有楽町線（28.4km）に当てると、正しい時刻表でも全部「変」と言ってしまう。
+ * 表定速度がこの範囲に収まっていれば妥当とみなす。停車時間も込みの平均で、
+ * ローカル線からやや速い地下鉄までを含む幅にしてある。
+ */
+const SLOWEST_KMH = 12;
+const FASTEST_KMH = 45;
 
 /** "07:16" を、その日の 0 時からの分数に直す */
 function toMinutes(text) {
@@ -35,6 +50,10 @@ function main() {
   const schedule = JSON.parse(fs.readFileSync(SCHEDULE_PATH, 'utf8'));
   const route = JSON.parse(fs.readFileSync(ROUTE_PATH, 'utf8'));
   const knownStations = new Set(route.stations.map((station) => station.name));
+
+  const km = route.totalLength / 1000;
+  const rideMin = Math.floor((km / FASTEST_KMH) * 60);
+  const rideMax = Math.ceil((km / SLOWEST_KMH) * 60);
 
   const problems = [];
   const report = (train, message) => problems.push(`${train.番号}号（${train.方向}）: ${message}`);
@@ -80,8 +99,8 @@ function main() {
     // 全線の所要時間がありえる範囲か
     if (times[0] !== null && times[times.length - 1] !== null) {
       const ride = times[times.length - 1] - times[0];
-      if (ride < RIDE_MIN || ride > RIDE_MAX) {
-        report(train, `所要 ${ride} 分は変（${RIDE_MIN}〜${RIDE_MAX} 分のはず）`);
+      if (ride < rideMin || ride > rideMax) {
+        report(train, `所要 ${ride} 分は変（${rideMin}〜${rideMax} 分のはず）`);
       }
     }
 
