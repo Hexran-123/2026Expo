@@ -155,35 +155,51 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/all.html            両路線（路線選択画面から始まる）2.54 MB
-demo/choshi.html         銚子電鉄（作品そのもの）      0.67 MB
-demo/yurakucho.html      有楽町線（試験用）            2.15 MB
-demo/yurakucho-gps.html  有楽町線・実機の位置情報版    2.13 MB
+demo/all.html            両路線（路線選択画面から始まる）2.55 MB
+demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.68 MB
+demo/yurakucho.html      有楽町線だけ（試験用）          2.16 MB
+demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       2.16 MB
 ```
 
 **ダブルクリックで開くだけで動く。**通信は一切しない。
-走行は本体付属のシミュレーター（`?demo=1` と同じ）なので、乗らなくても
-車上モード・通知・成因カードまで見られる。
 
-`demo/all.html` だけは**路線選択画面から始まる**。人に見せるならこれ。
-開くたびに選び直せるよう、覚えた路線は開いたときに忘れる。
-地図に入ったあとも、上の帯の路線名を押せば切り替えられる（読み込み直しになる）。
-1 路線だけの 3 枚は、選ぶ余地が無いので選択画面を出さない。
+#### 左下のパネルで、動かし方と路線を切り替える
+
+4 枚とも、左下の操作盤のいちばん上に切り替えの段がある。
+
+- **動かし方** ─ `デモ走行`（本体付属のシミュレーター。乗らなくても
+  車上モード・通知・成因カードまで見られる）と `実機のGPS`
+  （端末の位置情報。現地で乗って確かめる用）。
+- **路線** ─ 路線が 2 つ以上入っている 1 枚（`demo/all.html`）だけに出る。
+  `路線選択の画面へ` で、最初の選択画面に戻れる。
+
+どちらも**読み込み直しで切り替わる**。本体が路線の切り替えでそうしているのと
+同じやり方で、動かし方に至っては本体が起動時に一度だけ見るもの（`?demo=1`）
+なので、読み直す以外にない。選んだ動かし方は覚える（`choshi-navi/demo-mode`）。
+
+`demo/all.html` は**路線選択画面から始まる**。人に見せるならこれ。
+開くたびに選び直せるよう、覚えた路線は開いたときに忘れる（切り替えで
+読み直すときだけは、URL の `?line=` で行き先を引き継ぐので忘れない）。
+1 路線だけの 3 枚は、選ぶ余地が無いので選択画面も路線の段も出さない。
 
 作り直すとき:
 
 ```
-node tools/build-demo.js all       demo/all.html
-node tools/build-demo.js choshi    demo/choshi.html
-node tools/build-demo.js yurakucho demo/yurakucho.html
-node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
+node tools/build-demo.js all       demo/all.html            --switch
+node tools/build-demo.js choshi    demo/choshi.html         --switch
+node tools/build-demo.js yurakucho demo/yurakucho.html      --switch
+node tools/build-demo.js yurakucho demo/yurakucho-gps.html  --gps --switch
 ```
 
-### 現地で実際に乗って確かめる版（`--gps`）
+`--switch` が切り替えの段を付ける。`--gps` は開いた直後の動かし方を
+実機のGPSにする（`--switch` が無ければ、シミュレーターを積まない版になる）。
 
-`--gps` を付けて作ったものは、走行シミュレーターを積まない。かわりに
+### 現地で実際に乗って確かめる（実機のGPS）
+
+`実機のGPS` に切り替えると、走行シミュレーターを使わず
 **端末の位置情報**（`watchPosition`）で動く。設計書 3.3 の「位置情報が
 取れないときの振る舞い」を、実際に電車の中で確かめるためのもの。
+`demo/yurakucho-gps.html` は、開いた直後からこちらで始まる 1 枚。
 
 有楽町線を選んであるのは、**ほぼ全線が地下**だから。トンネルに入って
 位置が取れなくなる様子そのものが確かめたいことなので、正常系を測る
@@ -199,6 +215,7 @@ node tools/build-demo.js yurakucho demo/yurakucho-gps.html --gps
 なお位置情報は安全な文脈（https）でないとブラウザが渡さない。
 スマートフォンで試すときは `file://` ではなく、GitHub Pages
 （<https://hexran-123.github.io/2026Expo/>）などの https 経由で開くこと。
+ファイルから直接開いて取れなかったときは、位置情報の窓がそのことを書く。
 
 `css/`・`js/`・`data/` を直したら 4 枚とも作り直すこと。**`demo/*.html` を手で直さない。**
 
