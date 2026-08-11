@@ -188,15 +188,30 @@ for (let i = 0; i < SPOT_COUNT; i++) {
  * 落としても JSON としては正しいので、読めるかどうかでは気づけない。
  * 参照になる spots.json が無ければ黙って飛ばす。
  */
-const referencePath = path.join(__dirname, '..', 'data', 'choshi', 'spots.json');
-if (fs.existsSync(referencePath) && spots.length > 0) {
-  const reference = JSON.parse(fs.readFileSync(referencePath, 'utf8')).spots[0];
-  const missing = Object.keys(reference).filter((key) => !(key in spots[0]));
+let missingCount = 0;
+
+/**
+ * 本物のほうにあって、こちらに無い項目を知らせる。
+ * `made` が空なら何もしない。参照になるファイルが無ければ黙って飛ばす。
+ */
+function warnMissingKeys(label, referenceFile, pick, made) {
+  const referencePath = path.join(__dirname, '..', 'data', 'choshi', referenceFile);
+  if (!fs.existsSync(referencePath) || !made) return;
+
+  const reference = pick(JSON.parse(fs.readFileSync(referencePath, 'utf8')));
+  if (!reference) return;
+
+  const missing = Object.keys(reference).filter(
+    (key) => !key.startsWith('_') && !(key in made)
+  );
   if (missing.length > 0) {
-    console.warn(`\n⚠ 本物の spots.json にあって、こちらに無い項目: ${missing.join(', ')}`);
-    console.warn('  画面が落ちる原因になる。この道具に足すこと。\n');
+    missingCount += missing.length;
+    console.warn(`\n⚠ 本物の ${label} にあって、こちらに無い項目: ${missing.join(', ')}`);
+    console.warn('  画面が落ちる原因になる。この道具に足すこと。');
   }
 }
+
+warnMissingKeys('spots.json', 'spots.json', (f) => f.spots[0], spots[0]);
 
 // ---------------------------------------------------------------
 // 時刻表を作る
@@ -221,13 +236,58 @@ const runMinutes = (totalLength / 1000) / AVERAGE_SPEED_KMH * 60;
 const trains = [];
 let number = 1;
 
-for (let depart = toMinutes(FIRST_DEPARTURE); depart <= toMinutes(LAST_DEPARTURE); depart += HEADWAY_MINUTES) {
+/**
+ * 一本の列車の、発車からの経過分を駅ごとに出す（その列車が通る順）。
+ *
+ * 時刻は「その列車が通る順」に並べる。route.json の並び順のままにすると
+ * 上りだけ逆さまになる。手で書く銚子の時刻表は進行方向順なので、形を
+ * そろえないと tools/check-schedule.js が上り列車を全部「時刻が戻っている」
+ * と言う（JSON の項目の並び順を見ているため）。
+ *
+ * さらに、**必ず 1 分以上ずつ増える**ようにする。
+ * 有楽町と銀座一丁目は 486m しか離れておらず、表定 35km/h では約 50 秒。
+ * 分に丸めると同じ時刻になり、これも「戻っている」と見なされる。
+ * 実際の時刻表で同じ分に 2 駅が並ぶことはないので、こちらを直す。
+ * そのぶん全体の所要はわずかに伸びる。
+ */
+function offsetsFor(direction) {
+  const inTravelOrder =
+    direction === '下り' ? route.stations : [...route.stations].reverse();
+
+  const result = [];
+  for (const station of inTravelOrder) {
+    const ratio = station.distanceAlong / totalLength;
+    const elapsed = (direction === '下り' ? ratio : 1 - ratio) * runMinutes;
+
+    let minutes = Math.round(elapsed);
+    if (result.length > 0) minutes = Math.max(minutes, result[result.length - 1].minutes + 1);
+    result.push({ name: station.name, minutes });
+  }
+  return result;
+}
+
+const OFFSETS = { 下り: offsetsFor('下り'), 上り: offsetsFor('上り') };
+
+/** 終点に着くまでの分。日を跨がせないための見当に使う */
+const longestRun = Math.max(
+  OFFSETS.下り[OFFSETS.下り.length - 1].minutes,
+  OFFSETS.上り[OFFSETS.上り.length - 1].minutes
+);
+
+/*
+ * 深夜を跨ぐ列車は作らない。
+ *
+ * toClock は 24 時で 0 時へ戻すので、23:30 発が 00:19 着になると
+ * 時刻が巻き戻って見え、tools/check-schedule.js が「時刻が戻っている」と
+ * 言う。本物の銚子の時刻表も日を跨がないので、形をそろえておく。
+ */
+const lastDeparture = Math.min(toMinutes(LAST_DEPARTURE), 24 * 60 - 1 - longestRun);
+
+for (let depart = toMinutes(FIRST_DEPARTURE); depart <= lastDeparture; depart += HEADWAY_MINUTES) {
   for (const direction of ['下り', '上り']) {
     const times = {};
-    for (const station of route.stations) {
-      const ratio = station.distanceAlong / totalLength;
-      const elapsed = (direction === '下り' ? ratio : 1 - ratio) * runMinutes;
-      times[station.name] = toClock(depart + elapsed);
+    for (const { name, minutes } of OFFSETS[direction]) {
+      times[name] = toClock(depart + minutes);
     }
     trains.push({ 番号: number++, 方向: direction, 時刻: times });
   }
@@ -239,17 +299,48 @@ for (let depart = toMinutes(FIRST_DEPARTURE); depart <= toMinutes(LAST_DEPARTURE
 
 fs.mkdirSync(outDir, { recursive: true });
 
+/*
+ * 旅の記録の締めの一文（テーマごと）。
+ * 無くても js/main.js が {} に読み替えるので落ちないが、それだと
+ * 試験用の路線でこの部分の見た目を確かめられない。形は本物にそろえる。
+ */
+const closings = {};
+for (const theme of THEMES) {
+  closings[theme] = `これは試験用の締めの文です（${theme}）。作品の内容ではありません。`;
+}
+
 const spotsOut = {
   _comment: 'tools/make-test-line.js が作った試験用のデータ。作品の内容ではない。手で直す価値はない（作り直せる）。',
   spots,
+  closings,
 };
+
+warnMissingKeys('spots.json', 'spots.json', (f) => f, spotsOut);
 fs.writeFileSync(path.join(outDir, 'spots.json'), JSON.stringify(spotsOut, null, 2), 'utf8');
+
+/*
+ * 駅順は必須。これが無いと有楽町線を選んだ画面が落ちる。
+ *
+ * 最初に書いたときは 改正日 と 列車 しか出しておらず、区間を決めた直後に
+ * schedule.駅順[direction] が undefined を読んで例外になった。時刻表としては
+ * 一見そろって見えるので、JSON を眺めても気づけない。
+ * （js/schedule.js・js/onboard.js・js/simulate.js の 3 箇所がこれを読む）
+ */
+const stationNames = route.stations.map((station) => station.name);
 
 const scheduleOut = {
   _comment: 'tools/make-test-line.js が作った試験用の時刻表。実際のダイヤではない。',
   改正日: new Date().toISOString().slice(0, 10),
+  駅順: {
+    下り: stationNames,
+    上り: [...stationNames].reverse(),
+  },
   列車: trains,
 };
+
+warnMissingKeys('schedule.json', 'schedule.json', (f) => f, scheduleOut);
+warnMissingKeys('schedule.json の 列車', 'schedule.json', (f) => f.列車[0], trains[0]);
+
 fs.writeFileSync(path.join(outDir, 'schedule.json'), JSON.stringify(scheduleOut, null, 2), 'utf8');
 
 console.log(`路線: ${route.lineName || '(名前なし)'}  全長 ${(totalLength / 1000).toFixed(2)} km  ${route.stations.length} 駅`);
@@ -260,3 +351,12 @@ spots.forEach((s) => {
 console.log(`\n時刻表: ${trains.length} 本（${HEADWAY_MINUTES} 分おき・全区間 ${runMinutes.toFixed(0)} 分）`);
 console.log(`\n書き出し: ${path.join(outDir, 'spots.json')}`);
 console.log(`          ${path.join(outDir, 'schedule.json')}`);
+
+/*
+ * 抜けがあったら 0 以外で終わる。書き出しはしてあるので直せば作り直せるが、
+ * 気づかずに次へ進めないようにする（駅順の抜けは、この道具の実際の事故）。
+ */
+if (missingCount > 0) {
+  console.warn(`\n⚠ 足りない項目が ${missingCount} 件ある。上を直してから使うこと。`);
+  process.exitCode = 1;
+}
