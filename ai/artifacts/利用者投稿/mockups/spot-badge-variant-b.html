@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>投稿スポットの区別 — 変体B（副印で分ける）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: #E7E1D5;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
+  .lead { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 20px; }
+  .frame {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    background: var(--land-0);
+  }
+  .bar {
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chip { width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+  .legend { margin-top: 24px; font-size: 13px; line-height: 1.7; }
+  .legend h2 { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+  .legend-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .legend-row span { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>変体B ─ 副印で分ける</h1>
+  <p class="lead">
+    ひし形はそのまま使い、投稿スポットだけ<strong>右下に小さなカメラの副印</strong>を付ける。
+    形も色も変えないので「絶景スポット」という同じ仲間に見えるが、印があるものは写真だけ、と読める。
+  </p>
+
+  <div class="frame">
+    <svg viewBox="0 0 420 300" width="100%" role="img" aria-label="地図の一部。副印つきのひし形が投稿スポット">
+      <!-- 地形 -->
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-0)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+
+      <!-- 線路 -->
+      <path d="M30 246 Q150 224 220 186 T392 108" class="rail rail--halo" style="stroke-width:15"/>
+      <path d="M30 246 Q150 224 220 186 T392 108" class="rail" style="stroke-width:7"/>
+
+      <!-- 駅 -->
+      <circle cx="72" cy="240" r="6" class="station-dot"/>
+      <text x="72" y="266" text-anchor="middle" class="station-label">君ヶ浜</text>
+      <circle cx="286" cy="156" r="6" class="station-dot"/>
+      <text x="286" y="182" text-anchor="middle" class="station-label">犬吠</text>
+
+      <!-- ============ 官方スポット ============ -->
+      <circle cx="150" cy="218" r="3.5" class="spot-anchor"/>
+      <line x1="150" y1="218" x2="138" y2="176" class="spot-leader"/>
+      <polygon points="138,160 154,176 138,192 122,176" class="spot-badge" fill="var(--theme-farm)"/>
+      <g class="spot-glyph" transform="translate(138,176)">
+        <circle r="3.4" fill="none"/>
+        <path d="M0 -8 L0 -5 M0 5 L0 8 M-8 0 L-5 0 M5 0 L8 0 M-5.6 -5.6 L-3.6 -3.6 M3.6 3.6 L5.6 5.6 M5.6 -5.6 L3.6 -3.6 M-3.6 3.6 L-5.6 5.6"/>
+      </g>
+      <text x="138" y="207" text-anchor="middle" class="spot-label" style="opacity:1;font-size:13px">ひまわり畑</text>
+
+      <circle cx="352" cy="132" r="3.5" class="spot-anchor"/>
+      <line x1="352" y1="132" x2="366" y2="92" class="spot-leader"/>
+      <polygon points="366,76 382,92 366,108 350,92" class="spot-badge" fill="var(--theme-sea)"/>
+      <g class="spot-glyph" transform="translate(366,92)">
+        <path d="M-7 -2 Q-3.5 -6 0 -2 T7 -2 M-7 4 Q-3.5 0 0 4 T7 4"/>
+      </g>
+
+      <!-- ============ 投稿スポット（ひし形＋右下の副印） ============ -->
+      <circle cx="104" cy="238" r="3.5" class="spot-anchor"/>
+      <line x1="104" y1="238" x2="86" y2="204" class="spot-leader"/>
+      <polygon points="86,190 100,204 86,218 72,204" class="spot-badge" fill="var(--theme-terrain)"/>
+      <g class="spot-glyph" transform="translate(86,204)">
+        <path d="M-6 4 L-1 -3 L2 1 L4.5 -2 L7 4 Z" fill="none"/>
+      </g>
+      <!-- 副印：右下に小さな白丸＋カメラ -->
+      <circle cx="97" cy="214" r="7" fill="#FFFFFF" stroke="var(--theme-terrain)" stroke-width="1.6"/>
+      <g transform="translate(97,214) scale(0.62)" fill="none" stroke="var(--theme-terrain)" stroke-width="2.2" stroke-linejoin="round">
+        <rect x="-6" y="-4" width="12" height="9" rx="2"/>
+        <circle cx="0" cy="0.6" r="2.4"/>
+      </g>
+
+      <circle cx="318" cy="140" r="3.5" class="spot-anchor"/>
+      <line x1="318" y1="140" x2="330" y2="184" class="spot-leader"/>
+      <polygon points="330,170 344,184 330,198 316,184" class="spot-badge" fill="var(--theme-farm)"/>
+      <g class="spot-glyph" transform="translate(330,184)">
+        <path d="M-6 4 L-1 -3 L2 1 L4.5 -2 L7 4 Z" fill="none"/>
+      </g>
+      <circle cx="341" cy="194" r="7" fill="#FFFFFF" stroke="var(--theme-farm)" stroke-width="1.6"/>
+      <g transform="translate(341,194) scale(0.62)" fill="none" stroke="var(--theme-farm)" stroke-width="2.2" stroke-linejoin="round">
+        <rect x="-6" y="-4" width="12" height="9" rx="2"/>
+        <circle cx="0" cy="0.6" r="2.4"/>
+      </g>
+    </svg>
+
+    <div class="bar">
+      <span class="chip"><svg viewBox="0 0 28 28" width="26" height="26"><polygon points="14,3 25,14 14,25 3,14" fill="var(--theme-terrain)"/></svg></span>
+      <span class="chip"><svg viewBox="0 0 28 28" width="26" height="26"><polygon points="14,3 25,14 14,25 3,14" fill="var(--theme-farm)"/></svg></span>
+      <span class="chip"><svg viewBox="0 0 28 28" width="26" height="26"><polygon points="14,3 25,14 14,25 3,14" fill="var(--theme-industry)"/></svg></span>
+      <span class="chip"><svg viewBox="0 0 28 28" width="26" height="26"><polygon points="14,3 25,14 14,25 3,14" fill="var(--theme-sea)"/></svg></span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h2>読み方</h2>
+    <div class="legend-row">
+      <svg viewBox="0 0 36 36" width="32" height="32"><polygon points="18,5 30,17 18,29 6,17" fill="var(--theme-farm)" stroke="#fff" stroke-width="3"/></svg>
+      <span>官方スポット ─ 成因カードあり・接近通知が鳴る</span>
+    </div>
+    <div class="legend-row">
+      <svg viewBox="0 0 36 36" width="32" height="32">
+        <polygon points="18,5 30,17 18,29 6,17" fill="var(--theme-farm)" stroke="#fff" stroke-width="3"/>
+        <circle cx="27" cy="26" r="7.5" fill="#fff" stroke="var(--theme-farm)" stroke-width="1.8"/>
+        <g transform="translate(27,26) scale(0.6)" fill="none" stroke="var(--theme-farm)" stroke-width="2.4" stroke-linejoin="round">
+          <rect x="-6" y="-4" width="12" height="9" rx="2"/><circle cx="0" cy="0.6" r="2.4"/>
+        </g>
+      </svg>
+      <span>投稿スポット ─ 副印つき・写真のみ・通知は鳴らない</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
