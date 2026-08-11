@@ -95,12 +95,18 @@
       <!-- 現在位置。車上モードのあいだだけ出る（設計書 4.3） -->
       <!-- data-ax / data-ay は拡大時に動かさない点。出るまでは 0 にしておく -->
       <g id="map-here" class="here scalable" data-ax="0" data-ay="0" hidden>
-        <circle class="here-halo" r="15"/>
+        <!--
+          大きさは、絶景バッジ（画面上で約20px）より大きくしてある。
+          もとは点が6px・にじみが13pxで、駅の印（8px）と見分けがつかず、
+          「自分がどこにいるか分からない」状態だった。
+          拡大しても画面上の大きさは変わらない（.scalable）。
+        -->
+        <circle class="here-halo" r="30"/>
         <!-- 進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む -->
         <g id="here-arrow-wrap">
-          <path class="here-arrow" d="M0,-14 L6,-6 L-6,-6 Z"/>
+          <path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/>
         </g>
-        <circle class="here-dot" r="7"/>
+        <circle class="here-dot" r="13"/>
       </g>
     </svg>
 

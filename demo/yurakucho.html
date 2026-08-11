@@ -1148,14 +1148,14 @@ button.line-name:active {
 .here-dot {
   fill: #FFFFFF;
   stroke: var(--theme-sea);
-  stroke-width: 4;
+  stroke-width: 7;
 }
 
 /* 進行方向を指す矢印。js/main.js が向きに合わせて回転させる */
 .here-arrow {
   fill: var(--theme-sea);
   stroke: #FFFFFF;
-  stroke-width: 1.5;
+  stroke-width: 2.5;
   stroke-linejoin: round;
 }
 
@@ -1178,6 +1178,24 @@ button.line-name:active {
 
 .here--still .here-halo {
   opacity: 0.16;
+}
+
+/*
+ * 線路から離れているときの印（設計書 3.3）。
+ *
+ * 線路の上に落とせていないので、受け取った緯度経度そのものに置いている。
+ * 線路の上の印と同じ見た目にすると「線路のここにいる」と読めてしまうので、
+ * 中を白のままにし、輪郭を破線にして「まだ吸い付けていない」と分かるようにする。
+ * にじみも広げる。位置そのものに幅があることを、大きさで伝える。
+ */
+.here--off .here-dot {
+  /* 破線は「線路の上に落とせていない」という意味。長さは半径 13 に合わせた */
+  stroke-dasharray: 6 4.5;
+  stroke-width: 6;
+}
+
+.here--off .here-halo {
+  opacity: 0.12;
 }
 
 /* ------------------------------------------------------------------
@@ -2205,12 +2223,18 @@ button.line-name:active {
       <!-- 現在位置。車上モードのあいだだけ出る（設計書 4.3） -->
       <!-- data-ax / data-ay は拡大時に動かさない点。出るまでは 0 にしておく -->
       <g id="map-here" class="here scalable" data-ax="0" data-ay="0" hidden>
-        <circle class="here-halo" r="15"/>
+        <!--
+          大きさは、絶景バッジ（画面上で約20px）より大きくしてある。
+          もとは点が6px・にじみが13pxで、駅の印（8px）と見分けがつかず、
+          「自分がどこにいるか分からない」状態だった。
+          拡大しても画面上の大きさは変わらない（.scalable）。
+        -->
+        <circle class="here-halo" r="30"/>
         <!-- 進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む -->
         <g id="here-arrow-wrap">
-          <path class="here-arrow" d="M0,-14 L6,-6 L-6,-6 Z"/>
+          <path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/>
         </g>
-        <circle class="here-dot" r="7"/>
+        <circle class="here-dot" r="13"/>
       </g>
     </svg>
 
@@ -4333,6 +4357,16 @@ const HILLSHADE_FADE_TO = 10;
 const LABEL_ZOOM = 1.6;
 
 /*
+ * 右下のボタンで現在位置へ寄るときの倍率。
+ *
+ * 「近くの駅が出てくるくらい」を狙う。銚子電鉄なら約 1.6km、有楽町線なら
+ * 約 7km ぶんが画面に入り、どちらも隣の駅が数個みえる。駅名が出はじめる
+ * LABEL_ZOOM(1.6) より十分に寄っているので、名前も読める。
+ * 車上モードに入るときに寄せる倍率とそろえてある。
+ */
+const HERE_ZOOM = 4;
+
+/*
  * 駅にいるとみなす半径（m）。設計書 3.2。
  *
  * 市販の端末の位置情報は 5〜15m ずれ、駅前の建物のあいだではさらに悪くなる。
@@ -6055,6 +6089,13 @@ function createTrip(route, spots, schedule, parts) {
   let following = true;
 
   /**
+   * 最後に印を置いた地図上の点。右下のボタンで寄る先に使う。
+   * 線路の上にいるときは線路上の点、離れているときは受け取った位置そのもの。
+   * まだ一度も位置が来ていなければ null。
+   */
+  let lastHerePoint = null;
+
+  /**
    * 「現在位置へ戻す」ボタンの濃さを、追いかけているかどうかに合わせる。
    *
    * 車上モードでは、地図を指で動かすまで現在位置を追いかけている
@@ -6067,13 +6108,22 @@ function createTrip(route, spots, schedule, parts) {
    */
   const followButton = document.getElementById('reset-view');
 
+  /*
+   * ボタンが何をするかは、位置が分かっているかで変わる。
+   * 分かっていれば「現在位置へ」、まだなら「路線全体に戻す」。
+   * 位置は乗車中でなくても後から届くので、届いた時点でも呼び直す。
+   */
+  function refreshFollowButtonLabel() {
+    followButton.setAttribute(
+      'aria-label',
+      mode === '車上' || lastHerePoint ? '現在位置へ' : '路線全体に戻す'
+    );
+  }
+
   function setFollowing(value) {
     following = value;
     followButton.classList.toggle('reset-view--following', value && mode === '車上');
-    followButton.setAttribute(
-      'aria-label',
-      mode === '車上' ? '現在位置へ戻す' : '路線全体に戻す'
-    );
+    refreshFollowButtonLabel();
   }
   /**
    * 入るときに寄せたい倍率。届くまでは追従のたびにこれを渡す。
@@ -6133,6 +6183,9 @@ function createTrip(route, spots, schedule, parts) {
      * 停まっているときは駅の印とぴったり重なる。
      */
     const spot = pointAtDistance(track, points, along);
+    lastHerePoint = spot;
+    refreshFollowButtonLabel();
+    hereMarker.classList.remove('here--off');
 
     hereMarker.setAttribute('data-ax', spot.x);
     hereMarker.setAttribute('data-ay', spot.y);
@@ -6176,6 +6229,52 @@ function createTrip(route, spots, schedule, parts) {
     if (wantedZoom !== undefined && Math.abs(view.zoom() - wantedZoom) < 0.3) {
       wantedZoom = undefined;
     }
+  }
+
+  /**
+   * 線路から離れているときの現在位置。
+   *
+   * 以前はここで印を消していた。線路から 30m（Onboard.ON_ROUTE_METERS）を
+   * 超えると、何も出なくなる。ところが駅へ歩いているあいだ・改札の中・
+   * 市街地で測位がぶれているときは、たいてい 30m を超える。つまり
+   * 「いちばん自分の位置を知りたいとき」に限って画面から消えていた。
+   *
+   * 線路の上の点ではなく、受け取った緯度経度そのものに置く。
+   * 線路に吸い付けてよいのは、線路の上にいると言えるときだけ。
+   * 見た目も変えて（.here--off）、これは吸い付けていない位置だと分かるようにする。
+   */
+  function showHereOffRoute(coords) {
+    const point = project(coords.latitude, coords.longitude);
+    lastHerePoint = point;
+    refreshFollowButtonLabel();
+
+    hereMarker.classList.add('here--off');
+    hereMarker.classList.toggle('here--still', true);
+    hereMarker.setAttribute('data-ax', point.x);
+    hereMarker.setAttribute('data-ay', point.y);
+    hereMarker.querySelectorAll('circle').forEach((circle) => {
+      circle.setAttribute('cx', point.x.toFixed(1));
+      circle.setAttribute('cy', point.y.toFixed(1));
+    });
+    setHidden(hereMarker, false);
+    setScaleTransform(hereMarker, getK());
+  }
+
+  /**
+   * 右下のボタンで現在位置へ寄る。
+   *
+   * @returns {boolean} 寄れたか。位置がまだ分からなければ false（呼び出し側で
+   *   路線全体に戻す）。
+   */
+  function goToHere() {
+    if (!lastHerePoint) return false;
+
+    /*
+     * いま見えている倍率より下げない。押したのに引いてしまうと、
+     * 「近くを見たい」という意図と逆になる。まだ寄っていないときだけ寄せる。
+     */
+    view.goTo(lastHerePoint.x, lastHerePoint.y, Math.max(view.zoom(), HERE_ZOOM), 600);
+    return true;
   }
 
   /** 乗車区間の食い違いを、いま伝えている内容（確認バーの「直す」が使う） */
@@ -6419,7 +6518,7 @@ function createTrip(route, spots, schedule, parts) {
      * 決めた見え方を横取りしないため（設計書 4.1）。
      */
     if (onRoute) showHere(false);
-    else setHidden(hereMarker, true);
+    else showHereOffRoute(coords);
 
     /*
      * 降りたあとは、電車が走り去る動きにつられて乗り直さない。
@@ -6576,6 +6675,9 @@ function createTrip(route, spots, schedule, parts) {
     onStale,
     stopFollowing,
     resumeFollowing() { setFollowing(true); showHere(); },
+    goToHere,
+    /** 現在位置が一度でも分かっているか。ボタンの意味を決めるのに使う */
+    hasHere: () => lastHerePoint !== null,
     mode: () => mode,
     passedLog: () => passedLog,
     isPassed: (id) => passed.has(id),
@@ -7472,8 +7574,19 @@ async function main() {
    * （設計書 4.1）。どちらも「見失ったら押す」という同じ意味になる。
    */
   document.getElementById('reset-view').addEventListener('click', () => {
-    if (trip && trip.mode() === '車上') trip.resumeFollowing();
-    else view.reset();
+    if (trip && trip.mode() === '車上') {
+      trip.resumeFollowing();
+      return;
+    }
+    /*
+     * 乗る前でも、現在位置が分かっているならそこへ寄る。
+     *
+     * 以前はいつでも路線全体へ戻していた。押した人は「自分がどこにいるか
+     * 見たい」のに、いちばん引いた見え方になって現在位置の印が点にしか
+     * ならなかった。位置がまだ来ていないときだけ、これまで通り全体へ戻す。
+     */
+    if (trip && trip.goToHere()) return;
+    view.reset();
   });
 
   /*

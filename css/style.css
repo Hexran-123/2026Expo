@@ -1141,14 +1141,14 @@ button.line-name:active {
 .here-dot {
   fill: #FFFFFF;
   stroke: var(--theme-sea);
-  stroke-width: 4;
+  stroke-width: 7;
 }
 
 /* 進行方向を指す矢印。js/main.js が向きに合わせて回転させる */
 .here-arrow {
   fill: var(--theme-sea);
   stroke: #FFFFFF;
-  stroke-width: 1.5;
+  stroke-width: 2.5;
   stroke-linejoin: round;
 }
 
@@ -1171,6 +1171,24 @@ button.line-name:active {
 
 .here--still .here-halo {
   opacity: 0.16;
+}
+
+/*
+ * 線路から離れているときの印（設計書 3.3）。
+ *
+ * 線路の上に落とせていないので、受け取った緯度経度そのものに置いている。
+ * 線路の上の印と同じ見た目にすると「線路のここにいる」と読めてしまうので、
+ * 中を白のままにし、輪郭を破線にして「まだ吸い付けていない」と分かるようにする。
+ * にじみも広げる。位置そのものに幅があることを、大きさで伝える。
+ */
+.here--off .here-dot {
+  /* 破線は「線路の上に落とせていない」という意味。長さは半径 13 に合わせた */
+  stroke-dasharray: 6 4.5;
+  stroke-width: 6;
+}
+
+.here--off .here-halo {
+  opacity: 0.12;
 }
 
 /* ------------------------------------------------------------------
