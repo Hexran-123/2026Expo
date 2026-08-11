@@ -1252,7 +1252,15 @@ function today() {
 function loadSavedPlan() {
   try {
     const saved = localStorage.getItem(PLAN_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const plan = saved ? JSON.parse(saved) : null;
+    /*
+     * 別の路線で決めた区間は、この路線には無い駅でできている。
+     * 路線を切り替えたあと、これを持ち越していたころは、銚子電鉄の地図に
+     * 「和光市→平和台」の区間が出たまま、区間の設定も聞かれなかった。
+     * 路線名を書いていない古い記録は、路線が 1 つだったころのものなので通す。
+     */
+    if (plan && plan.line && currentLine && plan.line !== currentLine.id) return null;
+    return plan;
   } catch {
     return null;
   }
@@ -1271,8 +1279,12 @@ function loadPlan() {
 
 function savePlan(plan) {
   try {
-    // 日付を添える。翌日に開いたときは、これを見て聞き直す（loadPlan）
-    localStorage.setItem(PLAN_KEY, JSON.stringify({ ...plan, date: today() }));
+    // 日付と路線を添える。翌日に開いたときは日付を見て聞き直し（loadPlan）、
+    // 別の路線に切り替えたときは路線を見て捨てる（loadSavedPlan）
+    localStorage.setItem(
+      PLAN_KEY,
+      JSON.stringify({ ...plan, date: today(), line: currentLine ? currentLine.id : undefined })
+    );
   } catch {
     // 保存できない設定のブラウザでも、その場での動きは変えない
   }
