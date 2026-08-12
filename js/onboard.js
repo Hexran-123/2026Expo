@@ -32,6 +32,20 @@
   /** ここまで近づいたら「○○側の車窓を見てください」に変える（m） */
   const LOOK_NOW_METERS = 100;
 
+  /**
+   * 停まっているあいだに知らせてよい、残りの距離（m）。
+   *
+   * 停車中は速度が 0 なので「残り距離 ÷ 速度」が使えない。かといって
+   * 距離を見ずに知らせると、西海鹿島に停まっているだけで 1,954m 先の
+   * ひまわり畑に「まもなく」が出た。しかも振動は 1 スポットに一度きりなので、
+   * **本当に近づいたときには鳴らない**。見逃さないための作品で、
+   * いちばんしてはいけない外し方だった。
+   *
+   * 300m にしてあるのは、この線の走りで NOTICE_SECONDS（45 秒）に
+   * だいたい相当するため。停まっていても、発車すればすぐ見える距離。
+   */
+  const STOPPED_NOTICE_METERS = 300;
+
   /** 位置情報が途切れてから、推定を続ける上限（ミリ秒） */
   const DEAD_RECKON_LIMIT_MS = 60000;
 
@@ -261,8 +275,10 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       return { spot, side, phase: 'いま', remaining };
     }
 
-    // 停まっているあいだは秒数を出さない（0 で割れないし、出しても嘘になる）
+    // 停まっているあいだは秒数を出さない（0 で割れないし、出しても嘘になる）。
+    // 出すかどうかは距離で決める（STOPPED_NOTICE_METERS）。
     if (speedMps === null || speedMps === undefined || speedMps <= 0) {
+      if (remaining > STOPPED_NOTICE_METERS) return null;
       return { spot, side, phase: 'まもなく', remaining, seconds: null };
     }
 
@@ -301,8 +317,17 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     const behind = direction === '下り' ? scheduled - along : along - scheduled;
     if (behind <= 0) return null;
 
-    // 距離のずれを時間に直す。その列車の平均の速さを使う。
-    const stops = Object.keys(train.時刻);
+    /*
+     * 距離のずれを時間に直す。その列車の平均の速さを使う。
+     *
+     * 駅は必ず駅順に並べ直してから両端を取る。時刻表は人が手で書くファイルで、
+     * 上りの列車の時刻を（下りと同じ）銚子→外川の順に書くこともできる。
+     * 並べ直さずに書いてある順の両端を取っていたころは、その書き方をすると
+     * 終わりの時刻が始まりより早くなり、平均の速さが負になって、
+     * **その列車の遅れが二度と出なくなっていた**（画面にはエラーも出ない）。
+     */
+    const order = schedule.駅順[train.方向];
+    const stops = Object.keys(train.時刻).sort((a, b) => order.indexOf(a) - order.indexOf(b));
     const first = scheduleTools.toMinutes(train.時刻[stops[0]]);
     const last = scheduleTools.toMinutes(train.時刻[stops[stops.length - 1]]);
     const distanceOf = new Map(route.stations.map((s) => [s.name, s.distanceAlong]));

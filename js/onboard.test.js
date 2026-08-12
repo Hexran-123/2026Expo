@@ -193,6 +193,21 @@ const stopped = noticeFor(tunnel, 1863 - 300, '下り', 0);
 check('300m手前・停車中 → まもなく', stopped.phase, 'まもなく');
 check('300m手前・停車中 → 秒数は出さない', stopped.seconds, null);
 
+/*
+ * 停まっているだけで、遠くのスポットを知らせない。
+ *
+ * 速度が 0 だと「残り距離 ÷ 速度」が使えないので、距離を見ずに知らせていた。
+ * そのころは西海鹿島に停まっているだけで 1,954m 先のひまわり畑に
+ * 「まもなく」が出ていた。振動は 1 スポットに一度きりなので、
+ * 本当に近づいたときには鳴らないことになる。
+ */
+check('1000m手前・停車中 → 出さない',
+  noticeFor(cabbage, 2995 - 1000, '下り', 0), null);
+check('  実際に起きていた例（西海鹿島に停車中、1954m 先のひまわり畑）',
+  noticeFor(spot('S05'), station('西海鹿島').distanceAlong, '下り', 0), null);
+check('  発車して 40km/h まで上がれば、500m 手前から出る',
+  noticeFor(cabbage, 2995 - 480, '下り', 11.1) !== null, true);
+
 // 減速しても秒数が伸び続けないこと（速度が落ちれば残り距離も減っているはず）
 console.log('  ── 駅に近づきながら減速していく流れ');
 for (const [remaining, kmh] of [[400, 40], [250, 30], [150, 20], [90, 10], [30, 0]]) {
@@ -221,6 +236,28 @@ check('1分未満は出さない',
 // 走っている列車が無い時間帯
 check('走っていない時間は出さない',
   delayMinutes(Schedule, schedule, route, '下り', 3000, at('9:40')), null);
+
+/*
+ * 時刻表の書き方に左右されないこと。
+ *
+ * schedule.json は人が手で書くファイルなので、上りの列車の時刻を
+ * （下りと同じ）銚子→外川の順に書くこともできる。駅順に並べ直さずに
+ * 書いてある順の両端を取っていたころは、その書き方をすると
+ * 終わりの時刻が始まりより早くなり、遅れが二度と出なくなっていた。
+ */
+console.log('  ── 上りの列車で、時刻の書き順を変えても同じになるか');
+const upTrain = schedule.列車.find((t) => t.方向 === '上り' && t.時刻['外川'] && t.時刻['銚子']);
+const upTime = at(upTrain.時刻['笠上黒生']);
+const upScheduled = Schedule.scheduledDistance(schedule, route, upTrain, upTime);
+const flipped = { ...upTrain, 時刻: {} };
+for (const name of Object.keys(upTrain.時刻).slice().reverse()) flipped.時刻[name] = upTrain.時刻[name];
+
+const asWritten = delayMinutes(
+  Schedule, { ...schedule, 列車: [upTrain] }, route, '上り', upScheduled + perMinute * 2, upTime);
+const asFlipped = delayMinutes(
+  Schedule, { ...schedule, 列車: [flipped] }, route, '上り', upScheduled + perMinute * 2, upTime);
+near('上りの2分遅れ（進行順に書いてある）', asWritten, 2, 0);
+check('上りの2分遅れ（逆順に書いても同じ）', asFlipped, asWritten);
 
 // ------------------------------------------------------------------
 console.log('\n次に停まる駅（遅れとあわせて「何時にどこへ着く予定か」を出すのに使う）');
