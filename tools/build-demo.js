@@ -137,8 +137,16 @@ if (/<\/script/i.test(dataJson) || /<\/script/i.test(assetsJson)) {
 // ------------------------------------------------------------------
 
 const index = read('index.html');
+/*
+ * 外から読む <script src> と <link> は落とす。中身は下で埋め込み直すので、
+ * 残っていると 1 枚デモを開いた先で js/*.js を取りに行って 404 になる。
+ *
+ * src 以外の属性（defer, fetchpriority など）が付いていても落とすこと。
+ * 属性なしの形しか見ていなかったころ、index.html に defer が付いた時点で
+ * この置換がすり抜け、デモ 4 枚が 404 を出したまま配られていた。
+ */
 const body = /<body>([\s\S]*)<\/body>/.exec(index)[1]
-  .replace(/\s*<script src="[^"]+"><\/script>/g, '')
+  .replace(/\s*<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/g, '')
   .replace(/\s*<link[^>]*>/g, '');
 
 const css = read('css', 'style.css');
