@@ -226,6 +226,25 @@ function diamondMark(glyph, color, className) {
 
 /** JSON ファイルを読む */
 async function loadJson(path) {
+  /*
+   * index.html の <head> が、この JS の到着を待たずに頼んでおいたぶん。
+   *
+   * 携帯電話の回線では、この main.js が届くまでに数百ミリ秒かかる。
+   * そのあいだ回線が空いているのに、データの取得はここまで始まらなかった。
+   * 先に頼んでおいたものがあれば、それを受け取る。
+   * 失敗していたら、下でふつうに取り直す（先読みは速さのためのものであって、
+   * 頼りにするものではない）。
+   */
+  const early = window.EARLY && window.EARLY[path];
+  if (early) {
+    delete window.EARLY[path];
+    try {
+      return await early;
+    } catch {
+      // 取り直す
+    }
+  }
+
   const response = await fetch(path);
   if (!response.ok) throw new Error(`${path} を読めなかった（HTTP ${response.status}）`);
   return response.json();
@@ -418,11 +437,12 @@ function drawTerrain(container, terrain) {
 
   /*
    * 地形の陰影（国土地理院の陰影起伏図タイルを貼り合わせたもの。tools/fetch-hillshade.js）。
-   * 色の帯の上に重ねて立体感を出す。海の部分は透明なので、下の水色がそのまま透ける。
+   * 色の帯の上に重ねて立体感を出す。
    *
-   * WebP なのは大きさのため。同じ絵が PNG では 1,447KB、WebP では 241KB で、
-   * これ 1 枚が初回読み込みの 84% を占めていた。駅でモバイル回線で開く作品なので、
-   * ここは効く。もとが不透明度 0.85 で重ねる背景の陰影なので、劣化は目に見えない。
+   * WebP なのは大きさのため。同じ絵が PNG では 1,447KB、いまの WebP では 130KB。
+   * これ 1 枚が初回読み込みの大半を占めるので、駅でモバイル回線で開く作品としては
+   * ここがいちばん効く。作り方と、そこまで小さくできる理由は
+   * tools/shrink-hillshade.py に書いてある。
    */
   /*
    * 陰影の絵を持たない路線では、この層そのものを作らない。
@@ -432,17 +452,29 @@ function drawTerrain(container, terrain) {
    * ピンクがかった）。無いものは置かない。
    */
   if (currentLine.hillshade !== false) {
-    container.appendChild(
-      svg('image', {
-        href: `${currentLine.dir}/terrain-hillshade.webp`,
-        x: 0,
-        y: 0,
-        width: terrain.projection.width,
-        height: terrain.projection.height,
-        preserveAspectRatio: 'none',
-        class: 'hillshade',
-      })
-    );
+    const shade = svg('image', {
+      x: 0,
+      y: 0,
+      width: terrain.projection.width,
+      height: terrain.projection.height,
+      preserveAspectRatio: 'none',
+      class: 'hillshade',
+    });
+    container.appendChild(shade);
+
+    /*
+     * 絵そのものは、地図が出てから取りに行く。
+     *
+     * 場所だけ先に作って href をあとから入れるのは、この層を探している側
+     * （拡大したときに薄くする処理）が、あるはずの層を見失わないため。
+     *
+     * 携帯電話の回線では、この 130KB が地形・線路・スポットの JSON と
+     * 帯域を取り合う。陰影は「地図が読める」ためには要らないので、
+     * 譲る。手の空いたところで入れれば、見え方は変わらない。
+     */
+    const load = () => shade.setAttribute('href', `${currentLine.dir}/terrain-hillshade.webp`);
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2000 });
+    else setTimeout(load, 200);
   }
 }
 
