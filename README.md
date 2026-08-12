@@ -155,10 +155,10 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/all.html            両路線（路線選択画面から始まる）2.55 MB
-demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.68 MB
-demo/yurakucho.html      有楽町線だけ（試験用）          2.16 MB
-demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       2.16 MB
+demo/all.html            両路線（路線選択画面から始まる）1.25 MB
+demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.54 MB
+demo/yurakucho.html      有楽町線だけ（試験用）          1.00 MB
+demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       1.00 MB
 ```
 
 **ダブルクリックで開くだけで動く。**通信は一切しない。
@@ -322,11 +322,18 @@ python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurak
    実行が止まり、400ms 遅れる）。
 4. **JS には `defer` と `fetchpriority="low"`**（`index.html` の末尾）。
    css と JS で 76KB が同時に降りてきて、1KB の `lines.json` が 400ms 待たされていた。
-5. **`sw.js`（Service Worker）**。一度読んだものを蓄え、二度目からは先に出す。
+5. **降りたあとにしか使わない JS は、地図が出てから読む**。
+   `js/journal.js`（旅の記録）と `js/popularity.js`（累積人気）の gzip 7KB を、
+   最初の一斉ダウンロードから外した（`js/main.js` の `ensureScript`）。
+   使うときまで待たずに地図の直後に読むのは、降りたあとやトンネルの中では
+   電波が無いかもしれないため（設計書 9.3）。**読めなかった場合も地図は動く**
+   （旅の記録は出ないだけ。`silentJournal`）。効き目は 40〜100ms で小さいが、
+   代償が無い。
+6. **`sw.js`（Service Worker）**。一度読んだものを蓄え、二度目からは先に出す。
    圏外でも一度開いた路線なら動く（設計書 9.3）。**https のときだけ登録する**ので、
    `localhost` で作りながら確かめる邪魔にはならない。おかしくなったら
    `sw.js` の `VERSION` を上げる。
-6. **タブの印を `index.html` に直接書く**。置かないと `/favicon.ico` を取りに行って
+7. **タブの印を `index.html` に直接書く**。置かないと `/favicon.ico` を取りに行って
    空振りする。
 
 まだ手を付けていないもの（効きそうな順）:
@@ -335,8 +342,18 @@ python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurak
   `demo/all.html` の 3 割がこれ。応募時には `data/lines.json` から外すので、
   作品そのものには関係しない。
 - **`js/main.js` が 142KB**。届くまで地図を描き始められないので、ここがいまの頭打ち。
-  縮めるにはビルド工程（minify）か、乗ってから使う部分（旅の記録・成因カード）を
-  あとから読む形に分けるかだが、どちらも [ADR-0002](docs/adr/0002-フレームワークとサーバーを持たない.md) の「作りを単純に保つ」と引き換えになる。
+  道は 2 つあり、実際に試して測った。
+
+  | | 効き目 | 代償 |
+  |---|---|---|
+  | **minify（ビルド工程）** | JS 6 本が gzip 69.3KB → **24.3KB**。地図まで 6%（銚子）〜23%（路線選択）速い | 作り直し忘れが起きる（直したのに古いものが配信され、エラーも出ない）。現地でエラーが出たとき行番号も変数名も潰れている |
+  | **`main.js` を分ける** | 後回しにできるのは gzip 20KB ほどで、minify の半分以下 | 3600 行の作り替え。以後ずっと「どちらに書くか」を考えることになる |
+
+  **分けるほうはやらないと決めた。**効き目が半分以下なのに、手間と将来の制約が
+  いちばん大きいため。minify は必要になったときの手段として残す（入れるなら
+  手作業ではなく GitHub Actions で、作り直し忘れを最初から潰すこと）。
+  なお **この差が出るのは初めて開く人だけ**で、2 回目からは `sw.js` が効いて
+  0.4 秒・圏外でも動く。
 - **スマートフォンで見せるなら、1 枚デモではなく本体の URL を渡すほうが軽い。**
   1 枚デモは全部入りで 1.24MB あり、蓄えも効かない。あれはサーバーを立てられない
   相手に渡すためのもの。

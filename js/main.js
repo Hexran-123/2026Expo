@@ -2505,6 +2505,24 @@ function createJournal(spots, closings) {
 }
 
 /**
+ * 旅の記録を読めなかったときの控え。
+ *
+ * 記録は降りたあとの読み物で、乗っているあいだの通知には要らない。
+ * 手に入らなかったからといって地図ごと止めるのは、失うものが釣り合わない。
+ * 呼ばれても何もしない同じ形のものを渡し、地図・発車待ち・通知は動かし続ける
+ * （設計書 9.3 の「無いなら出さない」）。
+ */
+function silentJournal() {
+  return {
+    update() {},
+    show() {},
+    savePhoto: () => Promise.resolve(),
+    onClose() {},
+    last: () => null,
+  };
+}
+
+/**
  * 撮影ボタン（設計書 7.1）。
  *
  * capture を付けた file input なので、押すと端末のカメラがそのまま開く。
@@ -2537,6 +2555,32 @@ function setUpPhotoButton(journal, passedLog) {
  */
 function demoRequested() {
   return new URLSearchParams(location.search).has('demo');
+}
+
+/**
+ * 追加のスクリプトを、一度だけ読む。
+ *
+ * isReady が「もう居る」と答えるなら読みに行かない。1 枚デモ（demo/*.html）は
+ * 全部を 1 つの HTML に埋め込んであり、読みに行く先が無いため。
+ *
+ * 失敗したら覚えない。次に必要になったときに、もう一度試せるようにする
+ * （トンネルで転んでも、明るいところで開き直せば手に入る）。
+ */
+const scriptsLoaded = new Map();
+
+function ensureScript(source, isReady) {
+  if (isReady && isReady()) return Promise.resolve();
+
+  if (!scriptsLoaded.has(source)) {
+    scriptsLoaded.set(
+      source,
+      loadScript(source).catch((error) => {
+        scriptsLoaded.delete(source);
+        throw error;
+      })
+    );
+  }
+  return scriptsLoaded.get(source);
 }
 
 /** 追加のスクリプトを 1 本読む（ビルド工程がないので、その場で足す）*/
@@ -3309,6 +3353,22 @@ async function main() {
   // 地図が動かせる状態になったので、読み込み中の表示を退ける
   document.getElementById('loading').hidden = true;
 
+  /*
+   * 旅の記録（js/journal.js）と累積人気（js/popularity.js）を、ここから読む。
+   *
+   * どちらも降りたあと・カードを開いたあとにしか使わないのに、これまでは
+   * 最初から読んでいた。合わせて gzip 7KB あり、携帯回線ではその 7KB が
+   * 地図のデータと回線を取り合っていた。地図が出たこの時点なら、回線は空く。
+   *
+   * 「使うときに読む」ではなく「地図が出たら読む」なのは、設計書 9.3 の
+   * 「乗車前にまとめてブラウザへ保存する」に沿うため。降りたあとや
+   * トンネルの中で読みに行くと、そこは電波が無いかもしれない。
+   */
+  const journalReady = ensureScript('js/journal.js', () => typeof Journal !== 'undefined');
+  ensureScript('js/popularity.js', () => typeof Popularity !== 'undefined').catch(() => {
+    // 読めなければ、のべ人数の記章が出ないだけ（設計書 9.3）
+  });
+
   // 題・路線名・区間・出典の帯。ふだんは畳んでおく
   const chrome = createChrome();
 
@@ -3562,7 +3622,10 @@ async function main() {
     fetchTodayWeather().then(applyWeather).catch(() => applyWeather(null));
   }
 
-  const journal = createJournal(spotsFile.spots, spotsFile.closings);
+  // 地図が出た時点で読み始めてある。ここまでに届いていれば待ち時間は無い
+  const journal = await journalReady
+    .then(() => createJournal(spotsFile.spots, spotsFile.closings))
+    .catch(() => silentJournal());
 
   trip = createTrip(route, spotsFile.spots, schedule, {
     stationPanel,

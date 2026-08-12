@@ -493,9 +493,15 @@
   -->
   <script defer fetchpriority="low" src="js/schedule.js"></script>
   <script defer fetchpriority="low" src="js/onboard.js"></script>
-  <script defer fetchpriority="low" src="js/journal.js"></script>
-  <script defer fetchpriority="low" src="js/popularity.js"></script>
   <script defer src="js/main.js"></script>
+
+  <!--
+    js/journal.js（旅の記録）と js/popularity.js（累積人気）は、ここでは読まない。
+    どちらも降りたあと・カードを開いたあとにしか使わないのに、合わせて gzip 7KB を
+    地図より先に取っていた。**地図が出てから** js/main.js が読む（ensureScript）。
+    使うときまで待つのではなく地図の直後に読むのは、降りたあとやトンネルの中では
+    電波が無いかもしれないため（設計書 9.3）。
+  -->
 
 </body>
 </html>
