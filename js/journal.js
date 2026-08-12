@@ -74,6 +74,27 @@
     }
   }
 
+  /**
+   * きょう撮ったぶんだけ。
+   *
+   * 写真は消さずに取っておく（設計書 7.1 の「あとから旅の記録を見返せるように」）。
+   * ところが記録に出すほうも溜まったぶんを全部並べていたので、二度目に乗った日には
+   * 先月の写真まで「きょうの旅」に並んでいた。しまう場所と、出すぶんは別の話。
+   *
+   * 日付は暦の上の同じ日で見る。乗車区間（js/main.js の today）と同じ見方。
+   * 日をまたぐ乗車は銚子電鉄には無い（終電は 22 時台）。
+   */
+  function takenToday(photos) {
+    const now = new Date();
+    return photos.filter((photo) => {
+      if (!photo.at) return false;
+      const at = new Date(photo.at);
+      return at.getFullYear() === now.getFullYear()
+        && at.getMonth() === now.getMonth()
+        && at.getDate() === now.getDate();
+    });
+  }
+
   // ------------------------------------------------------------------
   // 通過の記録（localStorage）
   // ------------------------------------------------------------------
@@ -138,7 +159,13 @@
   // 画面
   // ------------------------------------------------------------------
 
-  function create(spots, themes, closings) {
+  /**
+   * @param {{from:string, to:string, line:string}} ends
+   *   タイムラインの両端に書く駅名と、路線名。路線ごとに違うので受け取る。
+   *   銚子・外川と書き込んでいたころは、試験用の有楽町線で旅を終えても
+   *   「銚子 ─◆─ 外川」と出ていた。
+   */
+  function create(spots, themes, closings, ends) {
     const screen = document.getElementById('journal');
     const dateElement = document.getElementById('journal-date');
     const lineElement = document.getElementById('journal-line');
@@ -147,6 +174,9 @@
 
     let passed = [];
     let photos = [];
+
+    /** 画面に出している写真の一時 URL。次に出すとき返す（放っておくと溜まる） */
+    const shownUrls = [];
 
     /*
      * 閉じたことを外へ知らせる。
@@ -171,7 +201,7 @@
 
       const start = document.createElement('span');
       start.className = 'journal-end';
-      start.textContent = '銚子';
+      start.textContent = ends.from;
       lineElement.appendChild(start);
 
       for (const entry of passed) {
@@ -186,12 +216,16 @@
 
       const end = document.createElement('span');
       end.className = 'journal-end';
-      end.textContent = '外川';
+      end.textContent = ends.to;
       lineElement.appendChild(end);
     }
 
     /** ② 撮った写真 */
     function renderShots() {
+      // 前に出したぶんの後片付け。閉じて開くたびに増えていくため
+      for (const url of shownUrls) URL.revokeObjectURL(url);
+      shownUrls.length = 0;
+
       shotsElement.replaceChildren();
       if (photos.length === 0) {
         const empty = document.createElement('p');
@@ -204,6 +238,7 @@
         const image = document.createElement('img');
         image.className = 'journal-shot';
         image.src = URL.createObjectURL(photo.blob);
+        shownUrls.push(image.src);
         image.alt = photo.near ? `${photo.near}のあたりで撮った写真` : '撮った写真';
         shotsElement.appendChild(image);
       }
@@ -218,7 +253,7 @@
 
     async function show(state) {
       passed = state.passed || [];
-      photos = await allPhotos();
+      photos = takenToday(await allPhotos());
 
       const today = new Date();
       const weekday = '日月火水木金土'[today.getDay()];
@@ -274,7 +309,7 @@
 
       context.fillStyle = '#6B6862';
       context.font = '30px sans-serif';
-      context.fillText(dateElement.textContent + '　銚子電鉄', padding, 160);
+      context.fillText(dateElement.textContent + '　' + ends.line, padding, 160);
 
       // ---- タイムライン ----
       context.strokeStyle = '#4A4640';
@@ -296,8 +331,8 @@
 
       context.fillStyle = '#6B6862';
       context.font = '26px sans-serif';
-      context.fillText('銚子', padding, lineY + 56);
-      const endLabel = '外川';
+      context.fillText(ends.from, padding, lineY + 56);
+      const endLabel = ends.to;
       context.fillText(endLabel, canvas.width - padding - context.measureText(endLabel).width, lineY + 56);
 
       // 通過したスポットの名前
@@ -345,7 +380,11 @@
         link.href = URL.createObjectURL(blob);
         link.download = 'きょうの旅.png';
         link.click();
-        URL.revokeObjectURL(link.href);
+        /*
+         * 取り消しは次の回へ回す。押した直後にここで取り消すと、
+         * 保存が始まる前に中身が消えて、何も落ちてこない端末がある。
+         */
+        setTimeout(() => URL.revokeObjectURL(link.href), 60000);
       }, 'image/png');
     }
 
