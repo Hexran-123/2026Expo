@@ -1146,15 +1146,34 @@ button.line-name:active {
    現在位置（設計書 4.3）
    ------------------------------------------------------------------ */
 
+/*
+ * 芯は墨のベタ塗り＋太い白フチ。
+ *
+ * もとは --theme-sea を着ていた。あれは「海と空」テーマの絶景バッジと
+ * 同じ色で、銚子電鉄にも有楽町線にもそのテーマのスポットが地図上にある。
+ * つまり現在地が「青いスポットの一種」に見えていた。テーマ色は地理的な
+ * 意味を表す色であり（設計書5.4）、成因カードを持たない現在地には
+ * 割り当てない。無彩色の墨（--ink）に替え、明度差だけで立たせる。
+ *
+ * 塗りを白ではなく墨にしたのは、駅の印（白地＋細い輪郭）と明暗を
+ * 正反対にするため。駅に停まっていて印が重なっても取り違えない。
+ */
 .here-dot {
-  fill: #FFFFFF;
-  stroke: var(--theme-sea);
-  stroke-width: 7;
+  fill: var(--ink);
+  stroke: #FFFFFF;
+  stroke-width: 6;
+}
+
+/* 白フチのさらに外の細い墨の縁。淡い地形（--land-0）の上で白フチが溶けるのを防ぐ */
+.here-rim {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
 }
 
 /* 進行方向を指す矢印。js/main.js が向きに合わせて回転させる */
 .here-arrow {
-  fill: var(--theme-sea);
+  fill: var(--ink);
   stroke: #FFFFFF;
   stroke-width: 2.5;
   stroke-linejoin: round;
@@ -1162,8 +1181,56 @@ button.line-name:active {
 
 /* まわりのにじみ。地形の色が濃いところでも埋もれないように */
 .here-halo {
-  fill: var(--theme-sea);
-  opacity: 0.22;
+  fill: var(--ink);
+  opacity: 0.12;
+}
+
+/*
+ * 通ってきた側の尾（設計書 4.3）。
+ *
+ * 線路の「下」に、白い帯と墨の帯を二枚重ねて敷く。線路そのものの色にも
+ * 太さにも触らないので、「線路の見た目＝路線の別」という既存の読み方を
+ * 壊さない。塗り色は index.html の <defs> にある linearGradient で、
+ * 現在地へ向かって濃くなる。端点は js/main.js が測位のたびに書き換える。
+ *
+ * 二枚重ねるのは、地形の色が --land-0（#E2EACB）から --land-45（#C29A5A）
+ * まで振れるため。白だけだと濃い区間で、墨だけだと淡い区間で読めなくなる。
+ * 二枚あれば、淡いところでは外側の墨が、濃いところでは内側の白が効く。
+ *
+ * 太さは拡大しても画面上で変わらない（--k は線路と同じ扱い）。
+ */
+.here-tail {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.here-tail--paper { stroke-width: calc(20px * var(--k)); }
+.here-tail--ink   { stroke-width: calc(28px * var(--k)); }
+
+/*
+ * 乗る前・降りたあとに広がる波紋。
+ *
+ * その状態では矢印が出ないので、印は丸だけになり、形の上で駅の仲間に見える。
+ * 地図の上で動くものはこれひとつなので、視界の端でも気づける。
+ * 路線カードのミニ地図（.line-here-wave）と同じ書き方に揃えてある。
+ *
+ * 動きに意味を載せきらないこと。波紋を止めても、墨色と白の輪だけで
+ * 見分けがつくようにしてある。
+ */
+.here-wave {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .here--still .here-wave { animation: here-pulse 2.2s ease-out infinite; }
+}
+
+@keyframes here-pulse {
+  0%   { r: 13; opacity: 0.55; }
+  100% { r: 34; opacity: 0; }
 }
 
 /*
@@ -1178,7 +1245,7 @@ button.line-name:active {
 }
 
 .here--still .here-halo {
-  opacity: 0.16;
+  opacity: 0.09;
 }
 
 /*
@@ -1190,13 +1257,39 @@ button.line-name:active {
  * にじみも広げる。位置そのものに幅があることを、大きさで伝える。
  */
 .here--off .here-dot {
-  /* 破線は「線路の上に落とせていない」という意味。長さは半径 13 に合わせた */
-  stroke-dasharray: 6 4.5;
-  stroke-width: 6;
+  /*
+   * ここだけ塗りを白に戻す。墨のベタ塗りのままだと、破線の隙間が
+   * 塗りで埋まって破線に見えない。「線路の上に落とせていない」という
+   * 意味は破線が担っているので、それが読めなくなっては本末転倒。
+   */
+  fill: #FFFFFF;
+  stroke: var(--ink);
+  /*
+   * 走行中の芯（半径 9.5）より一回り大きくする。「位置そのものに幅がある」ことを
+   * 大きさで伝えるため。にじみの薄さと合わせて、輪郭が緩んで見えるようにする。
+   */
+  r: 12;
+  /*
+   * 破線は「線路の上に落とせていない」という意味。
+   *
+   * 刻みは 2 つの条件で決めた。
+   * (a) 周長 75.4（半径 12）をちょうど 6 等分する（8.4 + 4.17 = 12.57）。
+   *     割り切れないと、輪の閉じ目にだけ短い破線が残って傷のように見える。
+   * (b) 破線 1 本の長さを線の太さの 2 倍近くに保つ（8.4 ÷ 4.5 ＝ 1.9）。
+   *     ここを詰めると破線が正方形に近づき、輪ではなく**歯車**に見える。
+   *     実際、半径 9.5・太さ 6 のままだったとき、実機でとげの生えた塊に見えた。
+   */
+  stroke-dasharray: 8.4 4.17;
+  stroke-width: 4.5;
+}
+
+/* 破線の外に実線の輪があると、破線が輪の一部に見えてしまう */
+.here--off .here-rim {
+  display: none;
 }
 
 .here--off .here-halo {
-  opacity: 0.12;
+  opacity: 0.08;
 }
 
 /* ------------------------------------------------------------------
@@ -2311,6 +2404,22 @@ button.line-name:active {
           <feFlood flood-color="#17332A" flood-opacity="0.55"/>
           <feComposite in2="shadow" operator="in"/>
         </filter>
+
+        <!--
+          通ってきた側の尾（設計書 4.3）。線路の下に、白い帯と墨の帯を
+          二枚重ねて敷く。現在地へ向かって濃くなる。
+
+          端点は緯度経度そのものの座標なので、位置が動くたび js/main.js が
+          x1/y1/x2/y2 を書き換える（gradientUnits="userSpaceOnUse"）。
+        -->
+        <linearGradient id="here-tail-paper" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+          <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.95"/>
+        </linearGradient>
+        <linearGradient id="here-tail-ink" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#2B2A28" stop-opacity="0"/>
+          <stop offset="1" stop-color="#2B2A28" stop-opacity="0.45"/>
+        </linearGradient>
       </defs>
       <g id="map-terrain"></g>
       <g id="map-route"></g>
@@ -2326,12 +2435,27 @@ button.line-name:active {
           「自分がどこにいるか分からない」状態だった。
           拡大しても画面上の大きさは変わらない（.scalable）。
         -->
-        <circle class="here-halo" r="30"/>
-        <!-- 進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む -->
+        <circle class="here-halo" r="24"/>
+        <!--
+          乗る前・降りたあとに広がる波紋。矢印が出せない状態では、
+          丸の印は駅と同じ形になってしまう。動きで見分けをつける。
+          prefers-reduced-motion のときは動かない（css/style.css）。
+        -->
+        <circle class="here-wave" r="13"/>
+        <!-- 白フチのさらに外の細い墨の縁。淡い地形の上で白フチが溶けるのを防ぐ -->
+        <circle class="here-rim" r="13.5"/>
+        <!--
+          進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む。
+
+          芯（外側 14.4）から離した位置に置く。もとは底辺が 11、つまり芯の
+          内側にあり、芯を白・矢印を青で塗り分けていたから読めていた。芯を
+          墨のベタ塗りにすると同じ墨の矢印が芯に飲まれ、実機では「しずく」の
+          ような形にしか見えなくなる。離して独立した三角にすれば矢印に読める。
+        -->
         <g id="here-arrow-wrap">
-          <path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/>
+          <path class="here-arrow" d="M0,-26 L10,-15 L-10,-15 Z"/>
         </g>
-        <circle class="here-dot" r="13"/>
+        <circle class="here-dot" r="9.5"/>
       </g>
     </svg>
 
@@ -2625,9 +2749,6 @@ button.line-name:active {
     間に合えばよく、main.js 自身も地図のデータを待つ。
     defer は読み込む順（この並び順）を保つので、依存関係は変わらない。
   -->
-  <script defer fetchpriority="low" src="js/schedule.js"></script>
-  <script defer fetchpriority="low" src="js/onboard.js"></script>
-  <script defer src="js/main.js"></script>
 
   <!--
     js/journal.js（旅の記録）と js/popularity.js（累積人気）は、ここでは読まない。
@@ -2939,6 +3060,20 @@ if (!/[?&]line=/.test(location.search)) {
   /** ここまで近づいたら「○○側の車窓を見てください」に変える（m） */
   const LOOK_NOW_METERS = 100;
 
+  /**
+   * 停まっているあいだに知らせてよい、残りの距離（m）。
+   *
+   * 停車中は速度が 0 なので「残り距離 ÷ 速度」が使えない。かといって
+   * 距離を見ずに知らせると、西海鹿島に停まっているだけで 1,954m 先の
+   * ひまわり畑に「まもなく」が出た。しかも振動は 1 スポットに一度きりなので、
+   * **本当に近づいたときには鳴らない**。見逃さないための作品で、
+   * いちばんしてはいけない外し方だった。
+   *
+   * 300m にしてあるのは、この線の走りで NOTICE_SECONDS（45 秒）に
+   * だいたい相当するため。停まっていても、発車すればすぐ見える距離。
+   */
+  const STOPPED_NOTICE_METERS = 300;
+
   /** 位置情報が途切れてから、推定を続ける上限（ミリ秒） */
   const DEAD_RECKON_LIMIT_MS = 60000;
 
@@ -3168,8 +3303,10 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       return { spot, side, phase: 'いま', remaining };
     }
 
-    // 停まっているあいだは秒数を出さない（0 で割れないし、出しても嘘になる）
+    // 停まっているあいだは秒数を出さない（0 で割れないし、出しても嘘になる）。
+    // 出すかどうかは距離で決める（STOPPED_NOTICE_METERS）。
     if (speedMps === null || speedMps === undefined || speedMps <= 0) {
+      if (remaining > STOPPED_NOTICE_METERS) return null;
       return { spot, side, phase: 'まもなく', remaining, seconds: null };
     }
 
@@ -3208,8 +3345,17 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     const behind = direction === '下り' ? scheduled - along : along - scheduled;
     if (behind <= 0) return null;
 
-    // 距離のずれを時間に直す。その列車の平均の速さを使う。
-    const stops = Object.keys(train.時刻);
+    /*
+     * 距離のずれを時間に直す。その列車の平均の速さを使う。
+     *
+     * 駅は必ず駅順に並べ直してから両端を取る。時刻表は人が手で書くファイルで、
+     * 上りの列車の時刻を（下りと同じ）銚子→外川の順に書くこともできる。
+     * 並べ直さずに書いてある順の両端を取っていたころは、その書き方をすると
+     * 終わりの時刻が始まりより早くなり、平均の速さが負になって、
+     * **その列車の遅れが二度と出なくなっていた**（画面にはエラーも出ない）。
+     */
+    const order = schedule.駅順[train.方向];
+    const stops = Object.keys(train.時刻).sort((a, b) => order.indexOf(a) - order.indexOf(b));
     const first = scheduleTools.toMinutes(train.時刻[stops[0]]);
     const last = scheduleTools.toMinutes(train.時刻[stops[stops.length - 1]]);
     const distanceOf = new Map(route.stations.map((s) => [s.name, s.distanceAlong]));
@@ -3350,6 +3496,27 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     }
   }
 
+  /**
+   * きょう撮ったぶんだけ。
+   *
+   * 写真は消さずに取っておく（設計書 7.1 の「あとから旅の記録を見返せるように」）。
+   * ところが記録に出すほうも溜まったぶんを全部並べていたので、二度目に乗った日には
+   * 先月の写真まで「きょうの旅」に並んでいた。しまう場所と、出すぶんは別の話。
+   *
+   * 日付は暦の上の同じ日で見る。乗車区間（js/main.js の today）と同じ見方。
+   * 日をまたぐ乗車は銚子電鉄には無い（終電は 22 時台）。
+   */
+  function takenToday(photos) {
+    const now = new Date();
+    return photos.filter((photo) => {
+      if (!photo.at) return false;
+      const at = new Date(photo.at);
+      return at.getFullYear() === now.getFullYear()
+        && at.getMonth() === now.getMonth()
+        && at.getDate() === now.getDate();
+    });
+  }
+
   // ------------------------------------------------------------------
   // 通過の記録（localStorage）
   // ------------------------------------------------------------------
@@ -3414,7 +3581,13 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
   // 画面
   // ------------------------------------------------------------------
 
-  function create(spots, themes, closings) {
+  /**
+   * @param {{from:string, to:string, line:string}} ends
+   *   タイムラインの両端に書く駅名と、路線名。路線ごとに違うので受け取る。
+   *   銚子・外川と書き込んでいたころは、試験用の有楽町線で旅を終えても
+   *   「銚子 ─◆─ 外川」と出ていた。
+   */
+  function create(spots, themes, closings, ends) {
     const screen = document.getElementById('journal');
     const dateElement = document.getElementById('journal-date');
     const lineElement = document.getElementById('journal-line');
@@ -3423,6 +3596,9 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
     let passed = [];
     let photos = [];
+
+    /** 画面に出している写真の一時 URL。次に出すとき返す（放っておくと溜まる） */
+    const shownUrls = [];
 
     /*
      * 閉じたことを外へ知らせる。
@@ -3447,7 +3623,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
       const start = document.createElement('span');
       start.className = 'journal-end';
-      start.textContent = '銚子';
+      start.textContent = ends.from;
       lineElement.appendChild(start);
 
       for (const entry of passed) {
@@ -3462,12 +3638,16 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
       const end = document.createElement('span');
       end.className = 'journal-end';
-      end.textContent = '外川';
+      end.textContent = ends.to;
       lineElement.appendChild(end);
     }
 
     /** ② 撮った写真 */
     function renderShots() {
+      // 前に出したぶんの後片付け。閉じて開くたびに増えていくため
+      for (const url of shownUrls) URL.revokeObjectURL(url);
+      shownUrls.length = 0;
+
       shotsElement.replaceChildren();
       if (photos.length === 0) {
         const empty = document.createElement('p');
@@ -3480,6 +3660,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
         const image = document.createElement('img');
         image.className = 'journal-shot';
         image.src = URL.createObjectURL(photo.blob);
+        shownUrls.push(image.src);
         image.alt = photo.near ? `${photo.near}のあたりで撮った写真` : '撮った写真';
         shotsElement.appendChild(image);
       }
@@ -3494,7 +3675,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
     async function show(state) {
       passed = state.passed || [];
-      photos = await allPhotos();
+      photos = takenToday(await allPhotos());
 
       const today = new Date();
       const weekday = '日月火水木金土'[today.getDay()];
@@ -3550,7 +3731,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
       context.fillStyle = '#6B6862';
       context.font = '30px sans-serif';
-      context.fillText(dateElement.textContent + '　銚子電鉄', padding, 160);
+      context.fillText(dateElement.textContent + '　' + ends.line, padding, 160);
 
       // ---- タイムライン ----
       context.strokeStyle = '#4A4640';
@@ -3572,8 +3753,8 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
       context.fillStyle = '#6B6862';
       context.font = '26px sans-serif';
-      context.fillText('銚子', padding, lineY + 56);
-      const endLabel = '外川';
+      context.fillText(ends.from, padding, lineY + 56);
+      const endLabel = ends.to;
       context.fillText(endLabel, canvas.width - padding - context.measureText(endLabel).width, lineY + 56);
 
       // 通過したスポットの名前
@@ -3621,7 +3802,11 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
         link.href = URL.createObjectURL(blob);
         link.download = 'きょうの旅.png';
         link.click();
-        URL.revokeObjectURL(link.href);
+        /*
+         * 取り消しは次の回へ回す。押した直後にここで取り消すと、
+         * 保存が始まる前に中身が消えて、何も落ちてこない端末がある。
+         */
+        setTimeout(() => URL.revokeObjectURL(link.href), 60000);
       }, 'image/png');
     }
 
@@ -4867,6 +5052,30 @@ function drawRoute(container, points) {
   const d = points
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
     .join('');
+
+  /*
+   * 通ってきた側の尾（設計書 4.3）。線路と同じ形をそのまま使い、
+   * stroke-dasharray で「現在地の手前の一部」だけを切り出す。
+   * 線路以外の新しい線を地図に増やさないための作り。
+   *
+   * 線路の「下」に敷く。線路そのものの色にも太さにも触らないので、
+   * 「線路の見た目＝路線の別」という既存の読み方を壊さない。
+   *
+   * 白と墨を二枚重ねるのは、地形の色が --land-0（#E2EACB）から
+   * --land-45（#C29A5A）まで振れるため。白だけだと濃い区間で、
+   * 墨だけだと淡い区間で読めなくなる。二枚あれば、淡いところでは
+   * 外側の墨が、濃いところでは内側の白が効く。
+   *
+   * 白を先に（いちばん下に）、墨をその上に。順番が逆だと白が墨を覆う。
+   */
+  container.appendChild(svg('path', {
+    d, class: 'here-tail here-tail--paper', id: 'here-tail-paper-path',
+    stroke: 'url(#here-tail-paper)', hidden: '',
+  }));
+  container.appendChild(svg('path', {
+    d, class: 'here-tail here-tail--ink', id: 'here-tail-ink-path',
+    stroke: 'url(#here-tail-ink)', hidden: '',
+  }));
 
   // 白い縁取りを先に引き、その上に線路を重ねる。
   // 台地の濃い緑の上でも線路が沈まないようにするため。
@@ -6221,6 +6430,79 @@ function createTrip(route, spots, schedule, parts) {
   const ridingCount = document.getElementById('riding-count');
   const hereMarker = document.getElementById('map-here');
   const hereArrow = document.getElementById('here-arrow-wrap');
+
+  /*
+   * 通ってきた側の尾。乗っているあいだだけ出す。
+   *
+   * 乗る前に出さないのは、そこまで歩いてきた人が線路の上を通ってきた
+   * わけではないからで、出すと嘘になる。線路から離れているとき
+   * （.here--off）に出さないのも同じ理由。
+   *
+   * 長さは現在地から 110m。銚子電鉄の駅間はおおむね 700m なので、
+   * 6 分の 1 駅ぶんほど。400m → 180m → 110m と短くしてきた。
+   * 線路の脇を灰色の帯が長く並走すると、地図が重く見える。
+   * 短いと「いま来た方向」だけを言う印になる。
+   */
+  const TAIL_METERS = 110;
+  const tailPaths = [
+    document.getElementById('here-tail-paper-path'),
+    document.getElementById('here-tail-ink-path'),
+  ].filter(Boolean);
+  const tailGradients = [
+    document.getElementById('here-tail-paper'),
+    document.getElementById('here-tail-ink'),
+  ].filter(Boolean);
+  /*
+   * 軌道上の距離（m）と、SVG のパス長との比。この縮尺では路線の端から端まで
+   * 比がほぼ変わらないので、全長どうしの比を一度だけ測って使い回す。
+   * getTotalLength は安くはないので、測位のたびには呼ばない。
+   */
+  let tailScale = null;
+  let tailPathLength = 0;
+
+  function hideTail() {
+    for (const tail of tailPaths) setHidden(tail, true);
+  }
+
+  function showTail(along) {
+    if (tailPaths.length === 0) return;
+
+    if (tailScale === null) {
+      const meters = track[track.length - 1].along;
+      tailPathLength = tailPaths[0].getTotalLength();
+      tailScale = meters > 0 ? tailPathLength / meters : 0;
+    }
+    if (!tailScale) return;
+
+    const backMeters = Math.max(0, along - TAIL_METERS);
+    const at = along * tailScale;
+    const from = backMeters * tailScale;
+    const length = at - from;
+    if (length <= 0) {
+      hideTail();
+      return;
+    }
+
+    /*
+     * 濃さの向きを決める2点。駅の印や現在地の印と同じ pointAtDistance で
+     * 求めるので、尾の先端は必ず現在地の印の真下に来る。
+     */
+    const nose = pointAtDistance(track, points, along);
+    const back = pointAtDistance(track, points, backMeters);
+    for (const gradient of tailGradients) {
+      gradient.setAttribute('x1', back.x.toFixed(1));
+      gradient.setAttribute('y1', back.y.toFixed(1));
+      gradient.setAttribute('x2', nose.x.toFixed(1));
+      gradient.setAttribute('y2', nose.y.toFixed(1));
+    }
+
+    for (const tail of tailPaths) {
+      // 隙間を全長ぶん取って、切り出した一区間のほかは描かせない
+      tail.style.strokeDasharray = `${length.toFixed(1)} ${tailPathLength.toFixed(1)}`;
+      tail.style.strokeDashoffset = `${(-from).toFixed(1)}`;
+      setHidden(tail, false);
+    }
+  }
   const shootButton = document.getElementById('shoot');
 
   const mismatchBar = document.getElementById('mismatch-bar');
@@ -6360,6 +6642,7 @@ function createTrip(route, spots, schedule, parts) {
   function showHere(follow = true) {
     if (along === null) {
       setHidden(hereMarker, true);
+      hideTail();
       return;
     }
 
@@ -6378,6 +6661,10 @@ function createTrip(route, spots, schedule, parts) {
     lastHerePoint = spot;
     refreshFollowButtonLabel();
     hereMarker.classList.remove('here--off');
+
+    // 乗っているあいだだけ、通ってきた側に尾を敷く
+    if (mode === '車上') showTail(along);
+    else hideTail();
 
     hereMarker.setAttribute('data-ax', spot.x);
     hereMarker.setAttribute('data-ay', spot.y);
@@ -6442,6 +6729,8 @@ function createTrip(route, spots, schedule, parts) {
 
     hereMarker.classList.add('here--off');
     hereMarker.classList.toggle('here--still', true);
+    // 線路の上に落とせていないので、通ってきた道も言えない
+    hideTail();
     hereMarker.setAttribute('data-ax', point.x);
     hereMarker.setAttribute('data-ay', point.y);
     hereMarker.querySelectorAll('circle').forEach((circle) => {
@@ -6564,6 +6853,7 @@ function createTrip(route, spots, schedule, parts) {
     riding.hidden = true;
     shootButton.hidden = true;
     setHidden(hereMarker, true);
+    hideTail();
     showNotice(null);
     wakeLock.off();
     noticedId = null;
@@ -6582,7 +6872,28 @@ function createTrip(route, spots, schedule, parts) {
   function destinationName() {
     const plan = getPlan();
     if (plan) return plan.alight;
-    return direction === '下り' ? '外川' : '銚子';
+    // 区間が無ければ、進んでいる向きの終点（路線ごとに違うので route から取る）
+    const ends = route.stations;
+    return direction === '下り' ? ends[ends.length - 1].name : ends[0].name;
+  }
+
+  /**
+   * この駅で旅を終えてよいか。
+   *
+   * 「降りる駅と名前が同じ」だけを見ていたころは、予定の駅を通り過ぎると
+   * 旅がいつまでも終わらなかった。**終点まで乗っても記録が出ない。**
+   * 気が変わって先まで乗ることも、その駅での位置情報を取りそこねることもある。
+   * 予定の駅か、それより先の駅で停まったなら、そこが旅の終わり。
+   *
+   * 向きがまだ決まっていないときだけ、名前で見る（前後を比べようがないため）。
+   */
+  function isJourneyEnd(station) {
+    const goal = route.stations.find((s) => s.name === destinationName());
+    if (!goal || direction === null) return station.name === destinationName();
+
+    return direction === '下り'
+      ? station.distanceAlong >= goal.distanceAlong
+      : station.distanceAlong <= goal.distanceAlong;
   }
 
   /** 降りる駅に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
@@ -6690,7 +7001,7 @@ function createTrip(route, spots, schedule, parts) {
 
       // 降りる駅に着いたか。その駅の 80m 以内で、かつ停まっている
       const station = stationAt(route, coords);
-      if (station && station.name === destinationName()) {
+      if (station && isJourneyEnd(station)) {
         arrive(station);
         return;
       }
@@ -6843,6 +7154,7 @@ function createTrip(route, spots, schedule, parts) {
       // これ以上は当てにならない。黙る。
       showNotice(null);
       setHidden(hereMarker, true);
+      hideTail();
       return;
     }
     // 向きが定まっていなければ、進む方向を当てずっぽうにするより止まっていたほうがよい
@@ -6884,8 +7196,12 @@ function createTrip(route, spots, schedule, parts) {
 }
 
 /** 旅の記録を組み立てる（中身は js/journal.js） */
-function createJournal(spots, closings) {
-  return Journal.create(spots, THEMES, closings || {});
+function createJournal(spots, closings, route) {
+  return Journal.create(spots, THEMES, closings || {}, {
+    from: route.stations[0].name,
+    to: route.stations[route.stations.length - 1].name,
+    line: currentLine.name,
+  });
 }
 
 /**
@@ -7030,9 +7346,17 @@ function windowHint(weather) {
 async function fetchTodayWeather() {
   const forecast = await loadJson(forecastUrl());
 
-  // 銚子は「北東部」。見つからなければ最初の区分を使う。
+  /*
+   * どの区分を読むかは data/lines.json の weatherLabel で決める
+   * （銚子電鉄なら「千葉県北東部」、有楽町線なら「東京地方」）。
+   *
+   * ここに「北東部」と書き込んでいたころは、weatherLabel は書いてあるのに
+   * 誰も読んでおらず、銚子以外の路線ではいつも先頭の区分に落ちていた。
+   * 手で書くファイルに、効かない設定を置いたままにしない。
+   */
   const areas = forecast[0].timeSeries[0].areas;
-  const area = areas.find((a) => a.area.name.includes('北東部')) || areas[0];
+  const wanted = (currentLine.weatherLabel || '').replace(/^.*?[都道府県]/, '');
+  const area = (wanted && areas.find((a) => a.area.name.includes(wanted))) || areas[0];
   const weather = area.weathers[0].replace(/\s+/g, '');
 
   // 「くもり所により雨」のような長い言い方は、先頭のひと言だけにする。
@@ -8008,7 +8332,7 @@ async function main() {
 
   // 地図が出た時点で読み始めてある。ここまでに届いていれば待ち時間は無い
   const journal = await journalReady
-    .then(() => createJournal(spotsFile.spots, spotsFile.closings))
+    .then(() => createJournal(spotsFile.spots, spotsFile.closings, route))
     .catch(() => silentJournal());
 
   trip = createTrip(route, spotsFile.spots, schedule, {

@@ -177,6 +177,22 @@
           <feFlood flood-color="#17332A" flood-opacity="0.55"/>
           <feComposite in2="shadow" operator="in"/>
         </filter>
+
+        <!--
+          通ってきた側の尾（設計書 4.3）。線路の下に、白い帯と墨の帯を
+          二枚重ねて敷く。現在地へ向かって濃くなる。
+
+          端点は緯度経度そのものの座標なので、位置が動くたび js/main.js が
+          x1/y1/x2/y2 を書き換える（gradientUnits="userSpaceOnUse"）。
+        -->
+        <linearGradient id="here-tail-paper" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+          <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.95"/>
+        </linearGradient>
+        <linearGradient id="here-tail-ink" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#2B2A28" stop-opacity="0"/>
+          <stop offset="1" stop-color="#2B2A28" stop-opacity="0.45"/>
+        </linearGradient>
       </defs>
       <g id="map-terrain"></g>
       <g id="map-route"></g>
@@ -192,12 +208,27 @@
           「自分がどこにいるか分からない」状態だった。
           拡大しても画面上の大きさは変わらない（.scalable）。
         -->
-        <circle class="here-halo" r="30"/>
-        <!-- 進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む -->
+        <circle class="here-halo" r="24"/>
+        <!--
+          乗る前・降りたあとに広がる波紋。矢印が出せない状態では、
+          丸の印は駅と同じ形になってしまう。動きで見分けをつける。
+          prefers-reduced-motion のときは動かない（css/style.css）。
+        -->
+        <circle class="here-wave" r="13"/>
+        <!-- 白フチのさらに外の細い墨の縁。淡い地形の上で白フチが溶けるのを防ぐ -->
+        <circle class="here-rim" r="13.5"/>
+        <!--
+          進行方向を指す矢印。here-dot と別に回転させるので、独立したgに包む。
+
+          芯（外側 14.4）から離した位置に置く。もとは底辺が 11、つまり芯の
+          内側にあり、芯を白・矢印を青で塗り分けていたから読めていた。芯を
+          墨のベタ塗りにすると同じ墨の矢印が芯に飲まれ、実機では「しずく」の
+          ような形にしか見えなくなる。離して独立した三角にすれば矢印に読める。
+        -->
         <g id="here-arrow-wrap">
-          <path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/>
+          <path class="here-arrow" d="M0,-26 L10,-15 L-10,-15 Z"/>
         </g>
-        <circle class="here-dot" r="13"/>
+        <circle class="here-dot" r="9.5"/>
       </g>
     </svg>
 

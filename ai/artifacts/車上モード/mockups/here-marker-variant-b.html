@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>現在位置マーカー — 変体B（塊と短い尾）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: #E7E1D5;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
+  .lead { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 24px; }
+  h2.state { font-size: 13px; font-weight: 700; margin: 24px 0 8px; }
+  h2.state:first-of-type { margin-top: 0; }
+  .note { font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin: 8px 0 0; }
+  .frame {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    background: var(--land-0);
+  }
+  .legend { margin-top: 24px; font-size: 13px; line-height: 1.7; }
+  .legend h2 { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+  code { font-size: 12px; background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px; }
+
+  /* ------------------------------------------------------------------
+     変体B ─ 塊と短い尾
+     F: 芯を墨色でベタ塗りし、太い白フチで地形から切り離す。
+     K: 尾は短く（約 1 駅分）、そのぶん濃い。
+     A: 停まっているあいだだけ波紋。
+     ------------------------------------------------------------------ */
+
+  .v-b .here-halo { fill: var(--ink); opacity: 0.12; }
+
+  /* 白フチの外側に、細い墨の縁。淡い地形の上で白フチが溶けるのを防ぐ */
+  .v-b .here-rim { fill: none; stroke: var(--ink); stroke-width: 2; }
+
+  /* 芯は墨のベタ塗り。いちばん重い塊が現在地になる */
+  .v-b .here-dot { fill: var(--ink); stroke: #FFFFFF; stroke-width: 7; }
+
+  /* 矢印は白抜き。墨の塊に飲まれないように向きを反転させる */
+  .v-b .here-arrow { fill: #FFFFFF; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+
+  .v-b .mock-tail { fill: none; stroke-width: 10; stroke-linecap: round; }
+
+  .v-b .here-wave { fill: none; stroke: var(--ink); stroke-width: 2.5; opacity: 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .v-b .here--still .here-wave { animation: here-pulse 2.2s ease-out infinite; }
+  }
+  @keyframes here-pulse {
+    0%   { r: 15; opacity: 0.55; }
+    100% { r: 42; opacity: 0; }
+  }
+
+  .here--still .here-arrow { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>変体B ─ 塊と短い尾</h1>
+  <p class="lead">
+    芯を<strong>墨色のベタ塗り</strong>にして、地図でいちばん重い塊にする。白の太いフチが地形から切り離す。
+    尾は約 1 駅分と短く、そのぶん濃い。<strong>「どこ」を一瞬で拾わせることを優先し、「どこから来たか」は近い過去だけ</strong>にした構成。
+  </p>
+
+  <h2 class="state">いまの実装（比較用）─ 現在地が「海と空」テーマの青を着ている</h2>
+  <div class="frame">
+    <svg class="mock-map" viewBox="0 0 420 300" width="100%" style="--k:1" role="img" aria-label="現行。現在地が青く、地図上の青いひし形と同じ色に見える">
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-0)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+      <path class="rail rail--halo mock-rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+      <path class="rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+      <circle cx="72" cy="240" r="6" class="station-dot"/>
+      <text x="72" y="266" text-anchor="middle" class="station-label">君ヶ浜</text>
+      <circle cx="286" cy="156" r="6" class="station-dot"/>
+      <text x="286" y="182" text-anchor="middle" class="station-label">犬吠</text>
+      <circle cx="352" cy="132" r="3.5" class="spot-anchor"/>
+      <line x1="352" y1="132" x2="366" y2="92" class="spot-leader"/>
+      <polygon points="366,76 382,92 366,108 350,92" class="spot-badge" fill="var(--theme-sea)"/>
+      <g class="spot-glyph" transform="translate(366,92)">
+        <path d="M-7 -2 Q-3.5 -6 0 -2 T7 -2 M-7 4 Q-3.5 0 0 4 T7 4"/>
+      </g>
+      <g class="here" data-t="0.52">
+        <circle class="here-halo" r="30"/>
+        <g class="here-arrow-wrap"><path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/></g>
+        <circle class="here-dot" r="13"/>
+      </g>
+    </svg>
+  </div>
+  <p class="note">現在地の青（<code>--theme-sea</code>）と、右上の絶景バッジの青は同じ色。現在地が「青いスポットの一種」に見える。</p>
+
+  <h2 class="state">走行中（車上モード・下り）─ 塊と短い尾</h2>
+  <div class="frame">
+    <svg class="mock-map v-b" viewBox="0 0 420 300" width="100%" style="--k:1" role="img" aria-label="走行中。墨色のベタ塗りの現在地と短い尾">
+      <defs>
+        <linearGradient id="tail-b1" class="mock-tail-grad" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="var(--ink)" stop-opacity="0.20"/>
+          <stop offset="1" stop-color="var(--ink)" stop-opacity="0.90"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-0)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+      <path class="rail rail--halo mock-rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+      <path class="rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+      <path class="mock-tail" data-len="70" d="M30 246 Q150 224 220 186 T392 108" stroke="url(#tail-b1)"/>
+      <circle cx="72" cy="240" r="6" class="station-dot"/>
+      <text x="72" y="266" text-anchor="middle" class="station-label">君ヶ浜</text>
+      <circle cx="286" cy="156" r="6" class="station-dot"/>
+      <text x="286" y="182" text-anchor="middle" class="station-label">犬吠</text>
+      <circle cx="352" cy="132" r="3.5" class="spot-anchor"/>
+      <line x1="352" y1="132" x2="366" y2="92" class="spot-leader"/>
+      <polygon points="366,76 382,92 366,108 350,92" class="spot-badge" fill="var(--theme-sea)"/>
+      <g class="spot-glyph" transform="translate(366,92)">
+        <path d="M-7 -2 Q-3.5 -6 0 -2 T7 -2 M-7 4 Q-3.5 0 0 4 T7 4"/>
+      </g>
+      <g class="here" data-t="0.52">
+        <circle class="here-halo" r="30"/>
+        <circle class="here-wave" r="15"/>
+        <circle class="here-rim" r="16.5"/>
+        <g class="here-arrow-wrap"><path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/></g>
+        <circle class="here-dot" r="12"/>
+      </g>
+    </svg>
+  </div>
+  <p class="note">尾が短いので、線路の意味を書き換える範囲が狭い。そのぶん<strong>離れた場所から線をたどって現在地に着く</strong>という効き目は変体Aより弱い。</p>
+
+  <h2 class="state">停車中・ホーム（<code>.here--still</code>）─ 矢印が消え、波紋が出る</h2>
+  <div class="frame">
+    <svg class="mock-map v-b" viewBox="0 0 420 300" width="100%" style="--k:1" role="img" aria-label="停車中。矢印は消え、波紋が広がる">
+      <defs>
+        <linearGradient id="tail-b2" class="mock-tail-grad" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="var(--ink)" stop-opacity="0.20"/>
+          <stop offset="1" stop-color="var(--ink)" stop-opacity="0.90"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-0)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+      <path class="rail rail--halo mock-rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+      <path class="rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+      <path class="mock-tail" data-len="70" d="M30 246 Q150 224 220 186 T392 108" stroke="url(#tail-b2)"/>
+      <circle cx="72" cy="240" r="6" class="station-dot"/>
+      <text x="72" y="266" text-anchor="middle" class="station-label">君ヶ浜</text>
+      <circle cx="286" cy="156" r="6" class="station-dot"/>
+      <text x="286" y="196" text-anchor="middle" class="station-label">犬吠</text>
+      <g class="here here--still" data-t="0.70">
+        <circle class="here-halo" r="30" style="opacity:0.09"/>
+        <circle class="here-wave" r="15"/>
+        <circle class="here-rim" r="16.5"/>
+        <g class="here-arrow-wrap"><path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/></g>
+        <circle class="here-dot" r="12"/>
+      </g>
+    </svg>
+  </div>
+  <p class="note">
+    墨のベタ塗りは駅の丸（白地＋細い輪郭）と<strong>明暗が正反対</strong>なので、重なっても駅と取り違えにくい。
+    変体Aより、この状態での見分けは強い。
+  </p>
+
+  <h2 class="state">線路から離れている（<code>.here--off</code>）─ 破線・尾なし</h2>
+  <div class="frame">
+    <svg class="mock-map v-b" viewBox="0 0 420 300" width="100%" style="--k:1" role="img" aria-label="線路から離れている状態。輪郭が破線で尾がない">
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-0)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+      <path class="rail rail--halo" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+      <path class="rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+      <circle cx="72" cy="240" r="6" class="station-dot"/>
+      <text x="72" y="266" text-anchor="middle" class="station-label">君ヶ浜</text>
+      <g class="here here--still here--off" transform="translate(180,250)">
+        <circle class="here-halo" r="34" style="opacity:0.09"/>
+        <!-- 中を白に戻し、輪郭を破線に。「線路の上に落とせていない」の意味を保つ -->
+        <circle class="here-dot" r="12" style="fill:#FFFFFF;stroke:var(--ink);stroke-dasharray:6 4.5;stroke-width:6"/>
+      </g>
+    </svg>
+  </div>
+  <p class="note">
+    <strong>ここが変体Bの弱点。</strong>ベタ塗りのままでは破線が引けない（塗りが破線を埋める）ので、
+    この状態だけ<strong>中を白に戻す</strong>必要がある。つまり芯の塗りが状態によって反転し、規則が一つ増える。
+  </p>
+
+  <h2 class="state">濃い地形の上（<code>--land-45</code>）─ コントラスト確認</h2>
+  <div class="frame">
+    <svg class="mock-map v-b" viewBox="0 0 420 300" width="100%" style="--k:1" role="img" aria-label="濃い地形の上での見え方">
+      <defs>
+        <linearGradient id="tail-b3" class="mock-tail-grad" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="var(--ink)" stop-opacity="0.20"/>
+          <stop offset="1" stop-color="var(--ink)" stop-opacity="0.90"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="420" height="300" fill="var(--land-24)"/>
+      <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-32)"/>
+      <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-45)"/>
+      <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>
+      <path class="rail rail--halo mock-rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+      <path class="rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+      <path class="mock-tail" data-len="70" d="M30 246 Q150 224 220 186 T392 108" stroke="url(#tail-b3)"/>
+      <g class="here" data-t="0.40">
+        <circle class="here-halo" r="30"/>
+        <circle class="here-rim" r="16.5"/>
+        <g class="here-arrow-wrap"><path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/></g>
+        <circle class="here-dot" r="12"/>
+      </g>
+    </svg>
+  </div>
+  <p class="note">
+    白フチが太いぶん、濃い地形の上でも芯は変体Aより強く立つ。尾は変体Aと同じく読みにくくなるが、
+    短いので「読めない線が長く続く」不快さは小さい。
+  </p>
+
+  <div class="legend">
+    <h2>この変体で変わること</h2>
+    <ul style="margin:0;padding-left:20px">
+      <li><code>.here-dot</code> の塗りを白→<code>--ink</code>、輪郭を <code>--theme-sea</code>→白に<strong>反転</strong></li>
+      <li><code>.here--off</code> のときだけ塗りを白に戻す規則を追加（破線を引くため）</li>
+      <li><code>.here-arrow</code> を白塗り＋墨の輪郭に反転</li>
+      <li><code>#map-here</code> に <code>.here-rim</code>（墨の細い外縁 r=16.5）と <code>.here-wave</code> を足す</li>
+      <li>尾は変体Aと同じ仕掛けで、長さだけ短い</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+for (const svg of document.querySelectorAll('svg.mock-map')) {
+  const rail = svg.querySelector('.mock-rail');
+  const here = svg.querySelector('.here');
+  if (!rail || !here || !here.dataset.t) continue;
+
+  const total = rail.getTotalLength();
+  const at = total * parseFloat(here.dataset.t);
+  const point = rail.getPointAtLength(at);
+  const ahead = rail.getPointAtLength(Math.min(total, at + 1));
+
+  here.setAttribute('transform', `translate(${point.x.toFixed(1)} ${point.y.toFixed(1)})`);
+
+  const arrow = here.querySelector('.here-arrow-wrap');
+  if (arrow) {
+    const angle = Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180 / Math.PI + 90;
+    arrow.setAttribute('transform', `rotate(${angle.toFixed(1)})`);
+  }
+
+  const tail = svg.querySelector('.mock-tail');
+  if (tail) {
+    const len = parseFloat(tail.dataset.len);
+    const from = Math.max(0, at - len);
+    tail.style.strokeDasharray = `${(at - from).toFixed(1)} ${total.toFixed(1)}`;
+    tail.style.strokeDashoffset = `${(-from).toFixed(1)}`;
+    const back = rail.getPointAtLength(from);
+    const grad = svg.querySelector('.mock-tail-grad');
+    grad.setAttribute('x1', back.x.toFixed(1));
+    grad.setAttribute('y1', back.y.toFixed(1));
+    grad.setAttribute('x2', point.x.toFixed(1));
+    grad.setAttribute('y2', point.y.toFixed(1));
+  }
+}
+</script>
+</body>
+</html>

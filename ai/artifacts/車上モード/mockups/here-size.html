@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>現在地の印と尾の大きさ ─ 3 段階を実機で撮り比べる</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: #E7E1D5;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+    line-height: 1.7;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
+  .lead { font-size: 14px; color: var(--ink-soft); margin: 0 0 8px; }
+  h2 { font-size: 18px; font-weight: 700; margin: 40px 0 2px; }
+  h2 .sub { font-size: 13px; font-weight: 400; color: var(--ink-soft); margin-left: 8px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    background: var(--ink); color: #fff; border-radius: 999px;
+    padding: 1px 10px; margin-left: 8px; vertical-align: 3px;
+  }
+  .note { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+  img { width: 100%; display: block; border-radius: var(--radius); box-shadow: 0 4px 18px rgba(0,0,0,0.14); background: #fff; }
+  .callout { background: rgba(255,255,255,0.72); border-radius: var(--radius); padding: 16px 20px; margin: 32px 0 0; font-size: 14px; }
+  .callout h3 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0 0; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(0,0,0,0.10); }
+  th { font-weight: 700; }
+  td.num { font-variant-numeric: tabular-nums; }
+  code { font-size: 12px; background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>現在地の印と尾の大きさ</h1>
+  <p class="lead">
+    「円がちょっとでかい、尾も長い」との指摘を受けて、寸法を一段小さくしたもの。
+    すべて本物の <code>index.html</code> を偽の GPS で走らせて撮った。左が<strong>淡い地形（観音）</strong>、右が<strong>濃い地形（台地）</strong>。
+    比べる相手として、駅の印（小さな白丸・画面上 7px）が同じ絵の中に写っている。
+  </p>
+
+  <h2>B ─ 新<span class="badge">採用（2026-08-12 核准）</span><span class="sub">印 0.8 倍・尾 110m</span></h2>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/size-light-B-新.png" alt="B・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/size-dark-B-新.png" alt="B・濃い地形"></figure>
+  </div>
+
+  <h2>A ─ 前<span class="sub">直前の寸法・尾 180m</span></h2>
+  <p class="note">尾が観音の駅を越えて伸びていた。印も駅より一回り以上大きかった。</p>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/size-light-A-前.png" alt="A・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/size-dark-A-前.png" alt="A・濃い地形"></figure>
+  </div>
+
+  <h2>C ─ さらに一段小さい<span class="sub">印 0.66 倍・尾 70m</span></h2>
+  <p class="note">まだ足りなければこちら。ただし矢印が小さくなり、向きの読み取りが弱くなる。</p>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/size-light-C-小.png" alt="C・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/size-dark-C-小.png" alt="C・濃い地形"></figure>
+  </div>
+
+  <div class="callout">
+    <h3>寸法</h3>
+    <table>
+      <tr><th>部品</th><th>A 前</th><th>B 新（採用）</th><th>C 小</th></tr>
+      <tr><td>芯（半径／白フチ）</td><td class="num">12 / 7</td><td class="num">9.5 / 6</td><td class="num">8 / 5</td></tr>
+      <tr><td>外の墨の縁（半径／太さ）</td><td class="num">16.5 / 2</td><td class="num">13.5 / 1.8</td><td class="num">11.5 / 1.6</td></tr>
+      <tr><td>にじみ（半径）</td><td class="num">30</td><td class="num">24</td><td class="num">20</td></tr>
+      <tr><td>矢印（先端／底辺／幅）</td><td class="num">32 / 19 / 12</td><td class="num">26 / 15 / 10</td><td class="num">22 / 13 / 8.5</td></tr>
+      <tr><td>波紋（開始→終了）</td><td class="num">15 → 42</td><td class="num">13 → 34</td><td class="num">11 → 29</td></tr>
+      <tr><td>尾の長さ</td><td class="num">180m</td><td class="num">110m</td><td class="num">70m</td></tr>
+      <tr><td>尾の太さ（白／墨）</td><td class="num">24 / 34</td><td class="num">20 / 28</td><td class="num">17 / 24</td></tr>
+    </table>
+    <p style="margin:10px 0 0">
+      印は<strong>駅の白丸（7px）より確実に大きい</strong>ことだけは守る。同じくらいになると、
+      「駅にいるのか自分がいるのか」が読めなくなる。C はその下限に近い。
+    </p>
+    <p style="margin:10px 0 0">
+      <strong>この 3 枚は走行中の姿だけを比べたもの。</strong>
+      縮めたあと <code>.here--off</code>（線路から離れている）で破線が歯車に見える不具合が出た。
+      太さと刻みを持つ状態は、半径を掛け算するだけでは済まない
+      ─ 顛末は <a href="../mockup-decision-現在位置.md">mockup-decision-現在位置.md</a> に書いた。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

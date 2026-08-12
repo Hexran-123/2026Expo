@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>尾の案を実機で撮り比べる（淡い地形・濃い地形）</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body {
+    margin: 0;
+    background: #E7E1D5;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    color: var(--ink);
+    line-height: 1.7;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
+  .lead { font-size: 14px; color: var(--ink-soft); margin: 0 0 12px; }
+  h2 { font-size: 18px; font-weight: 700; margin: 40px 0 4px; }
+  h2 .sub { font-size: 13px; font-weight: 400; color: var(--ink-soft); margin-left: 8px; }
+  .note { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+  img {
+    width: 100%; display: block;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.14);
+    background: #fff;
+  }
+  .callout {
+    background: rgba(255,255,255,0.72);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 24px 0 0;
+    font-size: 14px;
+  }
+  .callout h3 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0 0; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(0,0,0,0.10); }
+  th { font-weight: 700; }
+  code { font-size: 12px; background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>尾の案を、実機で撮り比べる</h1>
+  <p class="lead">
+    すべて本物の <code>index.html</code> を偽の GPS で走らせて撮ったもの。銚子電鉄の下り、
+    左が<strong>淡い地形（観音のあたり・低地）</strong>、右が<strong>濃い地形（笠上黒生〜西海鹿島・台地）</strong>。
+    mockup は 1:1 だが実機の地図は <code>--k = 0.25</code> で、同じものが 4 分の 1 の大きさになる。判断は必ずこちらで行う。
+  </p>
+
+  <div class="callout">
+    <h3>先に、尾は何のためにあったのか</h3>
+    <p style="margin:0 0 8px">
+      尾（K）を足した理由は「<strong>矢印が消える場面で、止まっていても進行方向が伝わる</strong>」だった。
+      ところが実装の結果はこうなっている。
+    </p>
+    <table>
+      <tr><th>状態</th><th>矢印</th><th>尾</th></tr>
+      <tr><td>車上モード（走行中・停車中）</td><td><strong>出る</strong></td><td>出る</td></tr>
+      <tr><td>乗車前・降車後（<code>.here--still</code>）</td><td>出ない</td><td><strong>出ない</strong></td></tr>
+      <tr><td>線路から離れている（<code>.here--off</code>）</td><td>出ない</td><td><strong>出ない</strong></td></tr>
+    </table>
+    <p style="margin:10px 0 0">
+      <strong>尾が出る場面では、矢印も必ず出ている。</strong>矢印が消える場面（尾が埋めるはずだった穴）では、尾も一緒に消えている。
+      つまり尾は、矢印が既に言っていることを二度言っているだけになっている。
+      残る取り柄は「遠くから線をたどって現在地に着ける」ことだが、それは<strong>変体A（長い尾）の取り柄で、変体B は短くすることで捨てた</strong>もの。
+    </p>
+  </div>
+
+  <h2>案2 ─ 白い帯と墨の帯を二枚重ねて敷く<span class="sub">尾の長さ 400m（いまと同じ）</span></h2>
+  <p class="note">線路の下に、墨 34px と白 24px の帯を敷く。線路そのものの色・太さには触らない。</p>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/cmp-light-案2-400m.png" alt="案2・400m・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/cmp-dark-案2-400m.png" alt="案2・400m・濃い地形"></figure>
+  </div>
+
+  <h2>案2 ─ 同じ作りで、尾を短く<span class="sub">尾の長さ 180m</span></h2>
+  <p class="note">「長くて気持ち悪い」を、作りは変えずに長さだけで直したもの。</p>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/cmp-light-案2-180m.png" alt="案2・180m・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/cmp-dark-案2-180m.png" alt="案2・180m・濃い地形"></figure>
+  </div>
+
+  <h2>案1 ─ いま入っているもの<span class="sub">線路を 3 段階に太くする・400m</span></h2>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/cmp-light-案1-400m.png" alt="案1・400m・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/cmp-dark-案1-400m.png" alt="案1・400m・濃い地形"></figure>
+  </div>
+
+  <h2>尾なし<span class="sub">芯（墨の塊）と矢印だけ</span></h2>
+  <p class="note">比べるための下敷き。これで足りているかどうかが、そもそもの判断。</p>
+  <div class="pair">
+    <figure><figcaption>淡い地形（観音）</figcaption><img src="shots/cmp-light-尾なし.png" alt="尾なし・淡い地形"></figure>
+    <figure><figcaption>濃い地形（台地）</figcaption><img src="shots/cmp-dark-尾なし.png" alt="尾なし・濃い地形"></figure>
+  </div>
+
+  <div class="callout">
+    <h3>撮ってみて言えること</h3>
+    <table>
+      <tr><th>案</th><th>淡い地形</th><th>濃い地形</th><th>見え方</th></tr>
+      <tr><td>案2・400m</td><td>見える</td><td>見える</td><td>両方で読めるが、<strong>ぼけた二重線・刷りずれのように見える</strong>。線路が汚れて見える</td></tr>
+      <tr><td>案2・180m</td><td>見える</td><td>見える</td><td>圧はかなり減る。ただし<strong>「動きのぶれ」に見え、意図した印には見えない</strong></td></tr>
+      <tr><td>案1・400m</td><td>弱い</td><td>弱い</td><td>汚れないが、尾なしとの差がほとんど無い</td></tr>
+      <tr><td>尾なし</td><td>─</td><td>─</td><td><strong>いちばん清潔。</strong>芯と矢印だけで現在地も進行方向も足りている</td></tr>
+    </table>
+    <p style="margin:10px 0 0">
+      尾を残すなら案2の180mだが、<strong>上の「尾は何のためにあったのか」を踏まえると、いちばん筋が通るのは尾を落とすこと</strong>だと考える。
+      「遠くから線をたどる」を本当に要るとするなら、それは変体A（長い尾）を選び直す話であって、変体B に短い尾を足す話ではない。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

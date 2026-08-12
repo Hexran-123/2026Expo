@@ -484,6 +484,30 @@ function drawRoute(container, points) {
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
     .join('');
 
+  /*
+   * 通ってきた側の尾（設計書 4.3）。線路と同じ形をそのまま使い、
+   * stroke-dasharray で「現在地の手前の一部」だけを切り出す。
+   * 線路以外の新しい線を地図に増やさないための作り。
+   *
+   * 線路の「下」に敷く。線路そのものの色にも太さにも触らないので、
+   * 「線路の見た目＝路線の別」という既存の読み方を壊さない。
+   *
+   * 白と墨を二枚重ねるのは、地形の色が --land-0（#E2EACB）から
+   * --land-45（#C29A5A）まで振れるため。白だけだと濃い区間で、
+   * 墨だけだと淡い区間で読めなくなる。二枚あれば、淡いところでは
+   * 外側の墨が、濃いところでは内側の白が効く。
+   *
+   * 白を先に（いちばん下に）、墨をその上に。順番が逆だと白が墨を覆う。
+   */
+  container.appendChild(svg('path', {
+    d, class: 'here-tail here-tail--paper', id: 'here-tail-paper-path',
+    stroke: 'url(#here-tail-paper)', hidden: '',
+  }));
+  container.appendChild(svg('path', {
+    d, class: 'here-tail here-tail--ink', id: 'here-tail-ink-path',
+    stroke: 'url(#here-tail-ink)', hidden: '',
+  }));
+
   // 白い縁取りを先に引き、その上に線路を重ねる。
   // 台地の濃い緑の上でも線路が沈まないようにするため。
   container.appendChild(svg('path', { d, class: 'rail rail--halo' }));
@@ -1837,6 +1861,79 @@ function createTrip(route, spots, schedule, parts) {
   const ridingCount = document.getElementById('riding-count');
   const hereMarker = document.getElementById('map-here');
   const hereArrow = document.getElementById('here-arrow-wrap');
+
+  /*
+   * 通ってきた側の尾。乗っているあいだだけ出す。
+   *
+   * 乗る前に出さないのは、そこまで歩いてきた人が線路の上を通ってきた
+   * わけではないからで、出すと嘘になる。線路から離れているとき
+   * （.here--off）に出さないのも同じ理由。
+   *
+   * 長さは現在地から 110m。銚子電鉄の駅間はおおむね 700m なので、
+   * 6 分の 1 駅ぶんほど。400m → 180m → 110m と短くしてきた。
+   * 線路の脇を灰色の帯が長く並走すると、地図が重く見える。
+   * 短いと「いま来た方向」だけを言う印になる。
+   */
+  const TAIL_METERS = 110;
+  const tailPaths = [
+    document.getElementById('here-tail-paper-path'),
+    document.getElementById('here-tail-ink-path'),
+  ].filter(Boolean);
+  const tailGradients = [
+    document.getElementById('here-tail-paper'),
+    document.getElementById('here-tail-ink'),
+  ].filter(Boolean);
+  /*
+   * 軌道上の距離（m）と、SVG のパス長との比。この縮尺では路線の端から端まで
+   * 比がほぼ変わらないので、全長どうしの比を一度だけ測って使い回す。
+   * getTotalLength は安くはないので、測位のたびには呼ばない。
+   */
+  let tailScale = null;
+  let tailPathLength = 0;
+
+  function hideTail() {
+    for (const tail of tailPaths) setHidden(tail, true);
+  }
+
+  function showTail(along) {
+    if (tailPaths.length === 0) return;
+
+    if (tailScale === null) {
+      const meters = track[track.length - 1].along;
+      tailPathLength = tailPaths[0].getTotalLength();
+      tailScale = meters > 0 ? tailPathLength / meters : 0;
+    }
+    if (!tailScale) return;
+
+    const backMeters = Math.max(0, along - TAIL_METERS);
+    const at = along * tailScale;
+    const from = backMeters * tailScale;
+    const length = at - from;
+    if (length <= 0) {
+      hideTail();
+      return;
+    }
+
+    /*
+     * 濃さの向きを決める2点。駅の印や現在地の印と同じ pointAtDistance で
+     * 求めるので、尾の先端は必ず現在地の印の真下に来る。
+     */
+    const nose = pointAtDistance(track, points, along);
+    const back = pointAtDistance(track, points, backMeters);
+    for (const gradient of tailGradients) {
+      gradient.setAttribute('x1', back.x.toFixed(1));
+      gradient.setAttribute('y1', back.y.toFixed(1));
+      gradient.setAttribute('x2', nose.x.toFixed(1));
+      gradient.setAttribute('y2', nose.y.toFixed(1));
+    }
+
+    for (const tail of tailPaths) {
+      // 隙間を全長ぶん取って、切り出した一区間のほかは描かせない
+      tail.style.strokeDasharray = `${length.toFixed(1)} ${tailPathLength.toFixed(1)}`;
+      tail.style.strokeDashoffset = `${(-from).toFixed(1)}`;
+      setHidden(tail, false);
+    }
+  }
   const shootButton = document.getElementById('shoot');
 
   const mismatchBar = document.getElementById('mismatch-bar');
@@ -1976,6 +2073,7 @@ function createTrip(route, spots, schedule, parts) {
   function showHere(follow = true) {
     if (along === null) {
       setHidden(hereMarker, true);
+      hideTail();
       return;
     }
 
@@ -1994,6 +2092,10 @@ function createTrip(route, spots, schedule, parts) {
     lastHerePoint = spot;
     refreshFollowButtonLabel();
     hereMarker.classList.remove('here--off');
+
+    // 乗っているあいだだけ、通ってきた側に尾を敷く
+    if (mode === '車上') showTail(along);
+    else hideTail();
 
     hereMarker.setAttribute('data-ax', spot.x);
     hereMarker.setAttribute('data-ay', spot.y);
@@ -2058,6 +2160,8 @@ function createTrip(route, spots, schedule, parts) {
 
     hereMarker.classList.add('here--off');
     hereMarker.classList.toggle('here--still', true);
+    // 線路の上に落とせていないので、通ってきた道も言えない
+    hideTail();
     hereMarker.setAttribute('data-ax', point.x);
     hereMarker.setAttribute('data-ay', point.y);
     hereMarker.querySelectorAll('circle').forEach((circle) => {
@@ -2180,6 +2284,7 @@ function createTrip(route, spots, schedule, parts) {
     riding.hidden = true;
     shootButton.hidden = true;
     setHidden(hereMarker, true);
+    hideTail();
     showNotice(null);
     wakeLock.off();
     noticedId = null;
@@ -2198,7 +2303,28 @@ function createTrip(route, spots, schedule, parts) {
   function destinationName() {
     const plan = getPlan();
     if (plan) return plan.alight;
-    return direction === '下り' ? '外川' : '銚子';
+    // 区間が無ければ、進んでいる向きの終点（路線ごとに違うので route から取る）
+    const ends = route.stations;
+    return direction === '下り' ? ends[ends.length - 1].name : ends[0].name;
+  }
+
+  /**
+   * この駅で旅を終えてよいか。
+   *
+   * 「降りる駅と名前が同じ」だけを見ていたころは、予定の駅を通り過ぎると
+   * 旅がいつまでも終わらなかった。**終点まで乗っても記録が出ない。**
+   * 気が変わって先まで乗ることも、その駅での位置情報を取りそこねることもある。
+   * 予定の駅か、それより先の駅で停まったなら、そこが旅の終わり。
+   *
+   * 向きがまだ決まっていないときだけ、名前で見る（前後を比べようがないため）。
+   */
+  function isJourneyEnd(station) {
+    const goal = route.stations.find((s) => s.name === destinationName());
+    if (!goal || direction === null) return station.name === destinationName();
+
+    return direction === '下り'
+      ? station.distanceAlong >= goal.distanceAlong
+      : station.distanceAlong <= goal.distanceAlong;
   }
 
   /** 降りる駅に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
@@ -2306,7 +2432,7 @@ function createTrip(route, spots, schedule, parts) {
 
       // 降りる駅に着いたか。その駅の 80m 以内で、かつ停まっている
       const station = stationAt(route, coords);
-      if (station && station.name === destinationName()) {
+      if (station && isJourneyEnd(station)) {
         arrive(station);
         return;
       }
@@ -2459,6 +2585,7 @@ function createTrip(route, spots, schedule, parts) {
       // これ以上は当てにならない。黙る。
       showNotice(null);
       setHidden(hereMarker, true);
+      hideTail();
       return;
     }
     // 向きが定まっていなければ、進む方向を当てずっぽうにするより止まっていたほうがよい
@@ -2500,8 +2627,12 @@ function createTrip(route, spots, schedule, parts) {
 }
 
 /** 旅の記録を組み立てる（中身は js/journal.js） */
-function createJournal(spots, closings) {
-  return Journal.create(spots, THEMES, closings || {});
+function createJournal(spots, closings, route) {
+  return Journal.create(spots, THEMES, closings || {}, {
+    from: route.stations[0].name,
+    to: route.stations[route.stations.length - 1].name,
+    line: currentLine.name,
+  });
 }
 
 /**
@@ -2646,9 +2777,17 @@ function windowHint(weather) {
 async function fetchTodayWeather() {
   const forecast = await loadJson(forecastUrl());
 
-  // 銚子は「北東部」。見つからなければ最初の区分を使う。
+  /*
+   * どの区分を読むかは data/lines.json の weatherLabel で決める
+   * （銚子電鉄なら「千葉県北東部」、有楽町線なら「東京地方」）。
+   *
+   * ここに「北東部」と書き込んでいたころは、weatherLabel は書いてあるのに
+   * 誰も読んでおらず、銚子以外の路線ではいつも先頭の区分に落ちていた。
+   * 手で書くファイルに、効かない設定を置いたままにしない。
+   */
   const areas = forecast[0].timeSeries[0].areas;
-  const area = areas.find((a) => a.area.name.includes('北東部')) || areas[0];
+  const wanted = (currentLine.weatherLabel || '').replace(/^.*?[都道府県]/, '');
+  const area = (wanted && areas.find((a) => a.area.name.includes(wanted))) || areas[0];
   const weather = area.weathers[0].replace(/\s+/g, '');
 
   // 「くもり所により雨」のような長い言い方は、先頭のひと言だけにする。
@@ -3624,7 +3763,7 @@ async function main() {
 
   // 地図が出た時点で読み始めてある。ここまでに届いていれば待ち時間は無い
   const journal = await journalReady
-    .then(() => createJournal(spotsFile.spots, spotsFile.closings))
+    .then(() => createJournal(spotsFile.spots, spotsFile.closings, route))
     .catch(() => silentJournal());
 
   trip = createTrip(route, spotsFile.spots, schedule, {

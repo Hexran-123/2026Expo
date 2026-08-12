@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>尾の実測 2 ─ 地形に依存しない作り</title>
+<link rel="stylesheet" href="../../../../css/style.css">
+<style>
+  body { margin:0; background:#E7E1D5; font-family:"Hiragino Kaku Gothic ProN",sans-serif; }
+  .wrap { max-width:460px; margin:0 auto; padding:16px; }
+  h2 { font-size:13px; margin:16px 0 6px; }
+  .frame { border-radius:14px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,0.14); }
+  .here-halo { fill: var(--ink); opacity:0.12; }
+  .here-rim  { fill:none; stroke: var(--ink); stroke-width:2; }
+  .here-dot  { fill: var(--ink); stroke:#FFFFFF; stroke-width:7; }
+  .here-arrow { fill:var(--ink); stroke:#FFFFFF; stroke-width:2.5; stroke-linejoin:round; }
+  .tail { fill:none; stroke-linecap:round; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="out"></div>
+</div>
+
+<template id="tpl">
+  <div class="frame"><svg class="mock-map" viewBox="0 0 420 300" width="100%" style="--k:1">
+    <defs></defs>
+    <g class="terrain"></g>
+    <g class="tails"></g>
+    <path class="rail rail--halo mock-rail" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:15"/>
+    <path class="rail mock-rail-top" d="M30 246 Q150 224 220 186 T392 108" style="stroke-width:7"/>
+    <g class="over"></g>
+    <g class="here"><circle class="here-halo" r="30"/><circle class="here-rim" r="16.5"/>
+      <g class="here-arrow-wrap"><path class="here-arrow" d="M0,-26 L11,-11 L-11,-11 Z"/></g>
+      <circle class="here-dot" r="12"/></g>
+  </svg></div>
+</template>
+
+<script>
+const D = "M30 246 Q150 224 220 186 T392 108";
+const LIGHT = `<rect width="420" height="300" fill="var(--land-0)"/>
+  <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-16)"/>
+  <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-32)"/>
+  <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>`;
+const DARK = `<rect width="420" height="300" fill="var(--land-24)"/>
+  <path d="M0 300 L0 190 Q120 160 200 130 Q300 92 420 70 L420 300 Z" fill="var(--land-32)"/>
+  <path d="M0 300 L0 245 Q130 220 210 186 Q310 148 420 128 L420 300 Z" fill="var(--land-45)"/>
+  <path d="M420 0 L420 62 Q300 84 200 122 Q120 152 0 182 L0 0 Z" fill="var(--water)"/>`;
+
+// 案1: 線路そのものを、現在地へ向かって3段階に太くする（色は線路のまま＝どの地形でも同じだけ見える）
+// 案2: 白い帯と墨の帯を二枚重ねて敷く（淡い地形では墨の外縁、濃い地形では白の内側が効く）
+// 案3: 通ってきた線路を、うしろへ行くほど白く薄れさせる（彗星の尾。対比の元は線路自身の黒さ）
+const PLANS = {
+  1: { label: '案1 ─ 線路を3段階に太くする（色は変えない）',
+       under: '', over: (id) => `
+         <path class="tail" data-len="26" d="${D}" stroke="var(--rail)" style="stroke-width:13"/>
+         <path class="tail" data-len="48" d="${D}" stroke="var(--rail)" style="stroke-width:10.5"/>
+         <path class="tail" data-len="70" d="${D}" stroke="var(--rail)" style="stroke-width:8.5"/>`,
+       defs: '' },
+  2: { label: '案2 ─ 白い帯と墨の帯を二枚重ねて敷く',
+       under: (id) => `
+         <path class="tail" data-len="70" d="${D}" stroke="url(#ink${id})" style="stroke-width:34"/>
+         <path class="tail" data-len="70" d="${D}" stroke="url(#wht${id})" style="stroke-width:24"/>`,
+       over: '',
+       defs: (id) => `
+         <linearGradient id="ink${id}" class="grad" gradientUnits="userSpaceOnUse">
+           <stop offset="0" stop-color="var(--ink)" stop-opacity="0"/><stop offset="1" stop-color="var(--ink)" stop-opacity="0.45"/></linearGradient>
+         <linearGradient id="wht${id}" class="grad" gradientUnits="userSpaceOnUse">
+           <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.95"/></linearGradient>` },
+  3: { label: '案3 ─ うしろへ行くほど線路が白く薄れる（彗星の尾）',
+       under: '', over: (id) => `
+         <path class="tail" data-len="70" d="${D}" stroke="url(#fade${id})" style="stroke-width:7.5"/>`,
+       defs: (id) => `
+         <linearGradient id="fade${id}" class="grad" gradientUnits="userSpaceOnUse">
+           <stop offset="0" stop-color="#F6F2E6" stop-opacity="0.92"/><stop offset="1" stop-color="#F6F2E6" stop-opacity="0"/></linearGradient>` },
+};
+
+const out = document.getElementById('out');
+let n = 0;
+for (const key of [1, 2, 3]) {
+  for (const [terr, bg] of [['淡い地形', LIGHT], ['濃い地形', DARK]]) {
+    n++;
+    const p = PLANS[key];
+    const h = document.createElement('h2');
+    h.textContent = `${p.label} ／ ${terr}`;
+    out.appendChild(h);
+    const node = document.getElementById('tpl').content.cloneNode(true);
+    const svg = node.querySelector('svg');
+    svg.querySelector('defs').innerHTML = typeof p.defs === 'function' ? p.defs(n) : p.defs;
+    svg.querySelector('.terrain').innerHTML = bg;
+    svg.querySelector('.tails').innerHTML = typeof p.under === 'function' ? p.under(n) : p.under;
+    svg.querySelector('.over').innerHTML = typeof p.over === 'function' ? p.over(n) : p.over;
+    out.appendChild(node);
+  }
+}
+
+for (const svg of document.querySelectorAll('svg.mock-map')) {
+  const rail = svg.querySelector('.mock-rail'), here = svg.querySelector('.here');
+  const total = rail.getTotalLength(), at = total * 0.52;
+  const point = rail.getPointAtLength(at), ahead = rail.getPointAtLength(at + 1);
+  here.setAttribute('transform', `translate(${point.x} ${point.y})`);
+  const ang = Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180 / Math.PI + 90;
+  svg.querySelector('.here-arrow-wrap').setAttribute('transform', `rotate(${ang})`);
+  for (const tail of svg.querySelectorAll('.tail')) {
+    const len = parseFloat(tail.dataset.len), from = Math.max(0, at - len);
+    tail.style.strokeDasharray = `${at - from} ${total}`;
+    tail.style.strokeDashoffset = `${-from}`;
+  }
+  for (const g of svg.querySelectorAll('.grad')) {
+    const back = rail.getPointAtLength(Math.max(0, at - 70));
+    g.setAttribute('x1', back.x); g.setAttribute('y1', back.y);
+    g.setAttribute('x2', point.x); g.setAttribute('y2', point.y);
+  }
+}
+</script>
+</body>
+</html>
