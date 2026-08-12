@@ -35,7 +35,7 @@
  */
 
 /** 蓄えの世代。ここを上げると、古い蓄えを全部捨てて入れ直す */
-const VERSION = 'v1';
+const VERSION = 'v2';
 
 const CACHE = `choshi-navi-${VERSION}`;
 
@@ -100,6 +100,22 @@ self.addEventListener('fetch', (event) => {
 
   // 気象庁・Supabase などは、そのつど取りに行かせる
   if (new URL(request.url).origin !== self.location.origin) return;
+
+  /*
+   * demo/*.html（1 枚デモ）には触らない。
+   *
+   * あちらは通信を一切しない前提の別物（README「サーバーなしで見せる
+   * 1 枚を作る」）で、蓄える意味が無いどころか害になる。scope はこの
+   * sw.js が index.html から登録されている都合で /demo/ も覆ってしまうが、
+   * ここで一斉に見逃せば scope 自体を狭める必要はない。
+   *
+   * 見逃さないと何が起きるか。1 枚デモを一度開くと networkFirst が
+   * そのときの HTML を蓄える。次に電波が悪い場所で開くと、フェッチが
+   * 失敗して「そのとき蓄えた古い HTML」に落ちる。中身が直っていない
+   * バージョンだったら、直したはずの不具合がそのまま再現する
+   * （実際に js/simulate.js の 404 でこれが起きた）。
+   */
+  if (new URL(request.url).pathname.includes('/demo/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));

@@ -332,7 +332,12 @@ python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurak
 6. **`sw.js`（Service Worker）**。一度読んだものを蓄え、二度目からは先に出す。
    圏外でも一度開いた路線なら動く（設計書 9.3）。**https のときだけ登録する**ので、
    `localhost` で作りながら確かめる邪魔にはならない。おかしくなったら
-   `sw.js` の `VERSION` を上げる。
+   `sw.js` の `VERSION` を上げる。**`demo/` は蓄えない**（scope が
+   `index.html` の登録元から `/demo/` も覆ってしまうため、`sw.js` の
+   fetch ハンドラで明示的に見逃している）。見逃さないと、1 枚デモを一度
+   開いたときの HTML が蓄えられ、電波が悪い次回にそれへ落ちて、直したはずの
+   不具合が古いバージョンのまま再現することがある（実例: `js/simulate.js`
+   の 404）。
 7. **タブの印を `index.html` に直接書く**。置かないと `/favicon.ico` を取りに行って
    空振りする。
 
