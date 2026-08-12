@@ -266,22 +266,69 @@ node tools/make-test-line.js  data/yurakucho/route.json data/yurakucho
 忘れると、地図の陰影が古いままになる（エラーは出ない）。
 
 ```
-python -c "from PIL import Image; Image.open('data/source/terrain-hillshade.png').save('data/choshi/terrain-hillshade.webp','WEBP',quality=80,method=6)"
+python tools/shrink-hillshade.py data/source/terrain-hillshade.png    data/choshi/terrain-hillshade.webp
+python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurakucho/terrain-hillshade.webp
 ```
 
 配信するのは `data/<路線>/terrain-hillshade.webp` のほうで、`data/source/` の PNG は元材料。
 
-| | 大きさ |
-|---|---|
-| PNG（元材料） | 1,447 KB |
-| WebP（配信するもの） | 241 KB |
+| | 銚子電鉄 | 有楽町線 |
+|---|---|---|
+| PNG（元材料） | 1,447 KB | 6,699 KB |
+| WebP（配信するもの） | **130 KB** | **244 KB** |
 
-この 1 枚が初回読み込みの 84% を占めていた。駅でモバイル回線で開く作品なので、
-ここを削るのが一番効く。不透明度 0.85 で重ねる背景の陰影なので、劣化は目に見えない。
+この 1 枚が初回読み込みの大半を占める。駅でモバイル回線で開く作品なので、
+ここを削るのが一番効く。`shrink-hillshade.py` がやっているのは 2 つ。
+
+- **透明を捨てる。** 海のところが透明なぶん alpha を持っていたが、WebP は
+  alpha を失わずに持つので大きさに効く。この絵は `mix-blend-mode: overlay` で
+  重ねるだけのもので、**50% の灰は overlay では何もしない色**。透明のところを
+  50% 灰で埋めれば、見た目を変えずに alpha を丸ごと捨てられる。
+- **横 1200 画素に縮める。** 地図の座標系は横 1000。画面いっぱいに広げても
+  これで足りる。寄ると甘くなるが、これは読む対象ではないうえ、寄りきると
+  本体が薄くして消す（`HILLSHADE_FADE_FROM`）。
 
 変換を別の一手にしてあるのは、`tools/` を依存パッケージなしの Node で通している
 （[ADR-0002](docs/adr/0002-フレームワークとサーバーを持たない.md)）ため。Node だけでは WebP を書き出せない。
-`cwebp -q 80` でも同じものが作れる。
+
+---
+
+## 軽くするために入れてあるもの
+
+スマートフォンの回線（4G 相当・CPU も 4 分の 1 に落として測った）で、
+地図が出るまで **2.7 秒 → 2.1 秒**、転送 **450KB → 343KB**。
+1 枚デモ（`demo/all.html`）は **11.4 秒 → 5.7 秒**、**2.6MB → 1.24MB**。
+
+順に、効いた順。
+
+1. **陰影の絵を 241KB → 130KB に**（上の節）。転送のいちばん大きい塊だった。
+2. **陰影は地図が出てから取りに行く**（`js/main.js` の `drawTerrain`）。
+   場所だけ先に作って `href` をあとから入れる。地形・線路・スポットの JSON と
+   帯域を取り合わせない。地図が読めるために陰影は要らない。
+3. **データの取得を、`js/main.js` の到着を待たずに始める**（`index.html` の `<head>`）。
+   携帯回線では main.js が届くまで数百ミリ秒あり、そのあいだ回線が空いていた。
+   **この script は css の `<link>` より前に置くこと**（あとに置くと css の到着まで
+   実行が止まり、400ms 遅れる）。
+4. **JS には `defer` と `fetchpriority="low"`**（`index.html` の末尾）。
+   css と JS で 76KB が同時に降りてきて、1KB の `lines.json` が 400ms 待たされていた。
+5. **`sw.js`（Service Worker）**。一度読んだものを蓄え、二度目からは先に出す。
+   圏外でも一度開いた路線なら動く（設計書 9.3）。**https のときだけ登録する**ので、
+   `localhost` で作りながら確かめる邪魔にはならない。おかしくなったら
+   `sw.js` の `VERSION` を上げる。
+6. **タブの印を `index.html` に直接書く**。置かないと `/favicon.ico` を取りに行って
+   空振りする。
+
+まだ手を付けていないもの（効きそうな順）:
+
+- **試験用路線（有楽町線）のデータが重い**。`terrain.json` 236KB・`schedule.json` 185KB で、
+  `demo/all.html` の 3 割がこれ。応募時には `data/lines.json` から外すので、
+  作品そのものには関係しない。
+- **`js/main.js` が 142KB**。届くまで地図を描き始められないので、ここがいまの頭打ち。
+  縮めるにはビルド工程（minify）か、乗ってから使う部分（旅の記録・成因カード）を
+  あとから読む形に分けるかだが、どちらも [ADR-0002](docs/adr/0002-フレームワークとサーバーを持たない.md) の「作りを単純に保つ」と引き換えになる。
+- **スマートフォンで見せるなら、1 枚デモではなく本体の URL を渡すほうが軽い。**
+  1 枚デモは全部入りで 1.24MB あり、蓄えも効かない。あれはサーバーを立てられない
+  相手に渡すためのもの。
 
 ---
 

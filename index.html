@@ -5,6 +5,97 @@
   <!-- スマートフォンで見たときに、画面の幅に合わせて表示するための指定 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>車窓絶景ナビ｜銚子電鉄</title>
+
+  <!--
+    タブの印。絶景スポットのひし形をそのまま小さくしたもの。
+    ファイルではなくこの場に書いてあるのは、置かないとブラウザが
+    /favicon.ico を取りに行って 404 になり、通信が 1 本無駄になるため。
+  -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' rx='3' transform='rotate(45 16 16)' fill='%232F5D50'/%3E%3C/svg%3E">
+
+  <!--
+    一度読んだものをブラウザに蓄える係を登録する（sw.js）。
+    二度目からの表示が速くなり、圏外でも一度開いた路線なら動く（設計書 9.3）。
+
+    地図が出てから登録する（load を待つ）。初回に回線を取り合わせないため。
+
+    **https のときだけ登録する。** localhost で登録すると、css や js を
+    直しても画面に出るのが次に開いたときになり、作りながら確かめる邪魔になる。
+    確かめたいときは GitHub Pages に上げたものを開くこと。
+  -->
+  <script>
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {
+          // 登録できなくても、ふつうに通信して動く
+        });
+      });
+    }
+  </script>
+
+  <!--
+    データの取得を、js/main.js の到着を待たずに始める。
+
+    **この script は css の <link> より前に置くこと。**
+    あとに置くと、ブラウザは「まだ届いていない css が、この script の
+    見る値を変えるかもしれない」として css の到着まで実行を止める。
+    実際それで、ここが動きだすのが 240ms から 640ms に遅れていた。
+    先読みのつもりが 400ms 待たされていては、置いている意味が無い。
+
+    もとの順番はこうだった:
+      index.html を読む → main.js を落とす（携帯回線で数百ミリ秒）→
+      main.js が動きだす → data/lines.json を取る → 路線が決まる →
+      terrain・route・spots・schedule を取る → やっと地図を描く
+    main.js を落としているあいだ、回線は空いている。そこを使う。
+
+    ここが決める路線は、js/main.js の resolveLine と同じ決め方
+    （?line= → 前に選んだもの → 路線が 1 つならそれ）。**片方だけ直すと、
+    先読みが外れて無駄な取得になる**（外れても動きは変わらないが、速さの
+    ためにやっていることなので意味が無くなる）。どちらかを直したら両方直すこと。
+
+    取ったものは window.EARLY に置く。受け取るのは js/main.js の loadJson。
+  -->
+  <script>
+    window.EARLY = {};
+    (function () {
+      function get(path) {
+        // 地図が出るまでに要るものなので、JS や css より先に降ろしてもらう
+        var wanted = fetch(path, { priority: 'high' }).then(function (response) {
+          if (!response.ok) throw new Error(path + ' を読めなかった（HTTP ' + response.status + '）');
+          return response.json();
+        });
+        // 受け取り手が現れる前に転んでも、未処理の失敗として騒がせない
+        wanted.catch(function () {});
+        window.EARLY[path] = wanted;
+        return wanted;
+      }
+
+      get('data/lines.json').then(function (registry) {
+        var byId = {};
+        registry.lines.forEach(function (line) { byId[line.id] = line; });
+
+        var asked = new URLSearchParams(location.search).get('line');
+        var saved = null;
+        try { saved = localStorage.getItem('choshi-navi/line'); } catch (e) {}
+
+        var line = byId[asked] || byId[saved] ||
+          (registry.lines.length < 2 ? (byId[registry.default] || registry.lines[0]) : null);
+
+        // まだ決まらない＝路線選択の画面になる。要るのは小さい地図のほう
+        if (!line) {
+          registry.lines.forEach(function (other) { get(other.dir + '/preview.json'); });
+          return;
+        }
+
+        ['terrain', 'route', 'spots', 'schedule'].forEach(function (name) {
+          get(line.dir + '/' + name + '.json');
+        });
+      }).catch(function () {
+        // ここで転んでも、本体がふつうに取り直す
+      });
+    })();
+  </script>
+
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -389,11 +480,22 @@
     </footer>
   </section>
 
-  <!-- 計算だけを持つ部品。画面には触らない。main.js より先に読む -->
-  <script src="js/schedule.js"></script>
-  <script src="js/onboard.js"></script>
-  <script src="js/journal.js"></script>
-  <script src="js/popularity.js"></script>
-  <script src="js/main.js"></script>
+  <!--
+    計算だけを持つ部品。画面には触らない。main.js より先に読む。
+
+    defer と fetchpriority="low" を付けてある。どちらも「地図を早く出す」ため。
+    携帯電話の回線では、これらの JS と css で 76KB ほどが同時に降りてきて、
+    地図のデータ（data/*.json）はそのうしろに並ぶ。回線を分け合うぶん、
+    1KB の lines.json が届くのに 400ms かかっていた。
+    降ろす順を譲れば、地図のデータが先に着く。JS は main.js が動くまでに
+    間に合えばよく、main.js 自身も地図のデータを待つ。
+    defer は読み込む順（この並び順）を保つので、依存関係は変わらない。
+  -->
+  <script defer fetchpriority="low" src="js/schedule.js"></script>
+  <script defer fetchpriority="low" src="js/onboard.js"></script>
+  <script defer fetchpriority="low" src="js/journal.js"></script>
+  <script defer fetchpriority="low" src="js/popularity.js"></script>
+  <script defer src="js/main.js"></script>
+
 </body>
 </html>

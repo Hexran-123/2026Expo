@@ -744,6 +744,8 @@ const parts = [
   '<meta charset="utf-8">',
   '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">',
   `<title>${title}</title>`,
+  // タブの印。置かないとブラウザが /favicon.ico を取りに行って空振りする
+  `<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' rx='3' transform='rotate(45 16 16)' fill='%232F5D50'/%3E%3C/svg%3E">`,
   `<style>\n${css}\n${NOTE_CSS}${USE_GPS || SWITCHABLE ? GPS_CSS : ''}${SWITCHABLE ? SWITCH_CSS : ''}</style>`,
   '</head>',
   '<body>',
