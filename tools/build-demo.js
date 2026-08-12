@@ -160,13 +160,49 @@ const SHIM = `
 window.DEMO_JSON = ${dataJson};
 window.DEMO_ASSETS = ${assetsJson};
 
+/*
+ * 下ごしらえがそろうまで、本体を待たせる門。
+ *
+ * なぜ要るか。この 1 枚は 1MB を超える 1 つの HTML で、<script> は
+ * **構文解析が届いた順に走る**。本体（js/main.js）は読み込まれた時点で
+ * main() を呼び出すのに対して、差し替えの一部（loadScript・loadJson・
+ * 累積人気）は頁のいちばん下に置いてある。回線が細いと、この 2 つの
+ * あいだに実時間の隙ができ、差し替えが走る前に本体が最後まで
+ * 進んでしまう。
+ *
+ * 実際それで「js/simulate.js を読めなかった」が出た。本体は ?demo=1 の
+ * とき js/simulate.js を読みに行く。ふだんはそれを下の差し替えが
+ * 止めているのだが、間に合わないと本当に取りに行き、1 枚デモには js/ が
+ * 無いので 404 になる。路線を切り替えた直後（?line= 付き）に必ず出るのは、
+ * そのとき本体が路線選択画面で人の操作を待たず、一息に走りきるため。
+ *
+ * そこで、本体がいちばん最初に呼ぶ通信（data/lines.json）をここで
+ * せき止める。下の差し替えが全部そろってから門を開けるので、本体が
+ * それより先へ進むことはない。待つのは頁の残りが届くあいだだけで、
+ * データも絵も同じ 1 枚の中にあるから、通信は増えない。
+ */
+let openDemoGate;
+window.DEMO_READY = new Promise(function (resolve) { openDemoGate = resolve; });
+window.DEMO_OPEN_GATE = function () { openDemoGate(); };
+
+/*
+ * 頁を最後まで解析し終わっても門が開いていなければ、そこで開ける。
+ * 読み込みが途中で切れるなどして下の差し替えが走らなかったときに、
+ * 待ったまま固まらないための逃げ道（開いた先で本体がふつうに
+ * 「読み込めませんでした」を出すほうが、無言で止まるよりよい）。
+ */
+addEventListener('DOMContentLoaded', function () { window.DEMO_OPEN_GATE(); });
+
 /* fetch を、埋め込んだ JSON から返すものに差し替える */
 window.fetch = function (input) {
   const key = String(input).replace(/^\\.?\\//, '');
   if (key in window.DEMO_JSON) {
-    return Promise.resolve(new Response(JSON.stringify(window.DEMO_JSON[key]), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    }));
+    // 門が開くまで返さない（上の注記）
+    return window.DEMO_READY.then(function () {
+      return new Response(JSON.stringify(window.DEMO_JSON[key]), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    });
   }
   // 気象庁・Supabase など、外に出るものはデモでは断る
   return Promise.reject(new Error('デモでは外部通信をしない: ' + key));
@@ -589,6 +625,17 @@ ${SWITCHABLE ? SWITCH_PANEL : ''}
     setTimeout(function () { note.remove(); }, 6000);
   }
 })();
+
+/*
+ * 門を開ける。**この行は、差し替えを全部書き終えた最後に置くこと。**
+ *
+ * ここまでで loadScript・loadJson・累積人気の差し替えがそろった。
+ * 本体はいちばん最初の data/lines.json でせき止められて待っているので、
+ * ここから先は「差し替え済みの世界」しか見ない。
+ * この行を上へ動かすと、頁の残りが届くのが遅い回線で、本体が
+ * 差し替え前の loadScript を掴んで js/simulate.js を取りに行く。
+ */
+window.DEMO_OPEN_GATE();
 `;
 
 const NOTE_CSS = `
