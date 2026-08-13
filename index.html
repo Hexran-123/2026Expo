@@ -81,9 +81,18 @@
         var line = byId[asked] || byId[saved] ||
           (registry.lines.length < 2 ? (byId[registry.default] || registry.lines[0]) : null);
 
-        // まだ決まらない＝路線選択の画面になる。要るのは小さい地図のほう
+        /*
+         * まだ決まらない＝路線選択の画面になる。要るのは小さい地図のほう。
+         *
+         * 試験用（role: 'test'）は先読みしない。有楽町線の輪郭は間引いて
+         * いないため preview.json だけで作品側の路線の 2 倍以上あり
+         * （js/main.js の pickLine 近くの注記）、まだ何も選んでいない
+         * 全員がいちばん最初に払う通信を、選ぶ気のない試験用に使わせない。
+         */
         if (!line) {
-          registry.lines.forEach(function (other) { get(other.dir + '/preview.json'); });
+          registry.lines
+            .filter(function (other) { return other.role === 'product'; })
+            .forEach(function (other) { get(other.dir + '/preview.json'); });
           return;
         }
 
