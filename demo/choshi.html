@@ -1665,9 +1665,11 @@ button.line-name:active {
  *
  * 届かなければこの要素は作られない。空の枠は残さない（設計書 9.3）。
  *
- * 段が上がるほど夜が明ける、犬吠埼の三段（夜／夜明け前／初日の出）。
- * テーマ色には依存しない（地形・気候・産業・海のどのテーマとも結びつかない、
- * 独立した意匠にしてある。js/main.js の popularityBadgeScene 参照）。
+ * 段が上がるほど情景が進む三段。路線ごとに絵が違う
+ * （銚子電鉄＝犬吠埼の夜／夜明け前／初日の出、有楽町線＝太古の海／
+ * 江戸の埋め立て／東京湾岸の夜景）。テーマ色には依存しない
+ * （地形・気候・産業・海のどのテーマとも結びつかない、独立した意匠。
+ * js/main.js の popularityBadgeScene 参照）。
  */
 .origin-badge {
   margin: 0;
@@ -6632,15 +6634,15 @@ function createOriginCard(screenElement) {
       const badge = document.createElement('p');
       badge.className = 'origin-badge';
 
-      // 段が上がるほど夜が明ける、犬吠埼の三段（夜／夜明け前／初日の出）。
-      // 犬吠埼は本州最東端に近く、初日の出の名所として知られる場所であることから。
-      // 灯りの強さではなく情景そのものを変えているので、3 段目だけが「一番美しい」。
+      // 段が上がるほど情景が進む三段。路線ごとに物語が違う
+      // （popularityBadgeScene 参照）。灯りの強さではなく情景そのものを
+      // 変えているので、3 段目だけが「一番美しい」。
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       icon.setAttribute('viewBox', '0 0 32 32');
       icon.setAttribute('width', '30');
       icon.setAttribute('height', '30');
       icon.setAttribute('aria-hidden', 'true');
-      icon.innerHTML = popularityBadgeScene(level, `pop${popularityBadgeUid++}`);
+      icon.innerHTML = popularityBadgeScene(currentLine.id, level, `pop${popularityBadgeUid++}`);
 
       /*
        * 「のべ」を付けているのは、同じ人が日をまたいで開けば
@@ -6662,13 +6664,28 @@ function createOriginCard(screenElement) {
   /*
    * 累積人気の記章の中身（<svg> の innerHTML）。1〜3 段の三情景。
    *
+   * 路線ごとに絵を分けている。犬吠埼の灯台は銚子電鉄の実在の場所で、
+   * 有楽町線（地下鉄）にそのまま出すと土地が合わないため
+   * （2026-08-13、「銚子電鉄はよくできているが有楽町線ができていない」
+   * という指摘を受けて追加）。縁の色（1段目：灰／2段目：墨／3段目：金）
+   * だけは路線をまたいで共通の文法にしてあり、地の絵は路線ごとの
+   * 実データに基づく物語にしてある。
+   *
    * id は呼ぶたびに変える（uid）。同時に複数枚が DOM に残ることは
    * 通常無いが（open() のたびに panelsElement を作り直す）、
    * グラデーション・クリップパスの id が万一ぶつからないための備え。
    */
   let popularityBadgeUid = 0;
 
-  function popularityBadgeScene(level, uid) {
+  function popularityBadgeScene(lineId, level, uid) {
+    return lineId === 'yurakucho'
+      ? yurakuchoBadgeScene(level, uid)
+      : choshiBadgeScene(level, uid);
+  }
+
+  // 犬吠埼の三段（夜／夜明け前／初日の出）。犬吠埼は本州最東端に近く、
+  // 初日の出の名所として知られる場所であることから。
+  function choshiBadgeScene(level, uid) {
     if (level === 1) {
       // 夜。星と三日月の下、灯台が独りで灯る
       return `
@@ -6787,6 +6804,123 @@ function createOriginCard(screenElement) {
         <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.35"/>
         <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.3"/>
         <circle cx="21.5" cy="12" r="0.55" fill="#FFF3D0"/>
+      </g>
+      <circle cx="16" cy="16" r="15" fill="none" stroke="#D99A2B" stroke-width="1.3"/>
+    `;
+  }
+
+  /*
+   * 有楽町層の三段（太古の海／江戸の埋め立て／東京湾岸の夜景）。
+   *
+   * 有楽町線は地下鉄なので、犬吠埼の灯台と海は土地が合わない。
+   * かわりに、この路線の実データにある時間の物語を使った。
+   * 縄文海進のころ、いまの地下区間は海の底で、その記憶は
+   * 「有楽町層」という地層名にいまも残っている（Y07「日比谷入江の
+   * 埋立地」）。海はやがて外堀・木場の水路として人の手で
+   * 埋め立てられ（Y06「江戸城の外堀」・Y10「海へ逃げた木場」）、
+   * 電車は地下を走り抜けて新木場・東京湾岸の夜景へ出る。
+   * 犬吠埼と同じく、3 段目だけが「一番美しい」。
+   */
+  function yurakuchoBadgeScene(level, uid) {
+    if (level === 1) {
+      // 太古の海。縄文海進のころの海の底。漂う堆積物と、眠るアンモナイト
+      return `
+        <defs>
+          <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="${uid}-water" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2F4A44"/>
+            <stop offset="100%" stop-color="#0A1614"/>
+          </linearGradient>
+          <radialGradient id="${uid}-glow" gradientUnits="userSpaceOnUse" cx="16" cy="9" r="6">
+            <stop offset="0%" stop-color="#7FC9B8" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#7FC9B8" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g clip-path="url(#${uid}-frame)">
+          <rect x="0" y="0" width="32" height="32" fill="url(#${uid}-water)"/>
+          <circle cx="16" cy="9" r="6" fill="url(#${uid}-glow)"/>
+          <circle cx="7" cy="6" r="0.4" fill="#CFE7DD" opacity="0.6"/>
+          <circle cx="11" cy="4" r="0.3" fill="#CFE7DD" opacity="0.5"/>
+          <circle cx="22" cy="7" r="0.35" fill="#CFE7DD" opacity="0.55"/>
+          <circle cx="25" cy="12" r="0.3" fill="#CFE7DD" opacity="0.45"/>
+          <circle cx="9" cy="14" r="0.3" fill="#CFE7DD" opacity="0.4"/>
+          <circle cx="19" cy="17" r="0.35" fill="#CFE7DD" opacity="0.4"/>
+          <path d="M12.5,25.7 a3.2,3.2 0 1,1 6.4,0.3 a2.1,2.1 0 1,1 -4.2,-0.25 a1.1,1.1 0 1,1 2.1,0.2"
+                fill="none" stroke="#D9C9A3" stroke-width="0.6" stroke-linecap="round" opacity="0.85"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#8B8578" stroke-width="1"/>
+      `;
+    }
+
+    if (level === 2) {
+      // 江戸の埋め立て。外堀の護岸と、木場へ運ばれる筏。水と土地が入り混じる
+      return `
+        <defs>
+          <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3A3A46"/>
+            <stop offset="55%" stop-color="#8A7550"/>
+            <stop offset="100%" stop-color="#C98B4A"/>
+          </linearGradient>
+          <linearGradient id="${uid}-water" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6B5A3E"/>
+            <stop offset="100%" stop-color="#42351F"/>
+          </linearGradient>
+        </defs>
+        <g clip-path="url(#${uid}-frame)">
+          <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
+          <path d="M6,7 q1.1,-1 2.2,0 q1.1,-1 2.2,0" fill="none" stroke="#332A22" stroke-width="0.5" stroke-linecap="round" opacity="0.7"/>
+          <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-water)"/>
+          <rect x="24.3" y="18" width="1" height="7" fill="#2E2419"/>
+          <rect x="26.6" y="19" width="1" height="6" fill="#2E2419"/>
+          <rect x="8" y="24.4" width="4.8" height="1.3" rx="0.6" fill="#8C6A3E"/>
+          <rect x="8" y="26" width="4.8" height="1.3" rx="0.6" fill="#7A5A34"/>
+          <rect x="9.6" y="22.9" width="1.6" height="1.6" fill="#4A3C28"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+      `;
+    }
+
+    // level === 3。東京湾岸の夜景。地下を抜けた先、新木場・豊洲の灯りが水面に映る
+    // （この段だけ縁を金にする。犬吠埼の初日の出と対になる「一番美しい到達点」）
+    return `
+      <defs>
+        <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+        <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#161C33"/>
+          <stop offset="70%" stop-color="#33314A"/>
+          <stop offset="100%" stop-color="#5B4A3E"/>
+        </linearGradient>
+        <linearGradient id="${uid}-water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#4A3F35"/>
+          <stop offset="100%" stop-color="#221D1A"/>
+        </linearGradient>
+        <radialGradient id="${uid}-glow" gradientUnits="userSpaceOnUse" cx="21" cy="21" r="10">
+          <stop offset="0%" stop-color="#F6D28A" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#F6D28A" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="${uid}-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="0.8"/></filter>
+      </defs>
+      <g clip-path="url(#${uid}-frame)">
+        <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
+        <circle cx="21" cy="21" r="10" fill="url(#${uid}-glow)" filter="url(#${uid}-soft)"/>
+        <rect x="9" y="12" width="2.4" height="10" fill="#161318"/>
+        <rect x="12" y="8" width="2.6" height="14" fill="#1D1A1F"/>
+        <rect x="15.2" y="14" width="2.2" height="8" fill="#161318"/>
+        <rect x="18" y="5" width="2.8" height="17" fill="#221E22"/>
+        <rect x="21.4" y="10" width="2.3" height="12" fill="#1A171B"/>
+        <circle cx="12.6" cy="10.5" r="0.28" fill="#F6D28A" opacity="0.9"/>
+        <circle cx="12.6" cy="13" r="0.28" fill="#F6D28A" opacity="0.7"/>
+        <circle cx="18.9" cy="8" r="0.28" fill="#F6D28A" opacity="0.9"/>
+        <circle cx="18.9" cy="11" r="0.28" fill="#F6D28A" opacity="0.6"/>
+        <circle cx="18.9" cy="14.5" r="0.28" fill="#F6D28A" opacity="0.8"/>
+        <circle cx="22.2" cy="13" r="0.28" fill="#F6D28A" opacity="0.7"/>
+        <circle cx="9.8" cy="16" r="0.28" fill="#F6D28A" opacity="0.6"/>
+        <circle cx="19.4" cy="5" r="0.35" fill="#E0654A"/>
+        <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-water)"/>
+        <rect x="12.4" y="22" width="0.6" height="9" fill="#F6D28A" opacity="0.35"/>
+        <rect x="18.7" y="22" width="0.7" height="9" fill="#F6D28A" opacity="0.4"/>
+        <rect x="21.8" y="22" width="0.6" height="9" fill="#F6D28A" opacity="0.3"/>
       </g>
       <circle cx="16" cy="16" r="15" fill="none" stroke="#D99A2B" stroke-width="1.3"/>
     `;
