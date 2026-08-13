@@ -1827,11 +1827,21 @@ function createOriginCard(screenElement) {
   nextButton.addEventListener('click', () => scrollToPanel(currentIndex() + 1));
 
   /*
-   * 一コマ目に、これまで何人が読んだかの記章を出す（ADR-0004）。
+   * 一コマ目に、読まれている度合いの記章を出す（ADR-0004）。
    *
    * 待たせない。カードはもう出ていて、記章は届いたら足す。
    * 届かなければ何も起きない——エラーも、空の枠も出さない（設計書 9.3）。
+   *
+   * 回数はそのまま出さない。しきい値が 5〜8〜10 回と小さく
+   * （js/popularity.js の STEPS）、「のべ12人が読んだ」のように数を
+   * 見せるとかえって人気が無いように映る。段（1〜3）だけを言葉にする。
    */
+  const POPULARITY_BADGE_TEXT = {
+    1: '少しずつ人気が出ている景色',
+    2: 'よく読まれている景色',
+    3: 'とても人気の景色',
+  };
+
   function showPopularity(spot) {
     if (!global_Popularity()) return;
 
@@ -1871,11 +1881,7 @@ function createOriginCard(screenElement) {
       icon.setAttribute('aria-hidden', 'true');
       icon.innerHTML = popularityBadgeScene(currentLine.id, level, `pop${popularityBadgeUid++}`);
 
-      /*
-       * 「のべ」を付けているのは、同じ人が日をまたいで開けば
-       * 二度数えるため。実人数ではない。
-       */
-      badge.append(icon, document.createTextNode(`のべ ${opens} 人が読んだ`));
+      badge.append(icon, document.createTextNode(POPULARITY_BADGE_TEXT[level]));
 
       firstPanel.insertBefore(badge, firstPanel.firstChild);
       // 差し込んでから開かせる。読んでいる本文が急に下へ飛ぶのを避ける

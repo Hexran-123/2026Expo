@@ -268,6 +268,19 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
   function noticeFor(spot, along, direction, speedMps) {
     if (spot === undefined || spot === null) return null;
 
+    /*
+     * 雑学メイン（車窓に出ない）のスポットは、通知そのものを出さない。
+     *
+     * spot.kind === 'trivia' は、見えない・見せられないものを
+     * 「まもなく」「見てください」と急かさないための印（設計書 8.2）。
+     * 通過の記録や成因カードは、これとは別の場所（js/main.js の
+     * markPassed）で判定しているので、雑学スポットも通り過ぎれば
+     * ふつうに記録される。ここで止めるのは、事前の予告と振動・
+     * ロック中通知（notifyOS）だけ。kind が無いスポット（未設定）は
+     * 景色ものとして扱う（既存路線を壊さないため）。
+     */
+    if (spot.kind === 'trivia') return null;
+
     const remaining = Math.abs(spot.distanceAlong - along);
     const side = windowSideOf(spot, direction);
 

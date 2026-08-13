@@ -208,6 +208,16 @@ check('  実際に起きていた例（西海鹿島に停車中、1954m 先の�
 check('  発車して 40km/h まで上がれば、500m 手前から出る',
   noticeFor(cabbage, 2995 - 480, '下り', 11.1) !== null, true);
 
+/*
+ * 雑学メイン（車窓に出ない）のスポットは、どれだけ近づいても通知を出さない
+ * （spots.json の kind、js/onboard.js の noticeFor）。
+ */
+const trivia = { ...tunnel, kind: 'trivia' };
+check('kind: trivia は 80m 手前でも出ない', noticeFor(trivia, 1863 - 80, '下り', 11.1), null);
+check('kind: trivia は停車中でも出ない', noticeFor(trivia, 1863 - 10, '下り', 0), null);
+check('kind が無いスポットは景色ものとして扱う（既存路線を壊さない）',
+  noticeFor({ ...tunnel, kind: undefined }, 1863 - 80, '下り', 11.1) !== null, true);
+
 // 減速しても秒数が伸び続けないこと（速度が落ちれば残り距離も減っているはず）
 console.log('  ── 駅に近づきながら減速していく流れ');
 for (const [remaining, kmh] of [[400, 40], [250, 30], [150, 20], [90, 10], [30, 0]]) {
