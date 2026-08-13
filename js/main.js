@@ -879,6 +879,23 @@ function createView(mapElement, projection, initialBox, onChange) {
   let animation = null;
   function animateTo(targetX, targetY, targetPerPixel, duration = 340) {
     stopAnimation();
+
+    /*
+     * 0ms（アニメーションさせず、即座に飛ばす）ときは、下のrAFを経ずに
+     * ここで値を確定させる。経由すると (now - start) / duration が
+     * 0/0 になりうる（同じフレーム内で start と now が等しく丸まることが
+     * ある。実機の位置情報がまだ来ていない間、乗る駅の近くへ即座に
+     * 寄せる frameOnBoardStation で発生した）。NaN が cx/cy/unitsPerPixel
+     * に入ると、以降の apply() が viewBox に Infinity を書き、地図全体が壊れる。
+     */
+    if (duration <= 0) {
+      cx = targetX;
+      cy = targetY;
+      unitsPerPixel = targetPerPixel;
+      apply();
+      return;
+    }
+
     const fromX = cx;
     const fromY = cy;
     const fromPerPixel = unitsPerPixel;
@@ -3343,8 +3360,22 @@ function pickLine(registry) {
     }
   };
 
-  // 地図は路線ごとに、届いた順から差し込む
+  /*
+   * 地図は路線ごとに、届いた順から差し込む。
+   *
+   * ただし試験用（role: 'test'）の路線は飛ばす。有楽町線の輪郭は
+   * 実機テスト用に間引かず作ってあるため 4000 点近くあり、
+   * preview.json だけで作品側（銚子電鉄）の 2 倍以上（tools/build-preview.js）。
+   * この画面はまだ何も選んでいない全員が最初に見るので、選ぶ気のない
+   * 試験用の地図にその重さを払わせない。カード自体は残し、押せば
+   * ふつうに試験用として開ける（地図データは選んだあとに別で読む）。
+   */
   for (const slot of slots) {
+    if (slot.line.role !== 'product') {
+      slot.card.querySelector('.line-card-meta').textContent = '（プレビューなし）';
+      continue;
+    }
+
     loadJson(`${slot.line.dir}/preview.json`)
       .then((preview) => {
         slot.preview = preview;
