@@ -171,6 +171,9 @@ const STORAGE_KEY = 'choshi-navi/themes';
 /** 乗車区間（乗る駅・降りる駅・方向）をブラウザに覚えさせるときの名前 */
 const PLAN_KEY = 'choshi-navi/plan';
 
+/** 環境音を使うかどうかをブラウザに覚えさせるときの名前。既定はオフ */
+const SOUND_KEY = 'choshi-navi/sound';
+
 /** 絶景スポットのひし形バッジの大きさ（中心から角まで） */
 const BADGE_SIZE = 17;
 
@@ -1466,6 +1469,23 @@ function savePlan(plan) {
   }
 }
 
+/** 環境音を使うかどうか。日をまたいでも覚える（乗車区間と違い、恒久の好みのため） */
+function loadSoundPref() {
+  try {
+    return localStorage.getItem(SOUND_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveSoundPref(value) {
+  try {
+    localStorage.setItem(SOUND_KEY, value ? '1' : '0');
+  } catch {
+    // 保存できない設定のブラウザでも、その場での動きは変えない
+  }
+}
+
 function stationDistance(route, name) {
   const station = route.stations.find((s) => s.name === name);
   return station ? station.distanceAlong : null;
@@ -1911,85 +1931,65 @@ function createOriginCard(screenElement) {
       : choshiBadgeScene(level, uid);
   }
 
-  // 犬吠埼の三段（夜／夜明け前／初日の出）。犬吠埼は本州最東端に近く、
-  // 初日の出の名所として知られる場所であることから。
+  /*
+   * 銚子電鉄の三段。もとは犬吠埼という同じ一点を、夜／夜明け前／初日の出と
+   * 時刻だけ進めて見せていた。有楽町層の三段（太古の海／江戸の埋め立て／
+   * 東京湾岸の夜景）が場所そのものを変えているのに合わせ、こちらも
+   * spots.json に実在する三つの地点を、銚子駅からの距離（distanceAlong）の
+   * 順に並べる形に描き直した（2026-08-14）。「乗って終点まで着く」という
+   * 体験そのものが記章になる。
+   *
+   * 1段目 S01 ヤマサ醤油工場（仲ノ町、482m）── 出発してすぐの街
+   * 2段目 S02 遠くに見える海（観音〜本銚子、1,496m）── 屋根の隙間に覗く海
+   * 3段目 犬吠埼の初日の出（終点そば）── 3段目と2段目で同じ「海と空」に
+   *   なるが、2段目は屋根ごしに覗くだけ、3段目で岬に着いて全部が見える、
+   *   という伏線と回収にしてある。3段目は変えていない
+   *   ── 本州最東端に近く、初日の出の名所として知られる場所であることから。
+   */
   function choshiBadgeScene(level, uid) {
     if (level === 1) {
-      // 夜。星と三日月の下、灯台が独りで灯る
+      // 仲ノ町の醤油蔵。本銚子へ向かう手前、高くそびえる煙突からにおいが流れてくる
       return `
         <defs>
           <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
           <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#161C2C"/>
-            <stop offset="100%" stop-color="#33415C"/>
+            <stop offset="0%" stop-color="#CFE0E8"/>
+            <stop offset="100%" stop-color="#EDE2C8"/>
           </linearGradient>
-          <linearGradient id="${uid}-sea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#232C41"/>
-            <stop offset="100%" stop-color="#161C2C"/>
-          </linearGradient>
-          <radialGradient id="${uid}-beam" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="9">
-            <stop offset="0%" stop-color="#F6D28A" stop-opacity="0.85"/>
-            <stop offset="60%" stop-color="#D99A2B" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="#D99A2B" stop-opacity="0"/>
-          </radialGradient>
-          <filter id="${uid}-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="0.6"/></filter>
-          <radialGradient id="${uid}-lamp" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="3">
-            <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.9"/>
-            <stop offset="100%" stop-color="#FFF3D0" stop-opacity="0"/>
-          </radialGradient>
         </defs>
         <g clip-path="url(#${uid}-frame)">
-          <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
-          <circle cx="6" cy="5" r="0.4" fill="#EDE7D8" opacity="0.8"/>
-          <circle cx="10" cy="3.2" r="0.35" fill="#EDE7D8" opacity="0.6"/>
-          <circle cx="13.5" cy="6.5" r="0.4" fill="#EDE7D8" opacity="0.7"/>
-          <circle cx="7.5" cy="9" r="0.3" fill="#EDE7D8" opacity="0.5"/>
-          <circle cx="9" cy="7" r="1.7" fill="#EDE7D8" opacity="0.85"/>
-          <circle cx="9.9" cy="6.5" r="1.55" fill="#1B2438"/>
-          <circle cx="21.5" cy="12" r="3" fill="url(#${uid}-lamp)"/>
-          <path d="M21.5,12 L28.8,8.4 L27,15.2 Z" fill="url(#${uid}-beam)" filter="url(#${uid}-soft)"/>
-          <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-sea)"/>
-          <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#12161F"/>
-          <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#12161F"/>
-          <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#12161F"/>
-          <circle cx="21.5" cy="12" r="0.65" fill="#FFF3D0"/>
+          <rect x="0" y="0" width="32" height="20" fill="url(#${uid}-sky)"/>
+          <rect x="0" y="20" width="32" height="12" fill="#C9B08A"/>
+          <polygon points="2,20 7,13.5 12,20" fill="#5B4632"/>
+          <polygon points="11,20 17.5,11.5 24,20" fill="#4A3A28"/>
+          <polygon points="21,20 26,15 31,20" fill="#5B4632"/>
+          <rect x="18.6" y="4" width="2.6" height="16" fill="#7A3A2E"/>
+          <rect x="18.2" y="3" width="3.4" height="1.6" rx="0.4" fill="#63301F"/>
+          <path d="M20,4 q1.6,-1.6 0.4,-3.4 q-1.6,-1.4 0,-3" fill="none" stroke="#EFE7D8" stroke-width="0.9" stroke-linecap="round" opacity="0.55"/>
+          <path d="M21.4,5.4 q1.8,-1 1,-3" fill="none" stroke="#EFE7D8" stroke-width="0.7" stroke-linecap="round" opacity="0.4"/>
         </g>
         <circle cx="16" cy="16" r="15" fill="none" stroke="#8B8578" stroke-width="1"/>
       `;
     }
 
     if (level === 2) {
-      // 夜明け前。空が紫からオレンジへ移り、灯りが夜明けの色と混ざり始める
+      // 屋根ごしの海。並んだ屋根の連なりが途切れたすきまに、海がきらりと覗く
       return `
         <defs>
           <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
           <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#3A3C58"/>
-            <stop offset="55%" stop-color="#8A6E82"/>
-            <stop offset="100%" stop-color="#D98A72"/>
+            <stop offset="0%" stop-color="#CFE6EC"/>
+            <stop offset="100%" stop-color="#EAF1DE"/>
           </linearGradient>
-          <linearGradient id="${uid}-sea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#5B5468"/>
-            <stop offset="100%" stop-color="#8C5D53"/>
-          </linearGradient>
-          <radialGradient id="${uid}-beam" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="7">
-            <stop offset="0%" stop-color="#F6D28A" stop-opacity="0.6"/>
-            <stop offset="60%" stop-color="#D99A2B" stop-opacity="0.22"/>
-            <stop offset="100%" stop-color="#D99A2B" stop-opacity="0"/>
-          </radialGradient>
-          <filter id="${uid}-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="0.6"/></filter>
         </defs>
         <g clip-path="url(#${uid}-frame)">
-          <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
-          <circle cx="8" cy="4.5" r="0.35" fill="#EDE7D8" opacity="0.4"/>
-          <circle cx="12" cy="3" r="0.3" fill="#EDE7D8" opacity="0.3"/>
-          <path d="M6,7 q1.1,-1 2.2,0 q1.1,-1 2.2,0" fill="none" stroke="#3A2E38" stroke-width="0.5" stroke-linecap="round"/>
-          <path d="M21.5,12 L27.2,9.3 L26,15 Z" fill="url(#${uid}-beam)" filter="url(#${uid}-soft)"/>
-          <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-sea)"/>
-          <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#2E2530"/>
-          <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#2E2530"/>
-          <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#2E2530"/>
-          <circle cx="21.5" cy="12" r="0.6" fill="#F6D28A"/>
+          <rect x="0" y="0" width="32" height="32" fill="url(#${uid}-sky)"/>
+          <rect x="0" y="17" width="32" height="3.4" fill="#2A6E8F"/>
+          <rect x="0" y="17" width="32" height="1.1" fill="#BFE6EE" opacity="0.8"/>
+          <polygon points="0,32 0,10 13,10 13,32" fill="#4A3A28"/>
+          <polygon points="0,10 6.5,3 13,10" fill="#4A3A28"/>
+          <polygon points="19,32 19,13 32,13 32,32" fill="#5B4632"/>
+          <polygon points="19,13 25.5,6 32,13" fill="#5B4632"/>
         </g>
         <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
       `;
@@ -2512,6 +2512,9 @@ function createTrip(route, spots, schedule, parts) {
   // ---- 見た目を書き換える ----
 
   function showNotice(notice) {
+    // 環境音はテーマ別なので、通知の中身が変わるたびに合わせる（js/ambient.js。消えていてもよい）
+    if (typeof Ambient !== 'undefined') Ambient.update(notice);
+
     if (notice === null) {
       noticeBar.hidden = true;
       return;
@@ -3775,8 +3778,17 @@ function pickLine(registry) {
         slot.preview = preview;
 
         const km = (preview.summary.lengthMeters / 1000).toFixed(1);
+        /*
+         * 標高は路線ごとに違う（銚子電鉄 4〜28m、有楽町線 -3〜37m）。
+         * 地図の色の濃淡（下の凡例）は両路線で共通の絶対値にそろえてあるが、
+         * それだけでは「この路線は実際どこまで高いか」が数字として読めない。
+         * tools/build-terrain.js が線路沿いの生の標高から求めた値
+         * （preview.json の summary.elevation）をそのままここに出す。
+         */
+        const elevation = preview.summary.elevation;
         slot.card.querySelector('.line-card-meta').textContent =
-          `${km} km ・ ${preview.summary.stationCount} 駅 ・ ${preview.summary.from} 〜 ${preview.summary.to}`;
+          `${km} km ・ ${preview.summary.stationCount} 駅 ・ ${preview.summary.from} 〜 ${preview.summary.to}` +
+          (elevation ? ` ・ 標高 ${elevation.min}〜${elevation.max}m` : '');
 
         const view = buildLinePreview(preview);
         view.svg.setAttribute('aria-label', `${slot.line.name}の地形と路線`);
@@ -4039,6 +4051,11 @@ async function main() {
   ensureScript('js/popularity.js', () => typeof Popularity !== 'undefined').catch(() => {
     // 読めなければ、のべ人数の記章が出ないだけ（設計書 9.3）
   });
+  ensureScript('js/ambient.js', () => typeof Ambient !== 'undefined')
+    .then(() => Ambient.setEnabled(loadSoundPref()))
+    .catch(() => {
+      // 読めなければ、環境音の機能そのものが出ないだけ（設計書 9.3）
+    });
 
   // 題・路線名・区間・出典の帯。ふだんは畳んでおく
   const chrome = createChrome();
@@ -4212,6 +4229,7 @@ async function main() {
   const planChip = document.getElementById('plan-chip');
   const planNotify = document.getElementById('plan-notify');
   const planNotifyCheck = document.getElementById('plan-notify-check');
+  const planSoundCheck = document.getElementById('plan-sound-check');
 
   for (const station of route.stations) {
     for (const select of [planBoard, planAlight]) {
@@ -4266,6 +4284,7 @@ async function main() {
     planClose.hidden = !currentPlan;
     updatePlanValidity();
     refreshNotifyRow();
+    planSoundCheck.checked = loadSoundPref();
     planSetup.hidden = false;
   }
 
@@ -4305,6 +4324,15 @@ async function main() {
     if (NOTIFY_SUPPORTED && !planNotify.hidden && planNotifyCheck.checked && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+    /*
+     * 環境音の自動再生の許可も、このクリックの中で取っておく（unlock の注記）。
+     * Ambient がまだ読み込めていなければ、この旅では鳴らないだけ（設計書 9.3）。
+     */
+    saveSoundPref(planSoundCheck.checked);
+    if (typeof Ambient !== 'undefined') {
+      Ambient.setEnabled(planSoundCheck.checked);
+      if (planSoundCheck.checked) Ambient.unlock();
+    }
     setPlan({
       board: planBoard.value,
       alight: planAlight.value,
@@ -4322,6 +4350,24 @@ async function main() {
   // --- 出典（設計書 8.3）---
 
   const credits = document.getElementById('credits');
+
+  /*
+   * 標高の色分け（開始画面の路線選択と同じ 6 段。js/main.js の pickLine）。
+   * 乗車中は「ⓘ→出典」からしか地図の凡例に戻れないので、ここにも出す。
+   * 数字はこの路線だけの実測値（terrain.json の elevationAlongRoute、
+   * tools/build-terrain.js が線路沿いの生の標高から求めた min/max）。
+   */
+  const creditsElevationBar = document.getElementById('credits-elevation-bar');
+  for (const meters of [0, 8, 16, 24, 32, 45]) {
+    const cell = document.createElement('span');
+    cell.className = 'line-legend-cell';
+    cell.style.background = `var(--land-${meters})`;
+    creditsElevationBar.appendChild(cell);
+  }
+  if (terrain.elevationAlongRoute) {
+    document.getElementById('credits-elevation-range').textContent =
+      `${terrain.elevationAlongRoute.min}〜${terrain.elevationAlongRoute.max}m`;
+  }
 
   /*
    * 出典を開けるのは、上の帯の中の「出典」からだけ。つまりここへ来るときは

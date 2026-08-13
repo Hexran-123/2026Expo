@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二段目、三つの行き先</title>
+<style>
+  :root {
+    --paper:     #F3EBD8;
+    --ink:       #2B2A28;
+    --ink-soft:  #6B6862;
+    --panel-line:rgba(43, 42, 40, 0.12);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+                 "Noto Sans JP", Meiryo, sans-serif;
+    line-height: 1.75;
+  }
+  .heading-font {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic",
+                 "Noto Sans JP", Meiryo, sans-serif;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 88px; }
+
+  .eyebrow { font-size: 12.5px; letter-spacing: 0.12em; color: var(--ink-soft); margin: 0 0 10px; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 15px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 10px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+
+  section.intro { margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--panel-line); }
+
+  .proposal { margin: 0 0 52px; }
+  .proposal-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .proposal-num {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-size: 13px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em;
+  }
+  .proposal h2 {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-size: 19px; font-weight: 700; margin: 0;
+  }
+  .proposal-tagline { font-size: 13.5px; color: var(--ink-soft); margin: 0 0 6px; }
+  .proposal-place { font-size: 12px; color: #9A968C; margin: 0 0 16px; }
+
+  .stage-card {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: #FFFFFF; border-radius: 16px; padding: 16px 18px;
+    box-shadow: 0 10px 28px rgba(30, 25, 15, 0.14), 0 1px 0 rgba(30, 25, 15, 0.06);
+    margin-bottom: 14px;
+  }
+  .stage-card svg { flex: none; display: block; }
+  .stage-card .body { flex: 1; min-width: 0; }
+  .stage-card .chip-label { font-size: 12px; color: #4B4843; font-variant-numeric: tabular-nums; margin: 0 0 6px; }
+  .stage-card .stage-text { font-size: 12.5px; line-height: 1.7; color: #4B4843; margin: 0; }
+
+  .proposal-note { font-size: 14px; max-width: 62ch; margin: 4px 0 0; }
+  .proposal-note b { font-weight: 700; }
+
+  table.compare { width: 100%; border-collapse: collapse; font-size: 13px; margin: 4px 0 0; }
+  table.compare caption { text-align: left; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  table.compare th, table.compare td {
+    text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--panel-line); vertical-align: top;
+  }
+  table.compare th { font-weight: 700; color: var(--ink-soft); font-size: 11.5px; }
+  .table-wrap { overflow-x: auto; }
+
+  .verdict {
+    margin-top: 48px; padding: 22px 24px; background: #FFFFFF;
+    border: 1px solid var(--panel-line); border-radius: var(--radius);
+  }
+  .verdict-label {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 10px;
+  }
+  .verdict p { margin: 0 0 10px; font-size: 14px; }
+  .verdict p:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="intro">
+    <p class="eyebrow heading-font">車窓絶景ナビ ── 累積人気の記章・銚子電鉄 2段目</p>
+    <h1>「切通しを抜けて畑へ」は絵が良くなかった。行き先ごと三つ描き直した</h1>
+    <p class="lede">
+      1段目（仲ノ町の醤油蔵）と3段目（犬吠埼の初日の出）はそのまま。
+      あいだの2段目だけ、<b>見せる場所そのものを変えて</b>三案つくった。
+      3つとも <code style="background:rgba(43,42,40,.07);padding:1px 5px;border-radius:4px;font-size:12px">spots.json</code>
+      に実在するスポット（S03 森のトンネル／S02 遠くに見える海／S04 キャベツ畑）から選んでいる。
+      縁の色（墨 #4B4843、2段目の文法）はどの案でも変えていない。
+    </p>
+  </section>
+
+  <!-- ============================================================ 案 A ============================================================ -->
+  <section class="proposal">
+    <div class="proposal-head">
+      <span class="proposal-num">案 A</span>
+      <h2>桜のトンネル</h2>
+    </div>
+    <p class="proposal-tagline">木々が両側から覆いかぶさる切通しの奥に、光が見える</p>
+    <p class="proposal-place">S03 森のトンネル・本銚子駅／1,863m地点</p>
+
+    <div class="stage-card">
+      <svg viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
+        <defs>
+          <clipPath id="a-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="a-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#F0E4D2"/>
+            <stop offset="100%" stop-color="#F8EEDB"/>
+          </linearGradient>
+        </defs>
+        <g clip-path="url(#a-frame)">
+          <rect width="32" height="32" fill="#33502A"/>
+          <path d="M9,32 L9,15 Q9,5 16,5 Q23,5 23,15 L23,32 Z" fill="url(#a-sky)"/>
+          <circle cx="6" cy="9" r="1.8" fill="#E7A9C4"/>
+          <circle cx="10" cy="4" r="1.6" fill="#EFC0D6"/>
+          <circle cx="16" cy="2.4" r="1.8" fill="#E7A9C4"/>
+          <circle cx="22" cy="4" r="1.6" fill="#EFC0D6"/>
+          <circle cx="26" cy="9" r="1.8" fill="#E7A9C4"/>
+          <path d="M12,32 L15,17 L17,17 L20,32" fill="none" stroke="#B8A88A" stroke-width="0.7" opacity="0.7"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+      </svg>
+      <div class="body">
+        <p class="chip-label">のべ 8 人が読んだ</p>
+        <p class="stage-text">本銚子の手前で、電車はふいに木々のアーチをくぐる。春には切通しの縁を桜がふちどり、日本版「恋のトンネル」とも呼ばれる眺めになる。</p>
+      </div>
+    </div>
+
+    <p class="proposal-note">
+      1段目（家並みと煙突）との対比が強い。<b>閉じた場所から抜け出す</b>という絵で、
+      「台地へ上がっていく」という体の変化そのものを表せる。ただし森・桜という題材は
+      1段目の暮らしの絵、3段目の海の絵のあいだで、やや<b>絵日記的</b>になりやすい。
+    </p>
+  </section>
+
+  <!-- ============================================================ 案 B ============================================================ -->
+  <section class="proposal">
+    <div class="proposal-head">
+      <span class="proposal-num">案 B</span>
+      <h2>屋根ごしの海</h2>
+    </div>
+    <p class="proposal-tagline">連なる屋根が途切れたすきまに、海がきらりと覗く</p>
+    <p class="proposal-place">S02 遠くに見える海・観音駅〜本銚子駅／1,496m地点</p>
+
+    <div class="stage-card">
+      <svg viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
+        <defs>
+          <clipPath id="b-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="b-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#CFE6EC"/>
+            <stop offset="100%" stop-color="#EAF1DE"/>
+          </linearGradient>
+        </defs>
+        <g clip-path="url(#b-frame)">
+          <rect width="32" height="32" fill="url(#b-sky)"/>
+          <rect x="0" y="17" width="32" height="3.4" fill="#2A6E8F"/>
+          <rect x="0" y="17" width="32" height="1.1" fill="#BFE6EE" opacity="0.8"/>
+          <polygon points="0,32 0,10 13,10 13,32" fill="#4A3A28"/>
+          <polygon points="0,10 6.5,3 13,10" fill="#4A3A28"/>
+          <polygon points="19,32 19,13 32,13 32,32" fill="#5B4632"/>
+          <polygon points="19,13 25.5,6 32,13" fill="#5B4632"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+      </svg>
+      <div class="body">
+        <p class="chip-label">のべ 8 人が読んだ</p>
+        <p class="stage-text">並んだ屋根の連なりが途切れたすきまに、きらりと光る帯が覗く。それが、地平線まで広がる太平洋だ。</p>
+      </div>
+    </div>
+
+    <p class="proposal-note">
+      3段目（犬吠埼の海）と<b>同じ「海と空」テーマ</b>になる。1段目→2段目→3段目で、
+      海が「ちらっと見える」→「岬に着いて全部見える」という<b>伏線と回収</b>の構造になり、
+      3段目の到達感が強まる。ただし2段目時点で海を出すと、3段目の驚きがやや薄まる懸念もある。
+    </p>
+  </section>
+
+  <!-- ============================================================ 案 C ============================================================ -->
+  <section class="proposal">
+    <div class="proposal-head">
+      <span class="proposal-num">案 C</span>
+      <h2>畝を切り分ける</h2>
+    </div>
+    <p class="proposal-tagline">地平線まで広がる緑の畑を、電車がまっすぐ進んでいく</p>
+    <p class="proposal-place">S04 キャベツ畑・笠上黒生駅〜西海鹿島駅／2,995m地点</p>
+
+    <div class="stage-card">
+      <svg viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
+        <defs>
+          <clipPath id="c-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="c-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#DCEAC4"/>
+            <stop offset="100%" stop-color="#EFE2A8"/>
+          </linearGradient>
+          <linearGradient id="c-field" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#C7CC85"/>
+            <stop offset="100%" stop-color="#93A055"/>
+          </linearGradient>
+        </defs>
+        <g clip-path="url(#c-frame)">
+          <rect x="0" y="0" width="32" height="14" fill="url(#c-sky)"/>
+          <rect x="0" y="14" width="32" height="18" fill="url(#c-field)"/>
+          <path d="M16,14 L1,32" stroke="#5B7A3B" stroke-width="1" opacity="0.6"/>
+          <path d="M16,14 L8.5,32" stroke="#5B7A3B" stroke-width="1" opacity="0.6"/>
+          <path d="M16,14 L16,32" stroke="#5B7A3B" stroke-width="1" opacity="0.6"/>
+          <path d="M16,14 L23.5,32" stroke="#5B7A3B" stroke-width="1" opacity="0.6"/>
+          <path d="M16,14 L31,32" stroke="#5B7A3B" stroke-width="1" opacity="0.6"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+      </svg>
+      <div class="body">
+        <p class="chip-label">のべ 8 人が読んだ</p>
+        <p class="stage-text">台地の上は水はけがよく、稲作にはむかない土地条件。地平線まで一面に広がる緑の畝を、電車はゆっくりと、まっすぐに切り分けていく。</p>
+      </div>
+    </div>
+
+    <p class="proposal-note">
+      三案で唯一<b>「気候と農業」テーマ単体</b>になる案。銚子の代表的な産物（春キャベツ収穫量日本一）
+      をそのまま形にできる。1段目の建物・3段目の海と並べたとき、<b>幾何学的な収束線</b>という
+      新しい描き方が加わり、三段の絵の作り方に変化が出る。
+    </p>
+  </section>
+
+  <div class="table-wrap">
+    <table class="compare">
+      <caption>三案の比較</caption>
+      <thead>
+        <tr><th style="width:16%">案</th><th style="width:20%">テーマ</th><th style="width:32%">強み</th><th>気になる点</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>A　桜のトンネル</td>
+          <td>地形</td>
+          <td>「台地へ上がる」変化を絵にできる。季節の桜も添えられる</td>
+          <td>1・3段目の間で少し絵日記的になる。季節限定の題材</td>
+        </tr>
+        <tr>
+          <td>B　屋根ごしの海</td>
+          <td>海と空</td>
+          <td>3段目と同テーマで伏線・回収の構造になり、到達感が増す</td>
+          <td>2段目で海をちらつかせると3段目の驚きが薄まる可能性</td>
+        </tr>
+        <tr>
+          <td>C　畝を切り分ける</td>
+          <td>気候と農業</td>
+          <td>銚子の代表産物（春キャベツ）を直接表せる。三段の絵柄に幾何学的な変化が出る</td>
+          <td>三案の中でいちばん抽象的。「畑」だとひと目でわかるまでに一瞬かかる</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="verdict">
+    <p class="verdict-label heading-font">迷うなら</p>
+    <p>
+      <b>案 C（畝を切り分ける）</b>を推す。1段目が人の暮らし（家並みと煙突）、
+      3段目が海と空（灯台と朝日）なので、2段目は<b>まだ出ていないテーマ</b>で埋めたほうが
+      三段全体の幅が出る。案Bは3段目と同じ海のテーマを2段目で先に見せてしまい、
+      「終点でようやく海に出会う」という3段目の到達感を自分で弱めてしまう。
+    </p>
+    <p>
+      案Aも悪くないが、地形というテーマは1段目（産業と水運）3段目（海と空）のどちらとも
+      性格が近く、三段の輪郭がぼやける。案Cのキャベツ畑は銚子でいちばん有名な農産物でもあり、
+      「地理空間情報の活用」としての説得力も一番強い。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>銚子電鉄の旅路三段</title>
+<style>
+  :root {
+    --paper:     #F3EBD8;
+    --ink:       #2B2A28;
+    --ink-soft:  #6B6862;
+    --panel-line:rgba(43, 42, 40, 0.12);
+    --radius: 14px;
+
+    --theme-terrain: #3F5A2E;
+    --theme-farm:    #6F8F36;
+    --theme-industry:#2E4A6B;
+    --theme-sea:     #2A6E8F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+                 "Noto Sans JP", Meiryo, sans-serif;
+    line-height: 1.75;
+  }
+  .heading-font {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic",
+                 "Noto Sans JP", Meiryo, sans-serif;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 88px; }
+
+  .eyebrow { font-size: 12.5px; letter-spacing: 0.12em; color: var(--ink-soft); margin: 0 0 10px; }
+  h1 { font-size: 25px; font-weight: 700; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 15px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 10px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+
+  section.intro { margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--panel-line); }
+
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 6px; }
+  .subhead { font-size: 14px; color: var(--ink-soft); margin: 0 0 18px; }
+
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 620px) { .swatches { grid-template-columns: 1fr; } }
+
+  .swatch {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(30, 25, 15, 0.14), 0 1px 0 rgba(30, 25, 15, 0.06);
+    overflow: hidden;
+  }
+  .swatch-tier {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em;
+    color: #8B8578; background: #EFE9DA; padding: 7px 14px;
+  }
+  .swatch-body { padding: 14px 16px 16px; }
+  .swatch-theme { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #6B6862; margin-bottom: 4px; }
+  .swatch-theme i { width: 8px; height: 8px; background: var(--dot, #6B6862); transform: rotate(45deg); display: inline-block; border-radius: 1px; }
+  .swatch-place { font-size: 11px; color: #9A968C; margin: 0 0 8px; }
+  .swatch-name { font-size: 16px; font-weight: 700; color: #2B2A28; margin-bottom: 10px; }
+  .chip { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+  .chip svg { display: block; flex: none; }
+  .chip span { font-size: 12px; color: #4B4843; font-variant-numeric: tabular-nums; }
+  .swatch-text { font-size: 12.5px; line-height: 1.7; color: #4B4843; }
+
+  .old-strip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: rgba(43,42,40,0.04);
+    border-radius: var(--radius); margin: 14px 0 44px;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .old-strip .chips { display: flex; gap: 6px; }
+  .old-strip svg { display: block; }
+
+  table.compare {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 0;
+  }
+  table.compare th, table.compare td {
+    text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--panel-line); vertical-align: top;
+  }
+  table.compare th { font-weight: 700; color: var(--ink-soft); font-size: 11.5px; }
+
+  .verdict {
+    margin-top: 44px; padding: 22px 24px; background: #FFFFFF;
+    border: 1px solid var(--panel-line); border-radius: var(--radius);
+  }
+  .verdict-label {
+    font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-soft); margin: 0 0 10px;
+  }
+  .verdict p { margin: 0 0 10px; font-size: 14px; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict code { background: rgba(43,42,40,0.07); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="intro">
+    <p class="eyebrow heading-font">車窓絶景ナビ ── 累積人気の記章・銚子電鉄 改訂案</p>
+    <h1>犬吠埼だけを三度描くのをやめ、路線そのものの旅にする</h1>
+    <p class="lede">
+      いまの三段（案 C）は<b>犬吠埼という同じ一点</b>を、夜 → 夜明け前 → 初日の出と
+      時刻だけ進めて見せている。有楽町層の三段は逆で、<b>三段それぞれが別の場所・別の時代</b>
+      （太古の海 → 江戸の埋め立て → 東京湾岸の夜景）になっている。
+    </p>
+    <p class="lede">
+      銚子電鉄側もこれに合わせ、<b>路線に実在する三つの地点</b>を、銚子駅からの距離
+      （<code style="background:rgba(43,42,40,.07);padding:1px 5px;border-radius:4px;font-size:12px">distanceAlong</code>、
+      spots.json 実データ）の順に並べる案にした。1段目は出発してすぐの醤油の街、
+      2段目は台地へ上がる切通しと畑、3段目は終点そばの犬吠埼。
+      <b>「乗って終点まで着く」という体験そのものが三段になる。</b>
+      縁の色の文法（1段目：灰／2段目：墨／3段目：金）は変えていない。
+    </p>
+  </section>
+
+  <h2 class="heading-font">新しい三段 ── 路線の旅</h2>
+  <p class="subhead">段が上がるほど、銚子駅から遠くへ進む。3段目でようやく終点そばの海と灯台に着く。</p>
+
+  <div class="swatches">
+    <div class="swatch">
+      <p class="swatch-tier">5〜7回・1段目 ── 出発</p>
+      <div class="swatch-body">
+        <p class="swatch-theme" style="--dot:#2E4A6B"><i></i>産業と水運</p>
+        <p class="swatch-place">仲ノ町駅付近・銚子駅から482m</p>
+        <p class="swatch-name">醤油蔵の煙突</p>
+        <div class="chip">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <defs>
+              <clipPath id="t1-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+              <linearGradient id="t1-sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#CFE0E8"/>
+                <stop offset="100%" stop-color="#EDE2C8"/>
+              </linearGradient>
+            </defs>
+            <g clip-path="url(#t1-frame)">
+              <rect x="0" y="0" width="32" height="20" fill="url(#t1-sky)"/>
+              <rect x="0" y="20" width="32" height="12" fill="#C9B08A"/>
+              <polygon points="2,20 7,13.5 12,20" fill="#5B4632"/>
+              <polygon points="11,20 17.5,11.5 24,20" fill="#4A3A28"/>
+              <polygon points="21,20 26,15 31,20" fill="#5B4632"/>
+              <rect x="18.6" y="4" width="2.6" height="16" fill="#7A3A2E"/>
+              <rect x="18.2" y="3" width="3.4" height="1.6" rx="0.4" fill="#63301F"/>
+              <path d="M20,4 q1.6,-1.6 0.4,-3.4 q-1.6,-1.4 0,-3" fill="none" stroke="#EFE7D8" stroke-width="0.9" stroke-linecap="round" opacity="0.55"/>
+              <path d="M21.4,5.4 q1.8,-1 1,-3" fill="none" stroke="#EFE7D8" stroke-width="0.7" stroke-linecap="round" opacity="0.4"/>
+            </g>
+            <circle cx="16" cy="16" r="15" fill="none" stroke="#8B8578" stroke-width="1"/>
+          </svg>
+          <span>のべ 6 人が読んだ</span>
+        </div>
+        <p class="swatch-text">本銚子へ向かう手前、ふと甘辛いにおいが車内に流れこむ。仲ノ町駅のそばに高くそびえる、醤油蔵の煙突から漂ってくるにおいだ。旅はここから始まる。</p>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <p class="swatch-tier">8〜9回・2段目 ── 台地へ</p>
+      <div class="swatch-body">
+        <p class="swatch-theme" style="--dot:#3F5A2E"><i></i>地形 → 気候と農業</p>
+        <p class="swatch-place">本銚子〜西海鹿島駅・約1.9〜3.0km</p>
+        <p class="swatch-name">切通しを抜けて畑へ</p>
+        <div class="chip">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <defs>
+              <clipPath id="t2-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+              <radialGradient id="t2-glow" cx="16" cy="15" r="2.3" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FFF6DE"/>
+                <stop offset="100%" stop-color="#F6D28A"/>
+              </radialGradient>
+            </defs>
+            <g clip-path="url(#t2-frame)">
+              <rect x="0" y="0" width="32" height="32" fill="#243318"/>
+              <ellipse cx="16" cy="15" rx="14.5" ry="15.5" fill="#33502A"/>
+              <ellipse cx="16" cy="15" rx="11.4" ry="12.3" fill="#3F5A2E"/>
+              <ellipse cx="16" cy="15" rx="8.4" ry="9.2" fill="#5B7A3B"/>
+              <ellipse cx="16" cy="15" rx="5.7" ry="6.4" fill="#7C9A46"/>
+              <ellipse cx="16" cy="15" rx="3.4" ry="3.9" fill="#A8AE5E"/>
+              <ellipse cx="16" cy="15" rx="1.8" ry="2.1" fill="url(#t2-glow)"/>
+            </g>
+            <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+          </svg>
+          <span>のべ 8 人が読んだ</span>
+        </div>
+        <p class="swatch-text">本銚子の手前で木々のアーチをくぐり、抜けた先には台地の畑が広がる。低地から台地へ、電車がいちばん高さを変える区間。</p>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <p class="swatch-tier">10回〜・3段目 ── 終点、犬吠埼</p>
+      <div class="swatch-body">
+        <p class="swatch-theme" style="--dot:#2A6E8F"><i></i>海と空</p>
+        <p class="swatch-place">犬吠駅そば・終点付近</p>
+        <p class="swatch-name">初日の出の灯台</p>
+        <div class="chip">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+            <defs>
+              <clipPath id="t3-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+              <linearGradient id="t3-sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7C93B0"/>
+                <stop offset="45%" stop-color="#E8A26B"/>
+                <stop offset="100%" stop-color="#F6D28A"/>
+              </linearGradient>
+              <linearGradient id="t3-sea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E8A26B"/>
+                <stop offset="100%" stop-color="#C97A4A"/>
+              </linearGradient>
+              <radialGradient id="t3-sun" gradientUnits="userSpaceOnUse" cx="11" cy="22" r="8">
+                <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.95"/>
+                <stop offset="45%" stop-color="#F6D28A" stop-opacity="0.55"/>
+                <stop offset="100%" stop-color="#F6D28A" stop-opacity="0"/>
+              </radialGradient>
+              <filter id="t3-sunblur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="1"/></filter>
+              <linearGradient id="t3-reflect" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#FFF3D0" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g clip-path="url(#t3-frame)">
+              <rect x="0" y="0" width="32" height="22" fill="url(#t3-sky)"/>
+              <circle cx="11" cy="22" r="6.5" fill="url(#t3-sun)" filter="url(#t3-sunblur)"/>
+              <circle cx="11" cy="22" r="4.3" fill="#FFF3D0"/>
+              <path d="M22,6 q1,-0.9 2,0 q1,-0.9 2,0" fill="none" stroke="#3A2E38" stroke-width="0.5" stroke-linecap="round" opacity="0.8"/>
+              <rect x="0" y="22" width="32" height="10" fill="url(#t3-sea)"/>
+              <polygon points="6,22 11,32 16,22" fill="url(#t3-reflect)" opacity="0.7"/>
+              <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#4A2E22"/>
+              <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.35"/>
+              <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.3"/>
+              <circle cx="21.5" cy="12" r="0.55" fill="#FFF3D0"/>
+            </g>
+            <circle cx="16" cy="16" r="15" fill="none" stroke="#D99A2B" stroke-width="1.3"/>
+          </svg>
+          <span>のべ 13 人が読んだ</span>
+        </div>
+        <p class="swatch-text">終点そば、本州最東端に近い犬吠埼。水平線から朝日が上がり、灯台の縁が金色に染まる。三段でいちばん美しい、旅の到達点。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="old-strip">
+    <span>いまの実装（案C・時刻のみ進む）との違い ──</span>
+    <span class="chips">
+      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#232C41"/><circle cx="16" cy="16" r="15" fill="none" stroke="#8B8578" stroke-width="1.4"/></svg>
+      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#6E5E6C"/><circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1.4"/></svg>
+      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#E8A26B"/><circle cx="16" cy="16" r="15" fill="none" stroke="#D99A2B" stroke-width="1.6"/></svg>
+    </span>
+    <span>犬吠埼だけを夜／夜明け前／初日の出と塗り替えていた。場所は常に同じ一点。</span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="compare">
+      <thead><tr><th style="width:26%"></th><th>いま（案C）</th><th>この案</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>三段の違い</td>
+          <td>同じ場所（犬吠埼）の時刻だけが進む</td>
+          <td>路線上の三つの実在地点が変わる（有楽町層の三段と同じ構造）</td>
+        </tr>
+        <tr>
+          <td>地理的な裏付け</td>
+          <td>犬吠埼が本州最東端に近い、という一点の事実</td>
+          <td>spots.json の distanceAlong 順そのもの。銚子駅→本銚子→西海鹿島→犬吠、という実際の乗車体験と一致</td>
+        </tr>
+        <tr>
+          <td>3段目</td>
+          <td>初日の出（そのまま）</td>
+          <td>初日の出（そのまま流用。到達点として最も強い絵なので変えない）</td>
+        </tr>
+        <tr>
+          <td>実装コスト</td>
+          <td>─</td>
+          <td>1・2段目のみ新規。3段目は既存コードをそのまま使える</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="verdict">
+    <p class="verdict-label heading-font">この案の要点</p>
+    <p>
+      有楽町層の三段が「時間」で三場面を分けたのに対し、銚子電鉄は実際に車窓が変わっていく
+      <b>「距離」で三場面を分ける</b>。これは有楽町線と違って地上を走り、実データに
+      distanceAlong（銚子駅からの線路上の距離）を持っている銚子電鉄だからこそ選べる軸。
+    </p>
+    <p>
+      3段目の初日の出は変えない。1・2段目だけ新しい場所（醤油蔵の街／台地の切通しと畑）に
+      差し替えれば、「乗って終点まで来た」という達成感が、記章そのものに乗る。
+    </p>
+    <p>
+      承認後は <code>js/main.js</code> の <code>choshiBadgeScene()</code> の level 1・2 を
+      この二つの絵に差し替え、<code>demo/*.html</code> を作り直す。level 3 は変更不要。
+    </p>
+  </div>
+
+</div>
+</body>
+</html>
