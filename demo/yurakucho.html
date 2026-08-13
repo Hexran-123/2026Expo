@@ -5502,7 +5502,21 @@ function fittedBox(mapElement, contents) {
  * basisPerPixel として覚えておき、その比を「今の倍率」として使う。
  */
 function createView(mapElement, projection, initialBox, onChange) {
-  const screen = () => mapElement.getBoundingClientRect();
+  /*
+   * getBoundingClientRect() を毎回呼び直さない。
+   *
+   * apply()・zoomAt() は指を動かすたびに何度も呼ばれるが、mapElement の
+   * 画面上の大きさ・位置はリサイズ（またはリサイズと同じ意味を持つ操作）
+   * でしか変わらない。直前の apply() が viewBox 等を書き換えた直後に
+   * ここで測ると、ブラウザはまだ反映していないレイアウトをその場で
+   * 確定させてから返す（forced synchronous layout）。ピンチでは 1 回の
+   * 指の動きで 17 個の要素の transform と --k を書き換えるため、この
+   * 測り直しが積み重なって重くなる（実測: ピンチ中の getBoundingClientRect
+   * だけで 170ms 近く）。値をキャッシュし、リサイズのときだけ捨てる。
+   */
+  let cachedScreen = null;
+  const screen = () => cachedScreen || (cachedScreen = mapElement.getBoundingClientRect());
+  const invalidateScreen = () => { cachedScreen = null; };
 
   const basisPerPixel = initialBox.width / screen().width;
   let unitsPerPixel = basisPerPixel;
@@ -5650,7 +5664,7 @@ function createView(mapElement, projection, initialBox, onChange) {
     );
   }
 
-  return { apply, zoomAt, panBy, centerOn, goTo, reset, zoom, stopAnimation };
+  return { apply, zoomAt, panBy, centerOn, goTo, reset, zoom, stopAnimation, invalidateScreen };
 }
 
 /**
@@ -7630,7 +7644,13 @@ const DURATION_TEXT = {
   '長': 'ながい（ゆっくり見られる）',
 };
 
-function createSpotCard(screenElement, view, getWeather) {
+/**
+ * @param {{下り: string, 上り: string}} terminus
+ *   上り・下りそれぞれの終点の駅名。「外川ゆき（下り）」の見出しに使う。
+ *   路線ごとに違うので受け取る。銚子・外川と書き込んでいたころは、
+ *   有楽町線のカードにも「外川ゆき」と出ていた（js/journal.js の ends と同じ話）。
+ */
+function createSpotCard(screenElement, view, getWeather, terminus) {
   const card = document.getElementById('spot-card');
   const themeElement = document.getElementById('spot-card-theme');
   const nameElement = document.getElementById('spot-card-name');
@@ -7669,8 +7689,8 @@ function createSpotCard(screenElement, view, getWeather) {
      * 乗車前は、その人が上りに乗るのか下りに乗るのかわからない。
      * 選ばせるより、両方書いてしまうほうが予習には向いている。
      */
-    addFact('外川ゆき（下り）', windowSideText(spot.sideDown));
-    addFact('銚子ゆき（上り）', windowSideText(spot.sideUp));
+    addFact(`${terminus['下り']}ゆき（下り）`, windowSideText(spot.sideDown));
+    addFact(`${terminus['上り']}ゆき（上り）`, windowSideText(spot.sideUp));
     addFact('見ごろ', spot.season);
     addFact('見える時間', DURATION_TEXT[spot.duration] || spot.duration);
 
@@ -8314,7 +8334,10 @@ async function main() {
 
   const view = createView(mapElement, terrain.projection, initialBox, onViewChange);
   view.apply();
-  window.addEventListener('resize', () => view.apply());
+  window.addEventListener('resize', () => {
+    view.invalidateScreen();
+    view.apply();
+  });
 
   // 地図が動かせる状態になったので、読み込み中の表示を退ける
   document.getElementById('loading').hidden = true;
@@ -8355,7 +8378,10 @@ async function main() {
   let currentWeather = null;
   const getWeather = () => currentWeather;
 
-  const card = createSpotCard(document.querySelector('.screen'), view, getWeather);
+  const card = createSpotCard(document.querySelector('.screen'), view, getWeather, {
+    '下り': Schedule.terminusOf(schedule, '下り'),
+    '上り': Schedule.terminusOf(schedule, '上り'),
+  });
 
   function openCardFor(spotElement) {
     const spot = spotById.get(spotElement.getAttribute('data-id'));

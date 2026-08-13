@@ -2947,7 +2947,13 @@ const DURATION_TEXT = {
   '長': 'ながい（ゆっくり見られる）',
 };
 
-function createSpotCard(screenElement, view, getWeather) {
+/**
+ * @param {{下り: string, 上り: string}} terminus
+ *   上り・下りそれぞれの終点の駅名。「外川ゆき（下り）」の見出しに使う。
+ *   路線ごとに違うので受け取る。銚子・外川と書き込んでいたころは、
+ *   有楽町線のカードにも「外川ゆき」と出ていた（js/journal.js の ends と同じ話）。
+ */
+function createSpotCard(screenElement, view, getWeather, terminus) {
   const card = document.getElementById('spot-card');
   const themeElement = document.getElementById('spot-card-theme');
   const nameElement = document.getElementById('spot-card-name');
@@ -2986,8 +2992,8 @@ function createSpotCard(screenElement, view, getWeather) {
      * 乗車前は、その人が上りに乗るのか下りに乗るのかわからない。
      * 選ばせるより、両方書いてしまうほうが予習には向いている。
      */
-    addFact('外川ゆき（下り）', windowSideText(spot.sideDown));
-    addFact('銚子ゆき（上り）', windowSideText(spot.sideUp));
+    addFact(`${terminus['下り']}ゆき（下り）`, windowSideText(spot.sideDown));
+    addFact(`${terminus['上り']}ゆき（上り）`, windowSideText(spot.sideUp));
     addFact('見ごろ', spot.season);
     addFact('見える時間', DURATION_TEXT[spot.duration] || spot.duration);
 
@@ -3675,7 +3681,10 @@ async function main() {
   let currentWeather = null;
   const getWeather = () => currentWeather;
 
-  const card = createSpotCard(document.querySelector('.screen'), view, getWeather);
+  const card = createSpotCard(document.querySelector('.screen'), view, getWeather, {
+    '下り': Schedule.terminusOf(schedule, '下り'),
+    '上り': Schedule.terminusOf(schedule, '上り'),
+  });
 
   function openCardFor(spotElement) {
     const spot = spotById.get(spotElement.getAttribute('data-id'));
