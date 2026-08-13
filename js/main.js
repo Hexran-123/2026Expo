@@ -566,7 +566,15 @@ function drawStations(container, route, project, points, placed, track) {
      * 拡大したときに、印そのものは画面上の大きさを変えず、
      * この点を動かさないように縮める（scalable / applyScale を参照）。
      */
-    const group = svg('g', { class: 'scalable', 'data-ax': p.x, 'data-ay': p.y });
+    const group = svg('g', {
+      class: 'scalable station',
+      'data-ax': p.x,
+      'data-ay': p.y,
+      'data-name': station.name,
+      tabindex: '0',
+      role: 'button',
+      'aria-label': `${station.name}駅の時刻表`,
+    });
     group.appendChild(svg('circle', { cx: p.x, cy: p.y, r: radius, class: 'station-dot' }));
     placed.push({ left: p.x - radius, right: p.x + radius, top: p.y - radius, bottom: p.y + radius });
 
@@ -575,6 +583,13 @@ function drawStations(container, route, project, points, placed, track) {
     });
     label.textContent = station.name;
     group.appendChild(label);
+
+    /*
+     * 押すためだけの、見えない丸。駅の印は小さいので、押しやすくする
+     * （.spot-hit と同じ考え方。設計書 4 章「揺れる車内で押し間違えない」）。
+     */
+    group.appendChild(svg('circle', { cx: p.x, cy: p.y, r: radius * 2.2, class: 'station-hit' }));
+
     container.appendChild(group);
 
     /*
@@ -954,7 +969,7 @@ function setUpGestures(mapElement, view, onTap, motion) {
     if (active.size === 1) {
       movedDistance = 0;
       // 指を離した場所が同じなら「押した」とみなすため、覚えておく
-      tapTarget = event.target.closest('.spot');
+      tapTarget = event.target.closest('.spot, .station');
     } else {
       tapTarget = null;
       if (active.size === 2) previousSpread = spread();
@@ -1586,6 +1601,71 @@ function createStationPanel(route, schedule, spots, themeFilter, getWeather, get
     },
     /** 駅に着いたときに呼ばれる。発車まで数分あるので、重いことはここでやる。 */
     onArrive: (handler) => arriveHandlers.push(handler),
+  };
+}
+
+/*
+ * 駅の時刻表。地図で駅を押すと開く。
+ *
+ * 発車待ちの帯（renderDepartures）が出す「次の発車」DEPARTURE_COUNT本だけとは別で、
+ * その駅を通る一日ぶんの全列車を、上り・下りに分けて一覧する。
+ * どの駅を押しても同じ画面が開く（乗車前・車上どちらのモードでも押せる）。
+ */
+function createTimetable(schedule) {
+  const screen = document.getElementById('timetable');
+  const titleElement = document.getElementById('timetable-title');
+  const bodyElement = document.getElementById('timetable-body');
+
+  function buildGroup(direction, entries) {
+    const nowMinutes = Schedule.minutesOfDay(Schedule.now());
+    // まだ発車していない最初の1本。無ければ今日はもう無い（-1）
+    const nextIndex = entries.findIndex((entry) => entry.分 >= nowMinutes);
+
+    const group = document.createElement('div');
+    group.className = 'timetable-group';
+
+    const heading = document.createElement('h3');
+    heading.className = 'timetable-group-title';
+    heading.textContent = `${Schedule.terminusOf(schedule, direction)}方面（${direction}）`;
+    group.appendChild(heading);
+
+    const list = document.createElement('ul');
+    list.className = 'timetable-rows';
+    entries.forEach((entry, index) => {
+      const item = document.createElement('li');
+      // 過ぎた時刻は控えめに、次の1本（発車待ちの帯と同じ列車）だけ太く
+      if (nextIndex !== -1 && index < nextIndex) item.classList.add('timetable-row--past');
+      if (index === nextIndex) item.classList.add('timetable-row--next');
+
+      const time = document.createElement('span');
+      time.className = 'timetable-time';
+      time.textContent = Schedule.toClock(entry.分);
+      item.appendChild(time);
+
+      list.appendChild(item);
+    });
+    group.appendChild(list);
+    return group;
+  }
+
+  return {
+    /** @param {{name: string}} station route.json の駅（distanceAlong等は使わない） */
+    open(station) {
+      titleElement.textContent = `${station.name}駅の時刻表`;
+      bodyElement.replaceChildren();
+
+      for (const direction of ['下り', '上り']) {
+        const entries = Schedule.timetableForStation(schedule, station.name)
+          .filter((entry) => entry.方向 === direction);
+        // 終点では片方向しか発車しない（銚子は下りだけ・外川は上りだけ）
+        if (entries.length === 0) continue;
+        bodyElement.appendChild(buildGroup(direction, entries));
+      }
+      screen.hidden = false;
+    },
+    close() {
+      screen.hidden = true;
+    },
   };
 }
 
@@ -3557,8 +3637,24 @@ async function main() {
     openCardFor(spotElement);
   }
 
-  setUpGestures(mapElement, view, (spotElement) => {
-    if (spotElement) openForSpot(spotElement);
+  // --- 駅を押すと出る時刻表 ---
+
+  const stationByName = new Map(route.stations.map((station) => [station.name, station]));
+  const timetable = createTimetable(schedule);
+
+  function openForStation(stationElement) {
+    const station = stationByName.get(stationElement.getAttribute('data-name'));
+    if (!station) return;
+    card.close();
+    originCard.close();
+    timetable.open(station);
+  }
+
+  document.getElementById('timetable-close').addEventListener('click', () => timetable.close());
+
+  setUpGestures(mapElement, view, (tapped) => {
+    if (tapped && tapped.classList.contains('spot')) openForSpot(tapped);
+    else if (tapped && tapped.classList.contains('station')) openForStation(tapped);
     else {
       // 何もないところを押したら閉じる
       card.close();
@@ -3567,12 +3663,19 @@ async function main() {
     }
   }, motion);
 
-  // キーボードでも開けるようにする（バッジは role="button" にしてある）
+  // キーボードでも開けるようにする（バッジ・駅は role="button" にしてある）
   for (const spotElement of spotsLayer.querySelectorAll('.spot')) {
     spotElement.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
       openForSpot(spotElement);
+    });
+  }
+  for (const stationElement of document.querySelectorAll('.station')) {
+    stationElement.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openForStation(stationElement);
     });
   }
 
@@ -3620,6 +3723,30 @@ async function main() {
 
   let currentPlan = loadPlan();
   const getPlan = () => currentPlan;
+
+  /*
+   * 実機の位置情報は、最初の1本が来るまで数秒〜十数秒かかることがある
+   * （屋内・電波が弱いところなど）。それまでのあいだ、路線全体を映した
+   * 遠いズームのままだと「自分がどこにいるか」の手がかりが無い。
+   *
+   * 乗車区間の設定で選んだ乗る駅の近くを、最初の見え方として出す。
+   * 実際の位置が来たら（trip.hasHere()）、それ以降はそちらがすべてを
+   * 決める。ここでは実際のGPS判定を上書きしない（乗車区間の設定
+   * feature-spec の非目標と同じ考え方 ── 設定は初期表示の手がかりにする
+   * だけで、実際の検出結果に介入しない）。
+   *
+   * デモ走行（?demo=1）はシミュレーターがすぐ位置を動かし出すので、
+   * ここでは実機の位置情報のときだけ働かせる。
+   */
+  function frameOnBoardStation(plan) {
+    if (demoRequested()) return;
+    if (trip && trip.hasHere()) return;
+    const station = plan && route.stations.find((s) => s.name === plan.board);
+    if (!station) return;
+    const p = pointAtDistance(track, points, station.distanceAlong);
+    view.goTo(p.x, p.y, HERE_ZOOM, 0);
+  }
+  frameOnBoardStation(currentPlan);
 
   const planSetup = document.getElementById('plan-setup');
   const planClose = document.getElementById('plan-close');
@@ -3669,6 +3796,19 @@ async function main() {
     currentPlan = plan;
     savePlan(plan);
     updatePlanChip();
+    frameOnBoardStation(plan);
+    /*
+     * デモ走行の操作盤にも映す。
+     *
+     * main() は区間設定画面が閉じるのを待たずに走行シミュレーターを
+     * 起動する（初回起動では、Simulator.start の時点で乗車区間はまだ
+     * 決まっていない）ので、決まった・選び直されたタイミングでここから
+     * 追いかけて反映する。demoRequested() でないときは Simulator 自体が
+     * 読み込まれていない。
+     */
+    if (demoRequested() && typeof Simulator !== 'undefined' && Simulator.current) {
+      Simulator.current.applyPlan(plan);
+    }
     if (stationPanel) stationPanel.refresh();
     // 区間を選び直したら、それは次の旅。前の旅の「終わった」札を下ろす
     if (trip) trip.resume();
@@ -3798,7 +3938,9 @@ async function main() {
    */
   if (demoRequested()) {
     await loadScript('js/simulate.js');
-    Simulator.start({ route, spots: spotsFile.spots, schedule, trip, setWeather: applyWeather });
+    Simulator.start({
+      route, spots: spotsFile.spots, schedule, trip, setWeather: applyWeather, getPlan,
+    });
   } else {
     watchPosition(trip);
   }

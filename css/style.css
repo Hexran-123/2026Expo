@@ -279,7 +279,26 @@ body {
   stroke-width: calc(15px * var(--k));
 }
 
-/* --- 駅 --- */
+/* --- 駅（押すとその駅の時刻表が開く） --- */
+.station {
+  cursor: pointer;
+}
+
+.station:focus {
+  outline: none;
+}
+
+.station:focus-visible {
+  outline: calc(3px * var(--k)) solid var(--ink);
+  outline-offset: calc(3px * var(--k));
+  border-radius: 50%;
+}
+
+/* 押すためだけの、見えない丸。.spot-hit と同じ考え方（揺れる車内で押し間違えないため） */
+.station-hit {
+  fill: transparent;
+}
+
 .station-dot {
   fill: var(--station);
   stroke: var(--rail);
@@ -1139,6 +1158,18 @@ button.line-name:active {
    ------------------------------------------------------------------ */
 
 /*
+ * 現在地は選べない（screen-spec-現在位置.md の「導覽：なし」）。
+ *
+ * SVG の塗り・輪郭がある図形は、既定では押せる（pointer-events: visiblePainted）。
+ * 明示的に外していなかったため、駅で停車中は現在地の印が駅の印の真上に
+ * 重なり、駅を押しても現在地の印がタップを奪っていた（駅の時刻表を
+ * 追加したときに発覚）。
+ */
+.here {
+  pointer-events: none;
+}
+
+/*
  * 芯は墨のベタ塗り＋太い白フチ。
  *
  * もとは --theme-sea を着ていた。あれは「海と空」テーマの絶景バッジと
@@ -1867,6 +1898,101 @@ button.line-name:active {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ------------------------------------------------------------------
+   時刻表（地図の駅を押すと出る。データは設計書 8.4 の schedule.json）
+
+   骨組みは旅の記録（.journal）と同じ全面シート
+   （ヘッダー＋閉じるボタン＋スクロールする本文）を流用している。
+   ------------------------------------------------------------------ */
+
+.timetable {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.timetable-head {
+  position: relative;
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.timetable-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.timetable-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.timetable-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.timetable-group + .timetable-group {
+  margin-top: 28px;
+}
+
+.timetable-group-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.timetable-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timetable-rows li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.timetable-time {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* 発車時刻を過ぎた行。もう乗れない、参考の記録 */
+.timetable-row--past {
+  color: var(--ink-soft);
+}
+
+/*
+ * いちばん近い次の1本。発車待ちの帯（.departure-time）に出ているのと
+ * 同じ列車なので、太さも合わせておく。
+ */
+.timetable-row--next .timetable-time {
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------------------

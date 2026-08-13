@@ -109,6 +109,29 @@
   }
 
   /**
+   * その駅の、一日ぶんの時刻表（駅の時刻表画面用）。
+   *
+   * nextDepartures と違い、いま何時かに関わらず全件を返す。終点駅どまりの
+   * 列車（その駅では発車しない）は同じ理由で除く（88行のコメントを参照）。
+   * 結果としてこの駅で「発車する」列車だけが残るので、終点（銚子・外川）
+   * では片方向しか無い（銚子なら下りだけ。上りはそこへ着くだけで終わる）。
+   *
+   * @returns 時刻の早い順。{方向, 番号, 時刻, 分}
+   */
+  function timetableForStation(schedule, stationName) {
+    return schedule.列車
+      .filter((train) => train.時刻[stationName] !== undefined)
+      .filter((train) => !isTerminusFor(schedule, train, stationName))
+      .map((train) => ({
+        方向: train.方向,
+        番号: train.番号,
+        時刻: train.時刻[stationName],
+        分: toMinutes(train.時刻[stationName]),
+      }))
+      .sort((a, b) => a.分 - b.分);
+  }
+
+  /**
    * いまその列車は、時刻表のうえで路線のどこに居るはずか。
    *
    * 前後の駅の時刻から按分する。駅の間でも位置が出せるので、
@@ -168,6 +191,7 @@
     useClock,
     nextDepartures,
     terminusOf,
+    timetableForStation,
     scheduledDistance,
     runningTrains,
   };

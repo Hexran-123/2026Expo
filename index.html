@@ -512,6 +512,20 @@
   </section>
 
   <!--
+    駅の時刻表。地図の駅を押すと出る（発車待ちの帯の「次の発車」とは別で、
+    その駅を通る一日ぶんの全列車を上り・下りに分けて一覧する）。
+
+    中身（駅名・行の一覧）は js/main.js が作る。
+  -->
+  <section class="timetable" id="timetable" hidden aria-labelledby="timetable-title">
+    <header class="timetable-head">
+      <h2 class="timetable-title" id="timetable-title"></h2>
+      <button type="button" class="timetable-close" id="timetable-close" aria-label="閉じる">×</button>
+    </header>
+    <div class="timetable-body" id="timetable-body"></div>
+  </section>
+
+  <!--
     計算だけを持つ部品。画面には触らない。main.js より先に読む。
 
     defer と fetchpriority="low" を付けてある。どちらも「地図を早く出す」ため。

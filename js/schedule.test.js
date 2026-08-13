@@ -12,7 +12,9 @@ const fs = require('fs');
 const path = require('path');
 
 require('./schedule.js');
-const { nextDepartures, scheduledDistance, runningTrains, toClock } = globalThis.Schedule;
+const {
+  nextDepartures, scheduledDistance, runningTrains, toClock, timetableForStation,
+} = globalThis.Schedule;
 
 const read = (name) =>
   JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'choshi', name), 'utf8'));
@@ -63,6 +65,25 @@ const departuresDirected = (station, time, limit, direction) =>
   nextDepartures(schedule, station, at(time), limit, direction).map((d) => `${toClock(d.分)} ${d.方向}`);
 check('本銚子で 9:00・下りだけ', departuresDirected('本銚子', '9:00', 3, '下り'), ['9:09 下り', '10:06 下り', '11:21 下り']);
 check('本銚子で 9:00・上りだけ', departuresDirected('本銚子', '9:00', 3, '上り'), ['9:43 上り', '10:52 上り', '11:57 上り']);
+
+console.log('\n駅の時刻表（画面で駅を押すと出るもの）');
+const timetableCount = (station, direction) =>
+  timetableForStation(schedule, station).filter((t) => t.方向 === direction).length;
+// 終点では、そこへ着くだけの列車（終電・下り）を数に入れない
+check('銚子は下りだけ（39本発車、上りは0）', [timetableCount('銚子', '下り'), timetableCount('銚子', '上り')], [17, 0]);
+check('外川は上りだけ', [timetableCount('外川', '下り'), timetableCount('外川', '上り')], [0, 19]);
+// 途中駅は両方向とも通る列車がすべて乗る
+check('本銚子は両方向', [timetableCount('本銚子', '下り'), timetableCount('本銚子', '上り')], [19, 19]);
+// 早い順に並んでいること
+const timesOf = (station, direction) =>
+  timetableForStation(schedule, station).filter((t) => t.方向 === direction).map((t) => t.分);
+{
+  const times = timesOf('本銚子', '下り');
+  const sorted = [...times].sort((a, b) => a - b);
+  check('本銚子・下りは時刻順', times, sorted);
+}
+// 仲ノ町始発の1号は銚子を持たない列車なので、銚子の時刻表には出ない
+check('銚子の時刻表に1号は無い', timetableForStation(schedule, '銚子').some((t) => t.番号 === 1), false);
 
 console.log('\n走っている列車');
 const runningAt = (direction, time) =>

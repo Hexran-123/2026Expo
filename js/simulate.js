@@ -434,7 +434,7 @@
   .sim-clear { color: #E0A0A0; }
   `;
 
-  function mount(sim, route, setWeather) {
+  function mount(sim, route, setWeather, plan) {
     document.head.appendChild(document.createElement('style')).textContent = STYLE;
 
     const panel = document.createElement('div');
@@ -541,6 +541,25 @@
     stationSelect.addEventListener('change', reload);
     directionSelect.addEventListener('change', reload);
 
+    /*
+     * 乗車区間の設定（初期画面で選んだ乗る駅・向き）を、この操作盤に映す。
+     *
+     * 初回起動では、main.js が Simulator.start を呼ぶ時点ではまだ利用者が
+     * 乗車区間を選び終えていない（区間設定画面は出したところで、main() は
+     * それを待たずに走行シミュレーターを起動する）。そのため mount 時の
+     * plan は null のことが多い。あとから乗車区間の設定が決まった・
+     * 選び直されたときに、main.js がこの関数を呼び直せるよう外へ返す。
+     *
+     * @returns {boolean} 反映したら true（呼び出し側はもう reload しなくてよい）
+     */
+    function applyPlan(newPlan) {
+      if (!newPlan || !route.stations.some((s) => s.name === newPlan.board)) return false;
+      stationSelect.value = newPlan.board;
+      directionSelect.value = newPlan.direction;
+      reload();
+      return true;
+    }
+
     playButton.addEventListener('click', () => sim.play(!sim.state.playing));
     $('sim-spot').addEventListener('click', () => sim.jumpToNextSpot());
     $('sim-end').addEventListener('click', () => sim.jumpToEnd());
@@ -583,19 +602,26 @@
     }
 
     sim.onRender(update);
-    reload();
+    // 乗車区間の設定がまだ無ければ（初回起動）、これまで通り最初の駅で始める
+    if (!applyPlan(plan)) reload();
+
+    return { applyPlan };
   }
 
   global.Simulator = {
     /** js/main.js から呼ばれる入口 */
     start(parts) {
       const sim = create(parts);
-      mount(sim, parts.route, parts.setWeather);
+      const panel = mount(sim, parts.route, parts.setWeather, parts.getPlan ? parts.getPlan() : null);
       /*
        * 動かしているものを外から掴めるようにしておく。
        * 手で押さなくても、Playwright から sim.tick() を呼んで
        * 一気に走らせられる（tools/ の通し確認）。
+       *
+       * applyPlan も外へ出す。main.js は、乗車区間の設定が（あとから）
+       * 決まる・選び直されるたびにこれを呼び、操作盤の駅・向きを合わせる。
        */
+      sim.applyPlan = panel.applyPlan;
       Simulator.current = sim;
       return sim;
     },
