@@ -2944,8 +2944,21 @@ window.DEMO_OPEN_GATE = function () { openDemoGate(); };
  */
 addEventListener('DOMContentLoaded', function () { window.DEMO_OPEN_GATE(); });
 
-/* fetch を、埋め込んだ JSON から返すものに差し替える */
-window.fetch = function (input) {
+/*
+ * fetch を、埋め込んだ JSON から返すものに差し替える。
+ *
+ * 埋め込んでいない宛先（気象庁・Supabase）は、以前はここで断っていた。
+ * しかし天気予報も累積人気も、本物のサイトでは動く機能であり、
+ * 1 枚デモだけ違う挙動になるのは「本物と同じ規格」から外れる
+ * （2026-08-13、累積人気が 1 枚デモでだけ出ないという指摘を受けて変更）。
+ *
+ * 路線データ・地形・時刻表は引き続き埋め込みから返す（1MB を超える頁を
+ * 開いた直後に、同じデータをもう一度取りに行かせないため）。
+ * それ以外は本物の fetch へそのまま通す——「動かないなら黙って隠す」の
+ * 対象（設計書 9.3）であって、「デモだから止める」の対象ではない。
+ */
+const realFetch = window.fetch.bind(window);
+window.fetch = function (input, init) {
   const key = String(input).replace(/^\.?\//, '');
   if (key in window.DEMO_JSON) {
     // 門が開くまで返さない（上の注記）
@@ -2955,8 +2968,7 @@ window.fetch = function (input) {
       });
     });
   }
-  // 気象庁・Supabase など、外に出るものはデモでは断る
-  return Promise.reject(new Error('デモでは外部通信をしない: ' + key));
+  return realFetch(input, init);
 };
 
 /* 陰影の絵は <image href> で貼られるので、属性を書く手前で data URI に差し替える */
@@ -9053,17 +9065,6 @@ window.loadJson = function (path) {
   if (key in window.DEMO_JSON) return Promise.resolve(window.DEMO_JSON[key]);
   return Promise.reject(new Error('デモに入っていないデータ: ' + key));
 };
-
-/*
- * 累積人気は本番の Supabase に書きに行く。デモの操作を実際の数に
- * 混ぜてはいけないので、通信そのものをさせない。本体は null を
- * 「まだ数が無い」として扱うので、印が出ないだけで他は変わらない。
- */
-if (window.Popularity) {
-  window.Popularity = Object.assign({}, window.Popularity, {
-    record: function () { return Promise.resolve(null); },
-  });
-}
 
 /*
  * 失敗したときに、本当の理由を画面に出す。
