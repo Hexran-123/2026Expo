@@ -4725,6 +4725,24 @@ const THEMES = {
 };
 
 /*
+ * 車窓側が「地下」のスポット（CONTEXT.md「足もとの地理」）。
+ *
+ * 地下鉄では、窓の外は壁である。それでも「いま自分がどんな土地の上を
+ * 走っているか」は伝える値打ちがあるので、絶景スポットの一種として扱い、
+ * 左右のかわりに「足もと」と言う。**見えないものを「見てください」と
+ * 案内しない**ことがここの目的なので、左右で書き分けないこと。
+ *
+ * sideUp / sideDown の両方が '地下' のときにこの扱いになる。
+ */
+const UNDERGROUND = '地下';
+const UNDERGROUND_SHORT = '足もとの地下';
+const UNDERGROUND_LONG = '足もと（車窓には出ません）';
+
+function isUnderground(spot) {
+  return spot.sideUp === UNDERGROUND && spot.sideDown === UNDERGROUND;
+}
+
+/*
  * 絶景スポットのバッジの中に描く絵。
  * ひし形のバッジに収まるよう、中心を (0,0) とした 20×20 くらいの大きさで描く。
  */
@@ -4746,6 +4764,31 @@ const GLYPHS = {
       <circle cx="0" cy="-4.4" r="2.7"/><circle cx="4.2" cy="-1.4" r="2.7"/>
       <circle cx="2.6" cy="3.6" r="2.7"/><circle cx="-2.6" cy="3.6" r="2.7"/>
       <circle cx="-4.2" cy="-1.4" r="2.7"/>
+    </g>`,
+
+  /* --- ここから下は有楽町線（実演用）で使うもの --- */
+
+  // 並走する線路（枕木を渡した 2 本のレール）
+  rails: `<path d="M-5.5,-8 L-5.5,8 M5.5,-8 L5.5,8
+                   M-8,-4.5 L8,-4.5 M-8,0 L8,0 M-8,4.5 L8,4.5"/>`,
+  // 台地の縁（段丘。上から下へ一段落ちる）
+  terrace: `<path d="M-8,-5 L-1,-5 L-1,1.5 L8,1.5 M-1,1.5 L-1,7 M4,1.5 L4,7"/>`,
+  // 谷を刻む川（両側の斜面と、底を流れる水）
+  valley: `<path d="M-8,-6.5 L-2,2.5 L2,2.5 L8,-6.5 M-4.5,6 q2.2,-2.4 4.5,0 t4.5,0"/>`,
+  // 外堀（石垣と水面）
+  moat: `<path d="M-8,-6 L-8,0 L8,0 L8,-6 M-3.5,-6 L-3.5,0 M3.5,-6 L3.5,0
+                  M-8,-3 L8,-3 M-7,4.5 q3.5,-3 7,0 t7,0"/>`,
+  // 埋立地（もとの海の上に、あとから土を積んだ層）
+  landfill: `<path d="M-8,-1 L8,-1 M-8,3 L8,3 M-6,-5.5 L-1,-5.5 M1.5,-5.5 L6.5,-5.5
+                      M-8,6.5 L8,6.5"/>`,
+  // 防潮扉（門と、外側に迫る水位）
+  floodgate: `<path d="M-6,7.5 L-6,-4 A6,6 0 0 1 6,-4 L6,7.5 Z M0,-6 L0,7.5
+                       M-8.5,3 q2.2,-2.2 4.3,0 M4.2,3 q2.2,-2.2 4.3,0"/>`,
+  // 貯木場（水に浮かべた丸太の木口）
+  timber: `<g>
+      <circle cx="-4" cy="-3.4" r="3.1"/><circle cx="3" cy="-3.4" r="3.1"/>
+      <circle cx="-0.5" cy="2.4" r="3.1"/>
+      <path d="M-8,7.5 q3.5,-2.6 7,0 t7,0" />
     </g>`,
 };
 
@@ -6188,6 +6231,7 @@ function pickLookouts(route, plan, spots, station) {
 
 /** 「上り 左／下り 右」。どちらの向きでも見えるスポットは、そう書く。 */
 function sidesText(spot) {
+  if (isUnderground(spot)) return UNDERGROUND_SHORT;
   if (spot.sideUp === '両' && spot.sideDown === '両') return 'どちらの窓でも';
   return `上り ${spot.sideUp}／下り ${spot.sideDown}`;
 }
@@ -6864,12 +6908,21 @@ function createTrip(route, spots, schedule, parts) {
     noticeBar.dataset.phase = notice.phase;
 
     if (notice.phase === 'いま') {
+      /*
+       * 地下のスポットは窓の外が壁なので、「見てください」と言わない
+       * （UNDERGROUND の注記）。かわりに、いま足もとにあるものを告げる。
+       */
       noticeLead.textContent =
-        notice.side === '両' ? 'どちらの車窓を見てください' : `${notice.side}側の車窓を見てください`;
+        notice.side === UNDERGROUND ? 'いま、足もとを通っています'
+        : notice.side === '両' ? 'どちらの車窓を見てください'
+        : `${notice.side}側の車窓を見てください`;
       noticeDetail.textContent = notice.spot.name;
     } else {
       noticeLead.textContent = `まもなく ${notice.spot.name}`;
-      const side = notice.side === '両' ? 'どちらの窓でも' : `${notice.side}の窓`;
+      const side =
+        notice.side === UNDERGROUND ? UNDERGROUND_SHORT
+        : notice.side === '両' ? 'どちらの窓でも'
+        : `${notice.side}の窓`;
       noticeDetail.textContent =
         notice.seconds === null ? side : `${side} ・ あと ${notice.seconds} 秒`;
     }
@@ -7635,6 +7688,7 @@ function weatherMatch(spot, short) {
 
 /** 「右」→「右の窓」。両側から見えるスポットもあるので、そこだけ書き分ける。 */
 function windowSideText(side) {
+  if (side === UNDERGROUND) return UNDERGROUND_LONG;
   return side === '両' ? '両側の窓' : `${side}の窓`;
 }
 
@@ -7689,8 +7743,17 @@ function createSpotCard(screenElement, view, getWeather, terminus) {
      * 乗車前は、その人が上りに乗るのか下りに乗るのかわからない。
      * 選ばせるより、両方書いてしまうほうが予習には向いている。
      */
-    addFact(`${terminus['下り']}ゆき（下り）`, windowSideText(spot.sideDown));
-    addFact(`${terminus['上り']}ゆき（上り）`, windowSideText(spot.sideUp));
+    /*
+     * 地下のスポットは上りも下りも同じ（どちらでも見えない）ので、
+     * 行き先ごとに 2 行並べない。同じ答えが 2 つ並ぶと、
+     * 左右のどちらかを選べるように読めてしまう。
+     */
+    if (isUnderground(spot)) {
+      addFact('見え方', UNDERGROUND_LONG);
+    } else {
+      addFact(`${terminus['下り']}ゆき（下り）`, windowSideText(spot.sideDown));
+      addFact(`${terminus['上り']}ゆき（上り）`, windowSideText(spot.sideUp));
+    }
     addFact('見ごろ', spot.season);
     addFact('見える時間', DURATION_TEXT[spot.duration] || spot.duration);
 
