@@ -1,0 +1,6 @@
+# tools/check-demo-fresh.js は demo/*.html をバイト単位で突き合わせる。
+# 改行が手元の core.autocrlf 次第で LF/CRLF に揺れると、直してもいないのに
+# 「古い」と誤判定したり、逆に本当のずれを見逃したりする。ここで固定する。
+* text=auto eol=lf
+
+*.webp binary

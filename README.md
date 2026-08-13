@@ -197,6 +197,15 @@ node tools/build-demo.js yurakucho demo/yurakucho.html      --switch
 node tools/build-demo.js yurakucho demo/yurakucho-gps.html  --gps --switch
 ```
 
+4 枚とも作り直されているか、手で覚えていなくても確かめられる:
+
+```
+node tools/check-demo-fresh.js
+```
+
+4 つのコマンドをもう一度その場で走らせ、出てきた HTML を今の `demo/*.html` と
+突き合わせるだけ。ずれていれば、直したのに作り直し忘れているということ。
+
 `--switch` が切り替えの段を付ける。`--gps` は開いた直後の動かし方を
 実機のGPSにする（`--switch` が無ければ、シミュレーターを積まない版になる）。
 
@@ -245,6 +254,20 @@ node tools/build-demo.js yurakucho demo/yurakucho-gps.html  --gps --switch
 ファイルから直接開いて取れなかったときは、位置情報の窓がそのことを書く。
 
 `css/`・`js/`・`data/` を直したら 4 枚とも作り直すこと。**`demo/*.html` を手で直さない。**
+
+#### 作り直し忘れの機械的な対策
+
+並行して作業していると（別セッション・別ブランチ）、css・js・data を直した
+commit に 1 枚デモの作り直しが乗らないことが起きる。エラーにならないので
+気づきにくく、配る側だけ静かに古いまま残る。二重に機械へ任せてある。
+
+- **手元**: 一度だけ `git config core.hooksPath .githooks` を通しておくと、
+  css・js・data・`tools/build-demo.js` を含む commit のたびに
+  `tools/check-demo-fresh.js` が走り、demo/ が古ければ commit を止める
+  （[.githooks/pre-commit](.githooks/pre-commit)）。
+- **GitHub 側**: push のたびに Actions が同じ確認をする
+  （[.github/workflows/check-demo.yml](.github/workflows/check-demo.yml)）。
+  上のフックを入れ忘れていても、ここで拾える。
 
 `fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
 別の路線を作るときだけ引数を渡す（下記）。

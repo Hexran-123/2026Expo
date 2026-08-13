@@ -18,6 +18,11 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 データ生成スクリプトは `tools/` にある（Node.js、依存パッケージなし）。ふだんは実行不要。
 手順と各スクリプトの役割は [README.md](README.md) を参照。
 
+**`css/`・`js/`・`data/` を直したら `demo/*.html`（1 枚デモ 4 枚）も作り直すこと**
+（README「サーバーなしで見せる1枚を作る」）。並行セッションでの作り直し忘れが
+過去に実際に起きている。`node tools/check-demo-fresh.js` で古いものがないか
+確かめられる（pre-commit フックと GitHub Actions からも自動で走る）。
+
 **`data/choshi/spots.json` と `data/lines.json` は人が手で書くファイル。** それ以外の `data/` 配下は自動生成なので直接編集しない。
 
 `data/` は路線ごとにフォルダを分けてある。`data/choshi/` が作品そのもの。`data/yurakucho/` は**多路線対応の実演用**（`role: "demo"`）。
