@@ -57,11 +57,14 @@
 
   /**
    * 写真を 1 枚しまう。
-   * どの絶景スポットのあたりで撮ったかも一緒に覚えておく（設計書 7.1）。
+   * どの絶景スポットのあたりで撮ったかと、どの路線で撮ったかも一緒に覚えておく
+   * （設計書 7.1）。路線を覚えるのは、同じ日に路線を乗り換えたとき
+   * （銚子電鉄→有楽町線、展示ではありうる）に、旅の記録へ他方の路線の
+   * 写真まで混ざって出ないようにするため。
    */
-  async function savePhoto(blob, near) {
+  async function savePhoto(blob, near, line) {
     return withStore('readwrite', (store) =>
-      store.add({ blob, near: near || null, at: new Date().toISOString() })
+      store.add({ blob, near: near || null, line: line || null, at: new Date().toISOString() })
     );
   }
 
@@ -83,15 +86,23 @@
    *
    * 日付は暦の上の同じ日で見る。乗車区間（js/main.js の today）と同じ見方。
    * 日をまたぐ乗車は銚子電鉄には無い（終電は 22 時台）。
+   *
+   * 路線でも絞る。同じ日のうちに銚子電鉄→有楽町線と乗り継ぐと
+   * （多路線対応の実演で普通に起こりうる）、路線を見ずに日付だけで
+   * 絞っていたころは、さっき別の路線で撮った写真が「きょうの旅」に
+   * 混ざって出ていた。路線を記録する前に撮った古い写真（line が無い）は
+   * 区別のしようが無いので、これまでどおり出す。
    */
-  function takenToday(photos) {
+  function takenToday(photos, lineId) {
     const now = new Date();
     return photos.filter((photo) => {
       if (!photo.at) return false;
       const at = new Date(photo.at);
-      return at.getFullYear() === now.getFullYear()
+      const sameDay = at.getFullYear() === now.getFullYear()
         && at.getMonth() === now.getMonth()
         && at.getDate() === now.getDate();
+      if (!sameDay) return false;
+      return !photo.line || photo.line === lineId;
     });
   }
 
@@ -160,10 +171,12 @@
   // ------------------------------------------------------------------
 
   /**
-   * @param {{from:string, to:string, line:string}} ends
-   *   タイムラインの両端に書く駅名と、路線名。路線ごとに違うので受け取る。
+   * @param {{from:string, to:string, line:string, lineId:string}} ends
+   *   タイムラインの両端に書く駅名と、路線名（表示用）・路線id（区別用、
+   *   data/lines.json の id）。路線ごとに違うので受け取る。
    *   銚子・外川と書き込んでいたころは、実演用の有楽町線で旅を終えても
-   *   「銚子 ─◆─ 外川」と出ていた。
+   *   「銚子 ─◆─ 外川」と出ていた。lineId は、撮った写真をその日のうちの
+   *   路線ごとに分けるのに使う（takenToday 参照）。
    */
   function create(spots, themes, closings, ends) {
     const screen = document.getElementById('journal');
@@ -253,7 +266,7 @@
 
     async function show(state) {
       passed = state.passed || [];
-      photos = takenToday(await allPhotos());
+      photos = takenToday(await allPhotos(), ends.lineId);
 
       const today = new Date();
       const weekday = '日月火水木金土'[today.getDay()];
@@ -406,11 +419,12 @@
     return {
       /** 車上モードから記録が届くたび */
       update(state) {
-        saveTrip(state);
+        // 路線を添えて保存する。plan（js/main.js の savePlan）と同じ考え方
+        saveTrip({ ...state, line: ends.lineId });
         if (state.mode === '降車後') show(state);
       },
       show,
-      savePhoto,
+      savePhoto: (blob, near) => savePhoto(blob, near, ends.lineId),
       /** 記録を閉じたときに呼ばれる */
       onClose: (handler) => closeHandlers.push(handler),
       /** 前回の乗車の記録。降車後に開き直せるように */

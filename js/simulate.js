@@ -506,6 +506,18 @@
       stationSelect.appendChild(option);
     }
 
+    /*
+     * 路線の両端の駅名。route.stations は起点→終点の順（distanceAlong昇順、
+     * js/main.js の directionFor と同じ前提）なので、最初と最後が両端になる。
+     * 「銚子」「外川」と決め打ちしていたころは、有楽町線を選んでも
+     * 端の駅（和光市・新木場）で向きが自動で決まらず、乗車駅と噛み合わない
+     * 向きも選べてしまい、pickTrain が候補ゼロで黙って何も起きなかった
+     * （有楽町線はこのシミュレーターで GPS 圏外の挙動を手元で試すために
+     * 置いてあるので、CLAUDE.md の狙いそのものが効かなくなっていた）。
+     */
+    const firstStation = route.stations[0].name;
+    const lastStation = route.stations[route.stations.length - 1].name;
+
     // 速さ・遅れは自由な数値で指定する（0分に戻すのも同じ入力でできる）
     const rateInput = $('sim-rate');
     const delayInput = $('sim-delay');
@@ -532,9 +544,9 @@
       sim.play(false);
       // 端の駅では向きが決まっている
       const station = stationSelect.value;
-      if (station === '銚子') directionSelect.value = '下り';
-      if (station === '外川') directionSelect.value = '上り';
-      directionSelect.disabled = station === '銚子' || station === '外川';
+      if (station === firstStation) directionSelect.value = '下り';
+      if (station === lastStation) directionSelect.value = '上り';
+      directionSelect.disabled = station === firstStation || station === lastStation;
       sim.setUp(station, directionSelect.value);
       update();
     }

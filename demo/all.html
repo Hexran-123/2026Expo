@@ -3690,11 +3690,14 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
   /**
    * 写真を 1 枚しまう。
-   * どの絶景スポットのあたりで撮ったかも一緒に覚えておく（設計書 7.1）。
+   * どの絶景スポットのあたりで撮ったかと、どの路線で撮ったかも一緒に覚えておく
+   * （設計書 7.1）。路線を覚えるのは、同じ日に路線を乗り換えたとき
+   * （銚子電鉄→有楽町線、展示ではありうる）に、旅の記録へ他方の路線の
+   * 写真まで混ざって出ないようにするため。
    */
-  async function savePhoto(blob, near) {
+  async function savePhoto(blob, near, line) {
     return withStore('readwrite', (store) =>
-      store.add({ blob, near: near || null, at: new Date().toISOString() })
+      store.add({ blob, near: near || null, line: line || null, at: new Date().toISOString() })
     );
   }
 
@@ -3716,15 +3719,23 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
    *
    * 日付は暦の上の同じ日で見る。乗車区間（js/main.js の today）と同じ見方。
    * 日をまたぐ乗車は銚子電鉄には無い（終電は 22 時台）。
+   *
+   * 路線でも絞る。同じ日のうちに銚子電鉄→有楽町線と乗り継ぐと
+   * （多路線対応の実演で普通に起こりうる）、路線を見ずに日付だけで
+   * 絞っていたころは、さっき別の路線で撮った写真が「きょうの旅」に
+   * 混ざって出ていた。路線を記録する前に撮った古い写真（line が無い）は
+   * 区別のしようが無いので、これまでどおり出す。
    */
-  function takenToday(photos) {
+  function takenToday(photos, lineId) {
     const now = new Date();
     return photos.filter((photo) => {
       if (!photo.at) return false;
       const at = new Date(photo.at);
-      return at.getFullYear() === now.getFullYear()
+      const sameDay = at.getFullYear() === now.getFullYear()
         && at.getMonth() === now.getMonth()
         && at.getDate() === now.getDate();
+      if (!sameDay) return false;
+      return !photo.line || photo.line === lineId;
     });
   }
 
@@ -3793,10 +3804,12 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
   // ------------------------------------------------------------------
 
   /**
-   * @param {{from:string, to:string, line:string}} ends
-   *   タイムラインの両端に書く駅名と、路線名。路線ごとに違うので受け取る。
+   * @param {{from:string, to:string, line:string, lineId:string}} ends
+   *   タイムラインの両端に書く駅名と、路線名（表示用）・路線id（区別用、
+   *   data/lines.json の id）。路線ごとに違うので受け取る。
    *   銚子・外川と書き込んでいたころは、実演用の有楽町線で旅を終えても
-   *   「銚子 ─◆─ 外川」と出ていた。
+   *   「銚子 ─◆─ 外川」と出ていた。lineId は、撮った写真をその日のうちの
+   *   路線ごとに分けるのに使う（takenToday 参照）。
    */
   function create(spots, themes, closings, ends) {
     const screen = document.getElementById('journal');
@@ -3886,7 +3899,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
 
     async function show(state) {
       passed = state.passed || [];
-      photos = takenToday(await allPhotos());
+      photos = takenToday(await allPhotos(), ends.lineId);
 
       const today = new Date();
       const weekday = '日月火水木金土'[today.getDay()];
@@ -4039,11 +4052,12 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     return {
       /** 車上モードから記録が届くたび */
       update(state) {
-        saveTrip(state);
+        // 路線を添えて保存する。plan（js/main.js の savePlan）と同じ考え方
+        saveTrip({ ...state, line: ends.lineId });
         if (state.mode === '降車後') show(state);
       },
       show,
-      savePhoto,
+      savePhoto: (blob, near) => savePhoto(blob, near, ends.lineId),
       /** 記録を閉じたときに呼ばれる */
       onClose: (handler) => closeHandlers.push(handler),
       /** 前回の乗車の記録。降車後に開き直せるように */
@@ -4685,6 +4699,18 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       stationSelect.appendChild(option);
     }
 
+    /*
+     * 路線の両端の駅名。route.stations は起点→終点の順（distanceAlong昇順、
+     * js/main.js の directionFor と同じ前提）なので、最初と最後が両端になる。
+     * 「銚子」「外川」と決め打ちしていたころは、有楽町線を選んでも
+     * 端の駅（和光市・新木場）で向きが自動で決まらず、乗車駅と噛み合わない
+     * 向きも選べてしまい、pickTrain が候補ゼロで黙って何も起きなかった
+     * （有楽町線はこのシミュレーターで GPS 圏外の挙動を手元で試すために
+     * 置いてあるので、CLAUDE.md の狙いそのものが効かなくなっていた）。
+     */
+    const firstStation = route.stations[0].name;
+    const lastStation = route.stations[route.stations.length - 1].name;
+
     // 速さ・遅れは自由な数値で指定する（0分に戻すのも同じ入力でできる）
     const rateInput = $('sim-rate');
     const delayInput = $('sim-delay');
@@ -4711,9 +4737,9 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       sim.play(false);
       // 端の駅では向きが決まっている
       const station = stationSelect.value;
-      if (station === '銚子') directionSelect.value = '下り';
-      if (station === '外川') directionSelect.value = '上り';
-      directionSelect.disabled = station === '銚子' || station === '外川';
+      if (station === firstStation) directionSelect.value = '下り';
+      if (station === lastStation) directionSelect.value = '上り';
+      directionSelect.disabled = station === firstStation || station === lastStation;
       sim.setUp(station, directionSelect.value);
       update();
     }
@@ -6276,15 +6302,22 @@ function withinPlan(route, plan, spots) {
  * 食い違い確認で「直す」を選んだときの降車駅。
  * 既存の設定が新しい方向・乗車駅と整合すればそのまま使い、整合しなければ
  * （例: 方向そのものが変わった）その方向の終点をひとまずの降車駅とする。
+ *
+ * 終点は「外川」「銚子」と決め打ちしていたころは、有楽町線で食い違い確認の
+ * 「直す」を押すと、有楽町線に無い駅名（外川・銚子）が降車駅に入り、
+ * その先 stationDistance が null を返して区間の絞り込みが黙って外れていた
+ * （設計書の見どころ・通知の絞り込みが効かなくなる）。Schedule.terminusOf は
+ * この食い違い確認の見出し（showMismatch）でもう使っている、路線を問わない
+ * 終点の求め方なので、ここも同じものに揃える。
  */
-function correctedAlight(route, board, direction, oldAlight) {
+function correctedAlight(route, schedule, board, direction, oldAlight) {
   if (oldAlight) {
     const boardDist = stationDistance(route, board);
     const oldDist = stationDistance(route, oldAlight);
     const consistent = direction === '下り' ? oldDist > boardDist : oldDist < boardDist;
     if (consistent) return oldAlight;
   }
-  return direction === '下り' ? '外川' : '銚子';
+  return Schedule.terminusOf(schedule, direction);
 }
 
 /** 起点からの距離に、いちばん近い駅の名前 */
@@ -7449,7 +7482,7 @@ function createTrip(route, spots, schedule, parts) {
     if (!pendingMismatch) return;
     const plan = getPlan();
     const alight = correctedAlight(
-      route, pendingMismatch.boardStation, pendingMismatch.direction, plan && plan.alight
+      route, schedule, pendingMismatch.boardStation, pendingMismatch.direction, plan && plan.alight
     );
     setPlan({ board: pendingMismatch.boardStation, alight, direction: pendingMismatch.direction });
     mismatchBar.hidden = true;
@@ -7878,6 +7911,7 @@ function createJournal(spots, closings, route) {
     from: route.stations[0].name,
     to: route.stations[route.stations.length - 1].name,
     line: currentLine.name,
+    lineId: currentLine.id,
   });
 }
 
@@ -8698,6 +8732,9 @@ async function main() {
     'viewBox',
     `${provisional.left} ${provisional.top} ${provisional.width} ${provisional.height}`
   );
+  // index.html は「銚子電鉄の…」で決め打ちしてある。読み上げでは
+  // 有楽町線に切り替えても銚子電鉄のままと言われていた
+  mapElement.setAttribute('aria-label', `${line.name}の路線と絶景スポットの地図`);
 
   /*
    * 置いたものの場所を覚えておき、あとから置くものが重ならないようにする。

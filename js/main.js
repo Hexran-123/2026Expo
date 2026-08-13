@@ -1465,15 +1465,22 @@ function withinPlan(route, plan, spots) {
  * 食い違い確認で「直す」を選んだときの降車駅。
  * 既存の設定が新しい方向・乗車駅と整合すればそのまま使い、整合しなければ
  * （例: 方向そのものが変わった）その方向の終点をひとまずの降車駅とする。
+ *
+ * 終点は「外川」「銚子」と決め打ちしていたころは、有楽町線で食い違い確認の
+ * 「直す」を押すと、有楽町線に無い駅名（外川・銚子）が降車駅に入り、
+ * その先 stationDistance が null を返して区間の絞り込みが黙って外れていた
+ * （設計書の見どころ・通知の絞り込みが効かなくなる）。Schedule.terminusOf は
+ * この食い違い確認の見出し（showMismatch）でもう使っている、路線を問わない
+ * 終点の求め方なので、ここも同じものに揃える。
  */
-function correctedAlight(route, board, direction, oldAlight) {
+function correctedAlight(route, schedule, board, direction, oldAlight) {
   if (oldAlight) {
     const boardDist = stationDistance(route, board);
     const oldDist = stationDistance(route, oldAlight);
     const consistent = direction === '下り' ? oldDist > boardDist : oldDist < boardDist;
     if (consistent) return oldAlight;
   }
-  return direction === '下り' ? '外川' : '銚子';
+  return Schedule.terminusOf(schedule, direction);
 }
 
 /** 起点からの距離に、いちばん近い駅の名前 */
@@ -2638,7 +2645,7 @@ function createTrip(route, spots, schedule, parts) {
     if (!pendingMismatch) return;
     const plan = getPlan();
     const alight = correctedAlight(
-      route, pendingMismatch.boardStation, pendingMismatch.direction, plan && plan.alight
+      route, schedule, pendingMismatch.boardStation, pendingMismatch.direction, plan && plan.alight
     );
     setPlan({ board: pendingMismatch.boardStation, alight, direction: pendingMismatch.direction });
     mismatchBar.hidden = true;
@@ -3067,6 +3074,7 @@ function createJournal(spots, closings, route) {
     from: route.stations[0].name,
     to: route.stations[route.stations.length - 1].name,
     line: currentLine.name,
+    lineId: currentLine.id,
   });
 }
 
@@ -3887,6 +3895,9 @@ async function main() {
     'viewBox',
     `${provisional.left} ${provisional.top} ${provisional.width} ${provisional.height}`
   );
+  // index.html は「銚子電鉄の…」で決め打ちしてある。読み上げでは
+  // 有楽町線に切り替えても銚子電鉄のままと言われていた
+  mapElement.setAttribute('aria-label', `${line.name}の路線と絶景スポットの地図`);
 
   /*
    * 置いたものの場所を覚えておき、あとから置くものが重ならないようにする。
