@@ -8155,23 +8155,9 @@ function pickLine(registry) {
     }
   };
 
-  /*
-   * 地図は路線ごとに、届いた順から差し込む。
-   *
-   * ただし試験用（role: 'test'）の路線は飛ばす。有楽町線の輪郭は
-   * 実機テスト用に間引かず作ってあるため 4000 点近くあり、
-   * preview.json だけで作品側（銚子電鉄）の 2 倍以上（tools/build-preview.js）。
-   * この画面はまだ何も選んでいない全員が最初に見るので、選ぶ気のない
-   * 試験用の地図にその重さを払わせない。カード自体は残し、押せば
-   * ふつうに試験用として開ける（地図データは選んだあとに別で読む）。
-   */
-  for (const slot of slots) {
-    if (slot.line.role !== 'product') {
-      slot.card.querySelector('.line-card-meta').textContent = '（プレビューなし）';
-      continue;
-    }
-
-    loadJson(`${slot.line.dir}/preview.json`)
+  /** 1 路線ぶんの小さな地図を読んで、カードに差し込む */
+  function showPreview(slot) {
+    return loadJson(`${slot.line.dir}/preview.json`)
       .then((preview) => {
         slot.preview = preview;
 
@@ -8195,6 +8181,27 @@ function pickLine(registry) {
         slot.card.querySelector('.line-card-meta').textContent = '（地図を読み込めませんでした）';
       });
   }
+
+  /*
+   * 地図は路線ごとに、届いた順から差し込む。
+   * ただし**作品の路線（role: 'product'）を先に出し、試験用はそのあと**にする。
+   *
+   * 順番を付けるのは、試験用の有楽町線の輪郭が実機テスト用に間引かず
+   * 作ってあるためで、preview.json は gzip 15KB と作品側（銚子電鉄・6KB）の
+   * 2 倍以上ある（tools/build-preview.js）。この画面はまだ何も選んでいない
+   * 全員が最初に見るので、選ぶ気のない試験用の地図に、作品の地図を
+   * 待たせない。
+   *
+   * 一度は試験用を出すこと自体をやめていたが、それだと有楽町線のカードだけ
+   * 灰色の空欄になり、「読み込みに失敗した」ようにしか見えなかった。
+   * 待たせないことと、出すことは両立する。あとから出せばよい。
+   */
+  const productSlots = slots.filter((slot) => slot.line.role === 'product');
+  const otherSlots = slots.filter((slot) => slot.line.role !== 'product');
+
+  Promise.all(productSlots.map(showPreview)).then(() => {
+    for (const slot of otherSlots) showPreview(slot);
+  });
 
   /*
    * 位置情報は地図の読み込みを頼んだあとで訊く。
