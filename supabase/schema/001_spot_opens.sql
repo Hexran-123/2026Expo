@@ -14,13 +14,21 @@
 -- ---------------------------------------------------------------
 
 -- 公開する集計。画面に出るのはこの表だけ。
+--
+-- id の形は路線ごとの頭文字＋2桁（銚子電鉄は S、有楽町線は Y）。
+-- data/lines.json の dataSource が "real" の路線だけがここに乗る
+-- （CLAUDE.md「企画テーマ」節・data/lines.json のコメント）。
+-- dataSource が "synthetic" のあいだは js/main.js 側で弾いていて、
+-- ここではじく必要はない——が、頭文字を増やすとき（新しい路線を
+-- real に切り替えるとき）は、この正規表現も一緒に広げること。
 create table if not exists spot_open_count (
   -- spots.json の id と同じ形。実データを持ってくるのではなく、
   -- 形だけを縛る。データベースに絶景スポットの一覧を置くと
   -- spots.json と二重管理になり、ADR-0004 の「data/ 以下は
   -- 一つもサーバーへ移さない」とも衝突するため。
-  -- この形は最大 100 行までしか作れないので、荒らされても被害が有限。
-  spot_id    text primary key check (spot_id ~ '^S[0-9]{2}$'),
+  -- この形は頭文字ごとに最大 100 行までしか作れないので、
+  -- 荒らされても被害が有限（いま S・Y の 2 種で最大 200 行）。
+  spot_id    text primary key check (spot_id ~ '^[SY][0-9]{2}$'),
   opens      bigint      not null default 0 check (opens >= 0),
   updated_at timestamptz not null default now()
 );
@@ -33,7 +41,7 @@ comment on table spot_open_count is
 -- 同じ人が同じ絶景スポットを一日に何度開いても 1 回として数える。
 -- そうしないと、カードを開いて閉じてを繰り返すだけで数字が動く。
 create table if not exists spot_open_log (
-  spot_id   text not null check (spot_id ~ '^S[0-9]{2}$'),
+  spot_id   text not null check (spot_id ~ '^[SY][0-9]{2}$'),
   -- IP アドレスそのものではなく、日付を混ぜたハッシュ。
   -- 日付が変われば値も変わるので、日をまたいで同じ人を追えない。
   visitor   text not null,
@@ -46,6 +54,23 @@ comment on table spot_open_log is
 
 create index if not exists spot_open_log_opened_on_idx
   on spot_open_log (opened_on);
+
+-- ---------------------------------------------------------------
+-- 移行：既存の環境では上の create table が素通りする
+--
+-- create table if not exists は、テーブルが既にあれば中の制約定義ごと
+-- 無視する。2026-08-11 に S 専用で作った環境に Y（有楽町線）を通すには、
+-- 列の制約を明示的に broaden する必要がある。新規環境ではこの節は
+-- 何もしない（drop constraint if exists が静かに終わる）。
+-- ---------------------------------------------------------------
+
+alter table spot_open_count drop constraint if exists spot_open_count_spot_id_check;
+alter table spot_open_count add  constraint spot_open_count_spot_id_check
+  check (spot_id ~ '^[SY][0-9]{2}$');
+
+alter table spot_open_log   drop constraint if exists spot_open_log_spot_id_check;
+alter table spot_open_log   add  constraint spot_open_log_spot_id_check
+  check (spot_id ~ '^[SY][0-9]{2}$');
 
 -- ---------------------------------------------------------------
 -- 訪問者のキー
@@ -131,7 +156,7 @@ declare
   v_visitor text;
   v_opens   bigint;
 begin
-  if p_spot_id is null or p_spot_id !~ '^S[0-9]{2}$' then
+  if p_spot_id is null or p_spot_id !~ '^[SY][0-9]{2}$' then
     raise exception 'unknown spot_id';
   end if;
 

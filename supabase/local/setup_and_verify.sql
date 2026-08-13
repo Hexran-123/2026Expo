@@ -6,7 +6,7 @@
 --
 --   psql -U postgres -f supabase/local/setup_and_verify.sql
 --
--- 期待する出力は OK が 11 行。FAIL が 1 行でも出たら、そのまま公開しない。
+-- 期待する出力は OK が 13 行。FAIL が 1 行でも出たら、そのまま公開しない。
 --
 -- 日本語版 Windows では、この一手も要る（コマンドプロンプトの表示を UTF-8 にする）:
 --
@@ -165,6 +165,40 @@ begin
   reset role;
 end $$;
 
+-- 9. 有楽町線（Y）も数えられる
+--
+-- 2026-08-13、有楽町線の dataSource が "real" になったのに、
+-- id が Y01〜Y10 で S 専用の check に弾かれ、記章が一切出ない
+-- 不具合があった。無いなら出さない設計のせいで、直すまで気づけなかった。
+do $$
+declare v bigint;
+begin
+  set role anon;
+  select record_spot_open('Y01') into v;
+  reset role;
+  if v = 1 then
+    raise notice 'OK  : 有楽町線（Y01）も record_spot_open を呼べて、1 になった';
+  else
+    raise warning 'FAIL: 1 になるはずが % だった', v;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 有楽町線の spot_id が呼べない（%）', sqlerrm;
+end $$;
+
+-- 10. S・Y 以外の頭文字は、有楽町線を通した後も引き続き弾く
+do $$
+begin
+  set role anon;
+  begin
+    perform record_spot_open('T01');
+    raise warning 'FAIL: S・Y 以外の頭文字が通ってしまう';
+  exception when others then
+    raise notice 'OK  : S・Y 以外の頭文字は弾かれる';
+  end;
+  reset role;
+end $$;
+
 -- ---------------------------------------------------------------
 -- 訪問者のキーが詐称できないか
 --
@@ -176,7 +210,7 @@ end $$;
 -- ただの設定値なので、手で置けば解釈の部分は確かめられる。
 -- ---------------------------------------------------------------
 
--- 9. 先頭を詐称しても、同じ人と見なされる
+-- 11. 先頭を詐称しても、同じ人と見なされる
 do $$
 declare k_plain text; k_spoof text;
 begin
@@ -193,7 +227,7 @@ begin
   end if;
 end $$;
 
--- 10. cf-connecting-ip があればそちらを採る
+-- 12. cf-connecting-ip があればそちらを採る
 do $$
 declare k_plain text; k_cf text;
 begin
@@ -211,8 +245,8 @@ begin
   end if;
 end $$;
 
--- 11. 本当に別の IP なら、別の人として数える
---     （9・10 を「常に同じ値を返す」で通してしまわないための対照）
+-- 13. 本当に別の IP なら、別の人として数える
+--     （11・12 を「常に同じ値を返す」で通してしまわないための対照）
 do $$
 declare k_a text; k_b text;
 begin

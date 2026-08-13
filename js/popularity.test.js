@@ -14,7 +14,7 @@
  */
 
 require('./popularity.js');
-const { levelFor, STEPS } = globalThis.Popularity;
+const { levelFor, STEPS, SPOT_ID } = globalThis.Popularity;
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -50,6 +50,19 @@ console.log('\n段の決まりそのもの');
 // 上から順に見るので、並びが崩れると 10 回でも 1 段目に落ちる
 check('大きいほうから並んでいる', STEPS.map((s) => s.at), [10, 8, 5]);
 check('段は 3 つ', STEPS.length, 3);
+
+console.log('\nスポット id の形（銚子電鉄 S・有楽町線 Y、どちらも real）');
+// data/lines.json の dataSource が "real" の路線は、どちらもここを
+// 通れないと累積人気に数えられない。2026-08-13、有楽町線が dataSource:
+// "real" になったのに id が Y01〜Y10 で S 専用の正規表現に弾かれ、
+// 記章が一切出ない不具合があった（DB 側は無いなら出さないで
+// 黙って失敗するため、直すまで気づけなかった）。
+check('銚子電鉄（S）を受け付ける', SPOT_ID.test('S01'), true);
+check('有楽町線（Y）を受け付ける', SPOT_ID.test('Y01'), true);
+check('S99・Y99 も形としては受け付ける', SPOT_ID.test('S99') && SPOT_ID.test('Y99'), true);
+check('他の頭文字は弾く', SPOT_ID.test('T01'), false);
+check('小文字は弾く', SPOT_ID.test('s01'), false);
+check('桁数が違えば弾く', SPOT_ID.test('S1') || SPOT_ID.test('S001'), false);
 
 console.log('');
 if (failures === 0) {

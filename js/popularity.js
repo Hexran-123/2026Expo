@@ -34,8 +34,13 @@
   /** これを過ぎたら諦める。電波の弱い区間で画面を待たせないため */
   const TIMEOUT_MS = 3000;
 
-  /** 絶景スポットの id の形。データベース側の check と同じ。 */
-  const SPOT_ID = /^S[0-9]{2}$/;
+  /*
+   * 絶景スポットの id の形。データベース側の check と同じ。
+   * 頭文字は路線ごと（銚子電鉄は S、有楽町線は Y）。dataSource が
+   * "real" の路線だけがここまで来る（呼び出し側の gating）ので、
+   * ここは「id の形が壊れていないか」だけを見る。
+   */
+  const SPOT_ID = /^[SY][0-9]{2}$/;
 
   // ------------------------------------------------------------------
   // 記章の段
@@ -109,5 +114,5 @@
     }
   }
 
-  global.Popularity = { record, levelFor, STEPS };
+  global.Popularity = { record, levelFor, STEPS, SPOT_ID };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
