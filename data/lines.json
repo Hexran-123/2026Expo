@@ -1,5 +1,5 @@
 {
-  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。 陰影起伏図（terrain-hillshade.webp）を用意していない路線には \"hillshade\": false を書く。 透明な絵で代用してはいけない（mix-blend-mode: overlay が効いて地図全体に色被りが出る）。",
+  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。 陰影起伏図（terrain-hillshade.webp）を用意していない路線には \"hillshade\": false を書く。 透明な絵で代用してはいけない（mix-blend-mode: overlay が効いて地図全体に色被りが出る）。 role は展示での位置づけ: \"product\" が作品そのもの（設計書の対象路線）、 \"demo\" は「この仕組みは他の路線にも展開できる」ことを見せる実演用。 dataSource は中身が本物かどうか: \"real\" は実在の見どころ・実際のダイヤ、 \"synthetic\" は tools/make-test-line.js が作った作り物。 **synthetic のあいだは、その路線の数を累積人気に混ぜない**（js/main.js の showPopularity）。 実データに差し替えたら \"real\" に変えること。この 2 つは別の軸なので、まとめないこと。",
   "default": "choshi",
   "lines": [
     {
@@ -9,6 +9,7 @@
       "weatherArea": "120000",
       "weatherLabel": "千葉県北東部",
       "role": "product",
+      "dataSource": "real",
       "note": "作品そのもの。設計書の対象路線（設計書 1 章）。"
     },
     {
@@ -17,8 +18,9 @@
       "dir": "data/yurakucho",
       "weatherArea": "130000",
       "weatherLabel": "東京地方",
-      "role": "test",
-      "note": "GPS の挙動を手元で確かめるための試験用。絶景スポットも時刻表も作り物で、作品の内容ではない。ほぼ全線が地下なので、位置情報が取れないときの振る舞い（設計書 3.3）を確かめる用途に向く。逆に、モード切替・上下判定・車窓側といった正常系はここでは測れない。"
+      "role": "demo",
+      "dataSource": "synthetic",
+      "note": "多路線対応の実演用。「この仕組みは銚子電鉄だけのものではない」ことと、ほぼ全線が地下なので「位置情報が取れないときの振る舞い」（設計書 3.3）を見せるために置く。応募時も現地展示も、この路線を載せたまま出す。 **絶景スポットも時刻表もいまは作り物**（tools/make-test-line.js が作ったもので、実在の見どころでも実際のダイヤでもない）。実データに差し替えるまで dataSource は \"synthetic\" のままにしておくこと。"
     }
   ]
 }

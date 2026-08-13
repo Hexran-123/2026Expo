@@ -81,7 +81,7 @@ data/
     preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
-  yurakucho/        有楽町線（GPS を試すための試験用。中身は作り物）
+  yurakucho/        有楽町線（多路線対応の実演用。中身はまだ作り物）
   source/           もとになった生データと計算結果 ← 自動生成
 
 tools/              データを作り直すための道具（サイトの一部ではない）
@@ -101,7 +101,7 @@ docs/               設計書・将来構想・ADR
 data/
   lines.json          どの路線があるか（手で書く）
   choshi/             銚子電鉄 ← 作品そのもの（設計書 1 章）
-  yurakucho/          有楽町線 ← GPS を試すためだけの試験用
+  yurakucho/          有楽町線 ← 多路線対応の実演用（中身はまだ作り物）
   source/             中間生成物（大きいものは .gitignore 済み）
 ```
 
@@ -114,7 +114,8 @@ data/
 - URL に `?line=yurakucho` を付けても切り替わる。この場合は選択画面を出さない。
 
 路線が 1 つしかないときは選択画面も切り替えボタンも出ない（路線名はただの文字）。
-応募時に試験用の路線を `lines.json` から外せば、自動的にその状態になる。
+`lines.json` を 1 件に減らせば自動的にその状態になるが、**いまは応募時も
+有楽町線を載せたまま出す**ので、路線選択画面は本番でも出る。
 
 選択画面が読むのは `data/<路線>/preview.json` だけ。地図画面が使う `terrain.json` と
 `route.json` をそのまま読むと二路線で 302 KB（gzip 112 KB）あり、まだ何も選んでいない
@@ -157,7 +158,7 @@ CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意して
 ```
 demo/all.html            両路線（路線選択画面から始まる）1.25 MB
 demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.54 MB
-demo/yurakucho.html      有楽町線だけ（試験用）          1.00 MB
+demo/yurakucho.html      有楽町線だけ（実演用）          1.00 MB
 demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       1.00 MB
 ```
 
@@ -243,10 +244,16 @@ node tools/build-demo.js yurakucho demo/yurakucho-gps.html  --gps --switch
 `fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
 別の路線を作るときだけ引数を渡す（下記）。
 
-### 試験用の路線を足す
+### 路線を足す（2 本目以降）
 
-GPS まわり（モードの切替・上り下りの判定・車窓側・通知の先行時間）は、実際に
-電車に乗らないと確かめられない。銚子は遠いので、近くの路線で先に試すための道具がある。
+2 本目の路線には二つの役目がある。
+
+- **展示で「この仕組みは銚子電鉄だけのものではない」ことを見せる**（`role: "demo"`）。
+- **GPS まわりを手元で確かめる。** モードの切替・上り下りの判定・車窓側・通知の
+  先行時間は、実際に電車に乗らないと確かめられない。銚子は遠いので近くの路線で先に試す。
+
+いま入っているのは有楽町線。ほぼ全線が地下なので、位置情報が取れないときの
+振る舞い（設計書 3.3）を見せる・確かめるのに向く。
 
 ```
 node tools/fetch-relation.js 443269 data/source/yurakucho_raw.json
@@ -263,6 +270,13 @@ node tools/make-test-line.js  data/yurakucho/route.json data/yurakucho
 ```
 
 最後に `data/lines.json` へ 1 件足すと、画面に出るようになる。
+
+**`make-test-line.js` が作るものは、そのまま人に見せてよいものではない。**
+スポット名は「試験用スポット 1」のままで、時刻表も実際のダイヤではない。
+展示や応募で出す路線は、`spots.json` を手で書き、`schedule.json` を実際の
+時刻表から起こしたうえで、`data/lines.json` の `dataSource` を `"real"` に
+変えること（この値が `"real"` でない路線は累積人気に数えない）。
+有楽町線はいま `"synthetic"`＝差し替え待ちである。
 
 **relation を使うのは地下鉄で駅名が他社と重なるため。** 銚子電鉄のやり方（範囲内の線路を
 全部拾って名前で選り分ける）は、たとえば「池袋」で引くと OSM 上の駅ノードが 6 件あって
@@ -364,9 +378,12 @@ python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurak
 
 まだ手を付けていないもの（効きそうな順）:
 
-- **試験用路線（有楽町線）のデータが重い**。`terrain.json` 236KB・`schedule.json` 185KB で、
-  `demo/all.html` の 3 割がこれ。応募時には `data/lines.json` から外すので、
-  作品そのものには関係しない。
+- **実演用の路線（有楽町線）のデータが重い**。`terrain.json` 236KB・`schedule.json` 185KB で、
+  `demo/all.html` の 3 割がこれ。**応募時も載せたまま出す方針に変わったので、
+  「外すから関係しない」とは言えなくなった。** ただし払うのは有楽町線を選んだ人だけで、
+  路線選択画面が読むのは `preview.json`（gzip 15KB）に限られる。
+  効き目が大きいのは `terrain.json` の輪郭を間引くこと（銚子電鉄は 6.4km ぶんで 66KB、
+  有楽町線は 28.4km ぶんを実機テスト用に間引かず作ってある）。
 - **`js/main.js` が 142KB**。届くまで地図を描き始められないので、ここがいまの頭打ち。
   道は 2 つあり、実際に試して測った。
 

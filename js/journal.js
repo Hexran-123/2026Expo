@@ -162,7 +162,7 @@
   /**
    * @param {{from:string, to:string, line:string}} ends
    *   タイムラインの両端に書く駅名と、路線名。路線ごとに違うので受け取る。
-   *   銚子・外川と書き込んでいたころは、試験用の有楽町線で旅を終えても
+   *   銚子・外川と書き込んでいたころは、実演用の有楽町線で旅を終えても
    *   「銚子 ─◆─ 外川」と出ていた。
    */
   function create(spots, themes, closings, ends) {

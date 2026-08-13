@@ -805,7 +805,21 @@ function fittedBox(mapElement, contents) {
  * basisPerPixel として覚えておき、その比を「今の倍率」として使う。
  */
 function createView(mapElement, projection, initialBox, onChange) {
-  const screen = () => mapElement.getBoundingClientRect();
+  /*
+   * getBoundingClientRect() を毎回呼び直さない。
+   *
+   * apply()・zoomAt() は指を動かすたびに何度も呼ばれるが、mapElement の
+   * 画面上の大きさ・位置はリサイズ（またはリサイズと同じ意味を持つ操作）
+   * でしか変わらない。直前の apply() が viewBox 等を書き換えた直後に
+   * ここで測ると、ブラウザはまだ反映していないレイアウトをその場で
+   * 確定させてから返す（forced synchronous layout）。ピンチでは 1 回の
+   * 指の動きで 17 個の要素の transform と --k を書き換えるため、この
+   * 測り直しが積み重なって重くなる（実測: ピンチ中の getBoundingClientRect
+   * だけで 170ms 近く）。値をキャッシュし、リサイズのときだけ捨てる。
+   */
+  let cachedScreen = null;
+  const screen = () => cachedScreen || (cachedScreen = mapElement.getBoundingClientRect());
+  const invalidateScreen = () => { cachedScreen = null; };
 
   const basisPerPixel = initialBox.width / screen().width;
   let unitsPerPixel = basisPerPixel;
@@ -953,7 +967,7 @@ function createView(mapElement, projection, initialBox, onChange) {
     );
   }
 
-  return { apply, zoomAt, panBy, centerOn, goTo, reset, zoom, stopAnimation };
+  return { apply, zoomAt, panBy, centerOn, goTo, reset, zoom, stopAnimation, invalidateScreen };
 }
 
 /**
@@ -1740,12 +1754,16 @@ function createOriginCard(screenElement) {
     if (!global_Popularity()) return;
 
     /*
-     * 試験用の路線では数えない。有楽町線の絶景スポットも時刻表も
-     * tools/make-test-line.js が作った作り物で、これを数に混ぜると
+     * 中身が作り物の路線では数えない。有楽町線の絶景スポットも時刻表も
+     * いまは tools/make-test-line.js が作ったもので、これを数に混ぜると
      * 公開する数字が作品の実態を表さなくなる。
      * （id の形が違うのでサーバー側でも弾かれるが、無駄に投げない）
+     *
+     * 見るのは role ではなく dataSource。実演用（role: 'demo'）でも、
+     * 実在の見どころと実際のダイヤに差し替えたなら数えてよい。
+     * 「展示での位置づけ」と「中身が本物か」は別の話なので、混ぜない。
      */
-    if (!currentLine || currentLine.role !== 'product') return;
+    if (!currentLine || currentLine.dataSource !== 'real') return;
 
     const firstPanel = panelsElement.firstElementChild;
     if (!firstPanel) return;
@@ -3035,12 +3053,19 @@ function createSpotCard(screenElement, view, getWeather) {
 // どの路線を出すか（data/lines.json）
 //
 // 作品そのものが対象にしているのは銚子電鉄だけである（設計書 1 章）。
-// それでも路線を選べるようにしてあるのは、GPS まわりの振る舞い
-// （モードの切替、上り下りの判定、車窓側、通知の先行時間）を、
-// 銚子まで行かずに近くの路線で確かめるため。
+// それでも路線を選べるようにしてあるのは、二つの理由による。
+//   ・GPS まわりの振る舞い（モードの切替、上り下りの判定、車窓側、
+//     通知の先行時間）を、銚子まで行かずに近くの路線で確かめるため。
+//   ・展示で「この仕組みは銚子電鉄だけのものではない」ことを見せるため。
+//     有楽町線はほぼ全線が地下なので、位置情報が取れないときの振る舞い
+//     （設計書 3.3）そのものが見どころになる。
 //
-// role が "test" の路線は試験用で、絶景スポットも時刻表も作り物である
-// （tools/make-test-line.js が作る）。作品の内容と取り違えないこと。
+// role が "demo" の路線は、この実演用。**作品の対象路線ではない**ので、
+// 設計書 1 章（対象路線は銚子電鉄に限定）と取り違えないこと。
+//
+// dataSource が "synthetic" のあいだ、その路線の絶景スポットと時刻表は
+// tools/make-test-line.js が作った作り物である。実在の見どころでも
+// 実際のダイヤでもない。role とは別の軸なので、まとめて判定しないこと。
 //
 // 選んだ路線は localStorage に覚える。URL に ?line=... を付けると
 // そちらが優先される。現地で切り替えるときに使う。
@@ -3067,7 +3092,8 @@ function rememberLine(line) {
  * 呼び出し側はそのとき開始画面（路線選択）を出して、人に選んでもらう。
  *
  * 路線が 1 つしかないなら選ぶ余地が無いので、黙って決める。
- * 応募時に試験用の路線を外せばこの状態になり、開始画面は出なくなる。
+ * data/lines.json を 1 件に減らせばこの状態になり、開始画面は出なくなる
+ * （いまは応募時も有楽町線を載せたまま出すので、2 件のまま）。
  */
 async function resolveLine() {
   const registry = await loadJson('data/lines.json');
@@ -3303,7 +3329,7 @@ function pickLine(registry) {
   const slots = registry.lines.map((line) => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'line-card' + (line.role === 'test' ? ' line-card--test' : '');
+    card.className = 'line-card' + (line.role === 'product' ? '' : ' line-card--demo');
 
     const placeholder = document.createElement('div');
     placeholder.className = 'line-preview line-preview--empty';
@@ -3314,7 +3340,7 @@ function pickLine(registry) {
     body.innerHTML =
       `<div class="line-card-head">
          <span class="line-card-name"></span>
-         ${line.role === 'test' ? '<span class="line-card-badge">試験用</span>' : ''}
+         ${line.role === 'product' ? '' : '<span class="line-card-badge">実演用</span>'}
        </div>
        <p class="line-card-meta"></p>`;
     body.querySelector('.line-card-name').textContent = line.name;
@@ -3389,16 +3415,16 @@ function pickLine(registry) {
 
   /*
    * 地図は路線ごとに、届いた順から差し込む。
-   * ただし**作品の路線（role: 'product'）を先に出し、試験用はそのあと**にする。
+   * ただし**作品の路線（role: 'product'）を先に出し、実演用はそのあと**にする。
    *
-   * 順番を付けるのは、試験用の有楽町線の輪郭が実機テスト用に間引かず
-   * 作ってあるためで、preview.json は gzip 15KB と作品側（銚子電鉄・6KB）の
+   * 順番を付けるのは、有楽町線の輪郭が実機テスト用に間引かず作ってある
+   * ためで、preview.json は gzip 15KB と作品側（銚子電鉄・6KB）の
    * 2 倍以上ある（tools/build-preview.js）。この画面はまだ何も選んでいない
-   * 全員が最初に見るので、選ぶ気のない試験用の地図に、作品の地図を
-   * 待たせない。
+   * 全員が最初に見るので、作品の地図を後ろに待たせない。
    *
-   * 一度は試験用を出すこと自体をやめていたが、それだと有楽町線のカードだけ
+   * 一度は実演用を出すこと自体をやめていたが、それだと有楽町線のカードだけ
    * 灰色の空欄になり、「読み込みに失敗した」ようにしか見えなかった。
+   * 展示で見せる路線なので、それでは困る。
    * 待たせないことと、出すことは両立する。あとから出せばよい。
    */
   const productSlots = slots.filter((slot) => slot.line.role === 'product');
@@ -3442,7 +3468,7 @@ function pickLine(registry) {
  * 切り替えは読み込み直しで行う。地形・線路・駅・絶景スポット・時刻表・
  * 陰影の絵まで全部が入れ替わるうえ、地図の縮尺も路線の大きさから決めている。
  * 部分的に差し替えるより、読み直すほうが確かで、書く量も少ない。
- * 試験用の仕掛けに、作品側の複雑さを持ち込まない。
+ * 路線を切り替える仕掛けに、作品側の複雑さを持ち込まない。
  */
 function setUpLineSwitch(registry, line) {
   const label = document.getElementById('line-name');
@@ -3605,7 +3631,10 @@ async function main() {
 
   const view = createView(mapElement, terrain.projection, initialBox, onViewChange);
   view.apply();
-  window.addEventListener('resize', () => view.apply());
+  window.addEventListener('resize', () => {
+    view.invalidateScreen();
+    view.apply();
+  });
 
   // 地図が動かせる状態になったので、読み込み中の表示を退ける
   document.getElementById('loading').hidden = true;
