@@ -37,12 +37,20 @@ const SLOWEST_KMH = 12;
 const FASTEST_KMH = 45;
 
 /** "07:16" を、その日の 0 時からの分数に直す */
+/*
+ * "07:16" を、その日の 0 時からの分数に直す。
+ *
+ * 24 時以降も受ける。終電は日をまたぐので、鉄道の時刻表は 0:05 を
+ * 「24:05」と書く。そう書いておくと、1 本の列車のなかで時刻が
+ * 増えつづける（下の「時刻は必ず増えていく」がそのまま使える）。
+ * 画面に出すときは js/schedule.js の toClock が 0:05 に直す。
+ */
 function toMinutes(text) {
   const match = /^(\d{2}):(\d{2})$/.exec(text);
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
-  if (hour > 23 || minute > 59) return null;
+  if (hour > 27 || minute > 59) return null;
   return hour * 60 + minute;
 }
 
@@ -51,9 +59,22 @@ function main() {
   const route = JSON.parse(fs.readFileSync(ROUTE_PATH, 'utf8'));
   const knownStations = new Set(route.stations.map((station) => station.name));
 
-  const km = route.totalLength / 1000;
-  const rideMin = Math.floor((km / FASTEST_KMH) * 60);
-  const rideMax = Math.ceil((km / SLOWEST_KMH) * 60);
+  /*
+   * 所要時間の目安は、**その列車が実際に走る区間の長さ**から出す。
+   *
+   * 路線の全長で決め打ちしていたころは、全線を通す列車しか通らなかった。
+   * 有楽町線には小竹向原から西武線へ抜ける列車のような区間運転があり、
+   * 正しい時刻表でも「所要 30 分は変」と言ってしまう。
+   */
+  const distanceOf = new Map(route.stations.map((s) => [s.name, s.distanceAlong]));
+  const rideRange = (from, to) => {
+    const meters = Math.abs((distanceOf.get(to) ?? 0) - (distanceOf.get(from) ?? 0));
+    const km = meters / 1000;
+    return {
+      min: Math.floor((km / FASTEST_KMH) * 60),
+      max: Math.ceil((km / SLOWEST_KMH) * 60),
+    };
+  };
 
   const problems = [];
   const report = (train, message) => problems.push(`${train.番号}号（${train.方向}）: ${message}`);
@@ -96,18 +117,29 @@ function main() {
       }
     }
 
-    // 全線の所要時間がありえる範囲か
-    if (times[0] !== null && times[times.length - 1] !== null) {
+    // 走った区間の所要時間がありえる範囲か
+    if (times[0] !== null && times[times.length - 1] !== null && stations.length >= 2) {
       const ride = times[times.length - 1] - times[0];
-      if (ride < rideMin || ride > rideMax) {
-        report(train, `所要 ${ride} 分は変（${rideMin}〜${rideMax} 分のはず）`);
+      const { min, max } = rideRange(stations[0], stations[stations.length - 1]);
+      if (ride < min || ride > max) {
+        report(train, `所要 ${ride} 分は変（${min}〜${max} 分のはず）`);
       }
     }
 
-    // 途中の駅を抜かす列車はない。仲ノ町始発（車庫）だけが銚子駅を持たない
-    const isDepotStart = train.方向 === '下り' && stations[0] === '仲ノ町';
-    if (stations.length !== order.length && !(isDepotStart && stations.length === order.length - 1)) {
-      report(train, `駅が ${stations.length} 個しかない`);
+    /*
+     * 途中の駅を抜かさないこと（上の「駅順のとおりに、飛ばさず並んでいる」）は
+     * 確かめるが、**全駅に停まることは求めない。**
+     *
+     * 全駅ぶん揃っていることを条件にしていたころは、銚子電鉄しか通らなかった。
+     * 通らない例が二つある。
+     *   ・区間運転と直通。有楽町線には小竹向原から西武線へ抜ける列車があり、
+     *     有楽町線内では小竹向原から先しか走らない。
+     *   ・終点の到着時刻。駅別時刻表から起こした時刻表は、終点では発車が無いので
+     *     その駅を持たない（data/yurakucho/schedule.json の _note）。
+     * どちらも正しい時刻表なので、ここで弾かない。
+     */
+    if (stations.length < 2) {
+      report(train, `駅が ${stations.length} 個しかない（2 駅以上要る）`);
     }
   }
 

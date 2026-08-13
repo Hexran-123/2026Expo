@@ -81,7 +81,7 @@ data/
     preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
-  yurakucho/        有楽町線（多路線対応の実演用。中身はまだ作り物）
+  yurakucho/        有楽町線（多路線対応の実演用。中身も実データ）
   source/           もとになった生データと計算結果 ← 自動生成
 
 tools/              データを作り直すための道具（サイトの一部ではない）
@@ -101,7 +101,7 @@ docs/               設計書・将来構想・ADR
 data/
   lines.json          どの路線があるか（手で書く）
   choshi/             銚子電鉄 ← 作品そのもの（設計書 1 章）
-  yurakucho/          有楽町線 ← 多路線対応の実演用（中身はまだ作り物）
+  yurakucho/          有楽町線 ← 多路線対応の実演用（中身も実データ）
   source/             中間生成物（大きいものは .gitignore 済み）
 ```
 
@@ -122,8 +122,13 @@ data/
 画面としては重い。`preview.json` は輪郭を必要なぶんまで粗くしたもので、二路線あわせて
 47 KB（gzip 21 KB）。陰影起伏図はこの画面では読まない。
 
-有楽町線は**作品の対象ではない**。絶景スポットも時刻表も `tools/make-test-line.js` が
-作った作り物で、中身に意味はない。作品が対象にしているのは銚子電鉄だけ（設計書 1 章）。
+有楽町線は**作品の対象ではない**（作品が対象にしているのは銚子電鉄だけ＝設計書 1 章）。
+併せて出すのは、展示で「この仕組みは銚子電鉄だけのものではない」ことと、ほぼ全線が
+地下なので「位置情報が取れないときの振る舞い」（設計書 3.3）を見せるため。
+
+**中身は実データ。**絶景スポットは実在の 10 件（うち 8 件は地下で、車窓からは見えない
+「足もとの地理」）、時刻表は実際の平日ダイヤ。出どころは `data/yurakucho/` の
+`spots.json`・`schedule.json` の `_source` に書いてある。
 
 ---
 
@@ -156,10 +161,10 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/all.html            両路線（路線選択画面から始まる）1.25 MB
-demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.54 MB
-demo/yurakucho.html      有楽町線だけ（実演用）          1.00 MB
-demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       1.00 MB
+demo/all.html            両路線（路線選択画面から始まる）1.41 MB
+demo/choshi.html         銚子電鉄だけ（作品そのもの）    0.57 MB
+demo/yurakucho.html      有楽町線だけ（実演用）          1.16 MB
+demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       1.14 MB
 ```
 
 **ダブルクリックで開くだけで動く。**通信は一切しない。
@@ -276,7 +281,8 @@ node tools/make-test-line.js  data/yurakucho/route.json data/yurakucho
 展示や応募で出す路線は、`spots.json` を手で書き、`schedule.json` を実際の
 時刻表から起こしたうえで、`data/lines.json` の `dataSource` を `"real"` に
 変えること（この値が `"real"` でない路線は累積人気に数えない）。
-有楽町線はいま `"synthetic"`＝差し替え待ちである。
+有楽町線は差し替え済みで `"real"`。**`make-test-line.js` を有楽町線に対して
+実行しないこと**（実データが作り物で上書きされる）。
 
 **relation を使うのは地下鉄で駅名が他社と重なるため。** 銚子電鉄のやり方（範囲内の線路を
 全部拾って名前で選り分ける）は、たとえば「池袋」で引くと OSM 上の駅ノードが 6 件あって

@@ -1664,12 +1664,16 @@ button.line-name:active {
  * いきなり足すと、読んでいる本文が下へ飛ぶ。
  *
  * 届かなければこの要素は作られない。空の枠は残さない（設計書 9.3）。
+ *
+ * 段が上がるほど夜が明ける、犬吠埼の三段（夜／夜明け前／初日の出）。
+ * テーマ色には依存しない（地形・気候・産業・海のどのテーマとも結びつかない、
+ * 独立した意匠にしてある。js/main.js の popularityBadgeScene 参照）。
  */
 .origin-badge {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -1682,27 +1686,14 @@ button.line-name:active {
 }
 
 .origin-badge--in {
-  max-height: 24px;
+  max-height: 34px;
   opacity: 1;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.origin-badge-marks {
-  display: inline-flex;
-  gap: 3px;
-}
-
-/*
- * 段の数だけ並ぶひし形。地図の絶景スポットバッジと同じ形にしてある。
- * 不透明度と彩度はテーマの絞り込みと天候にすでに使っているので、
- * ここでは「数」だけで段を表す（ai/artifacts/利用者投稿/screen-spec 参照）。
- */
-.origin-badge-marks i {
-  width: 8px;
-  height: 8px;
-  background: var(--card-color, var(--ink-soft));
-  transform: rotate(45deg);
-  border-radius: 1px;
+.origin-badge svg {
+  display: block;
+  flex: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6519,20 +6510,22 @@ function createOriginCard(screenElement) {
 
       const badge = document.createElement('p');
       badge.className = 'origin-badge';
-      badge.style.setProperty('--card-color', THEMES[spot.theme].color);
 
-      // 段の数だけひし形を並べる。地図のバッジと同じ形で、
-      // 「この絶景の」印であることが読まなくても分かるようにする
-      const marks = document.createElement('span');
-      marks.className = 'origin-badge-marks';
-      marks.setAttribute('aria-hidden', 'true');
-      for (let i = 0; i < level; i += 1) marks.appendChild(document.createElement('i'));
+      // 段が上がるほど夜が明ける、犬吠埼の三段（夜／夜明け前／初日の出）。
+      // 犬吠埼は本州最東端に近く、初日の出の名所として知られる場所であることから。
+      // 灯りの強さではなく情景そのものを変えているので、3 段目だけが「一番美しい」。
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 32 32');
+      icon.setAttribute('width', '30');
+      icon.setAttribute('height', '30');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = popularityBadgeScene(level, `pop${popularityBadgeUid++}`);
 
       /*
        * 「のべ」を付けているのは、同じ人が日をまたいで開けば
        * 二度数えるため。実人数ではない。
        */
-      badge.append(marks, document.createTextNode(`のべ ${opens} 人が読んだ`));
+      badge.append(icon, document.createTextNode(`のべ ${opens} 人が読んだ`));
 
       firstPanel.insertBefore(badge, firstPanel.firstChild);
       // 差し込んでから開かせる。読んでいる本文が急に下へ飛ぶのを避ける
@@ -6543,6 +6536,139 @@ function createOriginCard(screenElement) {
   /** js/popularity.js が読み込まれているか。消しても作品は動く */
   function global_Popularity() {
     return typeof Popularity !== 'undefined';
+  }
+
+  /*
+   * 累積人気の記章の中身（<svg> の innerHTML）。1〜3 段の三情景。
+   *
+   * id は呼ぶたびに変える（uid）。同時に複数枚が DOM に残ることは
+   * 通常無いが（open() のたびに panelsElement を作り直す）、
+   * グラデーション・クリップパスの id が万一ぶつからないための備え。
+   */
+  let popularityBadgeUid = 0;
+
+  function popularityBadgeScene(level, uid) {
+    if (level === 1) {
+      // 夜。星と三日月の下、灯台が独りで灯る
+      return `
+        <defs>
+          <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#161C2C"/>
+            <stop offset="100%" stop-color="#33415C"/>
+          </linearGradient>
+          <linearGradient id="${uid}-sea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#232C41"/>
+            <stop offset="100%" stop-color="#161C2C"/>
+          </linearGradient>
+          <radialGradient id="${uid}-beam" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="9">
+            <stop offset="0%" stop-color="#F6D28A" stop-opacity="0.85"/>
+            <stop offset="60%" stop-color="#D99A2B" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#D99A2B" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="${uid}-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="0.6"/></filter>
+          <radialGradient id="${uid}-lamp" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="3">
+            <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#FFF3D0" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g clip-path="url(#${uid}-frame)">
+          <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
+          <circle cx="6" cy="5" r="0.4" fill="#EDE7D8" opacity="0.8"/>
+          <circle cx="10" cy="3.2" r="0.35" fill="#EDE7D8" opacity="0.6"/>
+          <circle cx="13.5" cy="6.5" r="0.4" fill="#EDE7D8" opacity="0.7"/>
+          <circle cx="7.5" cy="9" r="0.3" fill="#EDE7D8" opacity="0.5"/>
+          <circle cx="9" cy="7" r="1.7" fill="#EDE7D8" opacity="0.85"/>
+          <circle cx="9.9" cy="6.5" r="1.55" fill="#1B2438"/>
+          <circle cx="21.5" cy="12" r="3" fill="url(#${uid}-lamp)"/>
+          <path d="M21.5,12 L28.8,8.4 L27,15.2 Z" fill="url(#${uid}-beam)" filter="url(#${uid}-soft)"/>
+          <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-sea)"/>
+          <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#12161F"/>
+          <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#12161F"/>
+          <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#12161F"/>
+          <circle cx="21.5" cy="12" r="0.65" fill="#FFF3D0"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#8B8578" stroke-width="1"/>
+      `;
+    }
+
+    if (level === 2) {
+      // 夜明け前。空が紫からオレンジへ移り、灯りが夜明けの色と混ざり始める
+      return `
+        <defs>
+          <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+          <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3A3C58"/>
+            <stop offset="55%" stop-color="#8A6E82"/>
+            <stop offset="100%" stop-color="#D98A72"/>
+          </linearGradient>
+          <linearGradient id="${uid}-sea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#5B5468"/>
+            <stop offset="100%" stop-color="#8C5D53"/>
+          </linearGradient>
+          <radialGradient id="${uid}-beam" gradientUnits="userSpaceOnUse" cx="21.5" cy="12" r="7">
+            <stop offset="0%" stop-color="#F6D28A" stop-opacity="0.6"/>
+            <stop offset="60%" stop-color="#D99A2B" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#D99A2B" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="${uid}-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="0.6"/></filter>
+        </defs>
+        <g clip-path="url(#${uid}-frame)">
+          <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
+          <circle cx="8" cy="4.5" r="0.35" fill="#EDE7D8" opacity="0.4"/>
+          <circle cx="12" cy="3" r="0.3" fill="#EDE7D8" opacity="0.3"/>
+          <path d="M6,7 q1.1,-1 2.2,0 q1.1,-1 2.2,0" fill="none" stroke="#3A2E38" stroke-width="0.5" stroke-linecap="round"/>
+          <path d="M21.5,12 L27.2,9.3 L26,15 Z" fill="url(#${uid}-beam)" filter="url(#${uid}-soft)"/>
+          <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-sea)"/>
+          <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#2E2530"/>
+          <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#2E2530"/>
+          <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#2E2530"/>
+          <circle cx="21.5" cy="12" r="0.6" fill="#F6D28A"/>
+        </g>
+        <circle cx="16" cy="16" r="15" fill="none" stroke="#4B4843" stroke-width="1"/>
+      `;
+    }
+
+    // level === 3。初日の出。水平線から朝日が上がり、灯台の縁が朝日で染まる。
+    // 犬吠埼は本州最東端に近く、初日の出の名所として知られる（この段だけ縁を金にする）
+    return `
+      <defs>
+        <clipPath id="${uid}-frame"><circle cx="16" cy="16" r="15"/></clipPath>
+        <linearGradient id="${uid}-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7C93B0"/>
+          <stop offset="45%" stop-color="#E8A26B"/>
+          <stop offset="100%" stop-color="#F6D28A"/>
+        </linearGradient>
+        <linearGradient id="${uid}-sea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#E8A26B"/>
+          <stop offset="100%" stop-color="#C97A4A"/>
+        </linearGradient>
+        <radialGradient id="${uid}-sun" gradientUnits="userSpaceOnUse" cx="11" cy="22" r="8">
+          <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.95"/>
+          <stop offset="45%" stop-color="#F6D28A" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#F6D28A" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="${uid}-sunblur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="1"/></filter>
+        <linearGradient id="${uid}-reflect" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFF3D0" stop-opacity="0.85"/>
+          <stop offset="100%" stop-color="#FFF3D0" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g clip-path="url(#${uid}-frame)">
+        <rect x="0" y="0" width="32" height="22" fill="url(#${uid}-sky)"/>
+        <circle cx="11" cy="22" r="6.5" fill="url(#${uid}-sun)" filter="url(#${uid}-sunblur)"/>
+        <circle cx="11" cy="22" r="4.3" fill="#FFF3D0"/>
+        <path d="M22,6 q1,-0.9 2,0 q1,-0.9 2,0" fill="none" stroke="#3A2E38" stroke-width="0.5" stroke-linecap="round"/>
+        <path d="M25,9 q0.8,-0.7 1.6,0 q0.8,-0.7 1.6,0" fill="none" stroke="#3A2E38" stroke-width="0.45" stroke-linecap="round" opacity="0.8"/>
+        <rect x="0" y="22" width="32" height="10" fill="url(#${uid}-sea)"/>
+        <polygon points="6,22 11,32 16,22" fill="url(#${uid}-reflect)" opacity="0.7"/>
+        <polygon points="18.3,24 24.7,24 23.6,25.6 19.4,25.6" fill="#4A2E22"/>
+        <polygon points="20,24 23,24 22.1,13.6 20.9,13.6" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.35"/>
+        <rect x="20.6" y="12.1" width="1.8" height="1.6" rx="0.3" fill="#4A2E22" stroke="#F6D28A" stroke-width="0.3"/>
+        <circle cx="21.5" cy="12" r="0.55" fill="#FFF3D0"/>
+      </g>
+      <circle cx="16" cy="16" r="15" fill="none" stroke="#D99A2B" stroke-width="1.3"/>
+    `;
   }
 
   function open(spot) {
