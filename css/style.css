@@ -1656,12 +1656,16 @@ button.line-name:active {
  * いきなり足すと、読んでいる本文が下へ飛ぶ。
  *
  * 届かなければこの要素は作られない。空の枠は残さない（設計書 9.3）。
+ *
+ * 段が上がるほど夜が明ける、犬吠埼の三段（夜／夜明け前／初日の出）。
+ * テーマ色には依存しない（地形・気候・産業・海のどのテーマとも結びつかない、
+ * 独立した意匠にしてある。js/main.js の popularityBadgeScene 参照）。
  */
 .origin-badge {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -1674,27 +1678,14 @@ button.line-name:active {
 }
 
 .origin-badge--in {
-  max-height: 24px;
+  max-height: 34px;
   opacity: 1;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.origin-badge-marks {
-  display: inline-flex;
-  gap: 3px;
-}
-
-/*
- * 段の数だけ並ぶひし形。地図の絶景スポットバッジと同じ形にしてある。
- * 不透明度と彩度はテーマの絞り込みと天候にすでに使っているので、
- * ここでは「数」だけで段を表す（ai/artifacts/利用者投稿/screen-spec 参照）。
- */
-.origin-badge-marks i {
-  width: 8px;
-  height: 8px;
-  background: var(--card-color, var(--ink-soft));
-  transform: rotate(45deg);
-  border-radius: 1px;
+.origin-badge svg {
+  display: block;
+  flex: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
