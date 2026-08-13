@@ -1827,21 +1827,21 @@ function createOriginCard(screenElement) {
   nextButton.addEventListener('click', () => scrollToPanel(currentIndex() + 1));
 
   /*
-   * 一コマ目に、読まれている度合いの記章を出す（ADR-0004）。
+   * カードの右上に、読まれている度合いのスタンプを出す（ADR-0004）。
    *
-   * 待たせない。カードはもう出ていて、記章は届いたら足す。
+   * 文字は持たない。段（1〜3）が上がるほど情景そのものが進む絵
+   * （popularityBadgeScene 参照）を大きく見せることで人気度を伝える。
+   * 数を出さないのは、しきい値が 5〜8〜10 回（js/popularity.js の
+   * STEPS）と小さく、「12人が読んだ」のように出すとかえって
+   * 人気が無いように映るため。
+   *
+   * コマをめくっても消えないよう、パネルの中ではなく card 直下に置く。
+   * そのぶん、次のスポットを開いたときに前のスポットのスタンプが
+   * 残らないよう、open() の先頭で毎回はがしてから貼り直す。
+   *
+   * 待たせない。カードはもう出ていて、スタンプは届いたら貼る。
    * 届かなければ何も起きない——エラーも、空の枠も出さない（設計書 9.3）。
-   *
-   * 回数はそのまま出さない。しきい値が 5〜8〜10 回と小さく
-   * （js/popularity.js の STEPS）、「のべ12人が読んだ」のように数を
-   * 見せるとかえって人気が無いように映る。段（1〜3）だけを言葉にする。
    */
-  const POPULARITY_BADGE_TEXT = {
-    1: '少しずつ人気が出ている景色',
-    2: 'よく読まれている景色',
-    3: 'とても人気の景色',
-  };
-
   function showPopularity(spot) {
     if (!global_Popularity()) return;
 
@@ -1857,9 +1857,6 @@ function createOriginCard(screenElement) {
      */
     if (!currentLine || currentLine.dataSource !== 'real') return;
 
-    const firstPanel = panelsElement.firstElementChild;
-    if (!firstPanel) return;
-
     Popularity.record(spot.id).then((opens) => {
       // 待っているあいだに閉じられた・別のカードへ移った
       if (openedId !== spot.id) return;
@@ -1868,7 +1865,7 @@ function createOriginCard(screenElement) {
       // まだ 5 に届いていない。数が乏しいうちは何も言わない
       if (level === 0) return;
 
-      const badge = document.createElement('p');
+      const badge = document.createElement('div');
       badge.className = 'origin-badge';
 
       // 段が上がるほど情景が進む三段。路線ごとに物語が違う
@@ -1876,15 +1873,13 @@ function createOriginCard(screenElement) {
       // 変えているので、3 段目だけが「一番美しい」。
       const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       icon.setAttribute('viewBox', '0 0 32 32');
-      icon.setAttribute('width', '30');
-      icon.setAttribute('height', '30');
       icon.setAttribute('aria-hidden', 'true');
       icon.innerHTML = popularityBadgeScene(currentLine.id, level, `pop${popularityBadgeUid++}`);
 
-      badge.append(icon, document.createTextNode(POPULARITY_BADGE_TEXT[level]));
+      badge.appendChild(icon);
 
-      firstPanel.insertBefore(badge, firstPanel.firstChild);
-      // 差し込んでから開かせる。読んでいる本文が急に下へ飛ぶのを避ける
+      card.appendChild(badge);
+      // 貼ってから浮かせる。いきなり足すと唐突に見える
       requestAnimationFrame(() => badge.classList.add('origin-badge--in'));
     });
   }
@@ -2165,6 +2160,10 @@ function createOriginCard(screenElement) {
 
     openedId = spot.id;
     count = spot.panels.length;
+
+    // 前のスポットのスタンプが残らないよう、貼り直す前にはがす
+    const staleBadge = card.querySelector('.origin-badge');
+    if (staleBadge) staleBadge.remove();
 
     const theme = THEMES[spot.theme];
     // 予習用の下敷きと同じ札。絵とテーマ名がここでも結びつく
