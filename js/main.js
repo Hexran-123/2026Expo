@@ -46,6 +46,37 @@ function isUnderground(spot) {
 }
 
 /*
+ * ロック中も届く通知（設計書 9.1）。
+ *
+ * 画面内の帯（showNotice）と振動は、乗車中は画面を開いている前提で
+ * 足りるとして見送っていたが、求められて足した。対応する端末にしか
+ * 出さない。iPhone は「ホーム画面に追加」を経ないと Notification API
+ * 自体が無いので、その場合は何もしない（動かないなら黙って隠す、9.3）。
+ * 蓄える係（sw.js）に registration.showNotification を頼むので、
+ * 蓄える係が居ない（https でない・登録に失敗した）ときも黙って何もしない。
+ */
+const NOTIFY_SUPPORTED = 'Notification' in window && 'serviceWorker' in navigator;
+
+/** 通知帯（showNotice）と同じ文面で、ロック中も届く通知を出す。1 スポットに一度だけ呼ぶ想定 */
+function notifyOS(notice) {
+  if (!NOTIFY_SUPPORTED || Notification.permission !== 'granted') return;
+  if (!navigator.serviceWorker.controller) return;
+
+  const side =
+    notice.side === UNDERGROUND ? UNDERGROUND_SHORT
+    : notice.side === '両' ? 'どちらの窓でも'
+    : `${notice.side}の窓`;
+
+  navigator.serviceWorker.ready
+    .then((registration) => registration.showNotification(`まもなく ${notice.spot.name}`, {
+      body: side,
+      tag: `spot-${notice.spot.id}`,
+      vibrate: [200],
+    }))
+    .catch(() => { /* 出せなくても、画面内の帯と振動は別に動いている */ });
+}
+
+/*
  * 絶景スポットのバッジの中に描く絵。
  * ひし形のバッジに収まるよう、中心を (0,0) とした 20×20 くらいの大きさで描く。
  */
@@ -2991,9 +3022,11 @@ function createTrip(route, spots, schedule, parts) {
     noticedId = notice ? notice.spot.id : null;
 
     // 振動は 1 スポットにつき一度だけ。短く 1 回（設計書 4.3）
+    // ロック中も届く通知（設計書 9.1）も、対応する端末・許可済みならここで一緒に出す
     if (notice && vibratedId !== notice.spot.id) {
       vibratedId = notice.spot.id;
       if (navigator.vibrate) navigator.vibrate(200);
+      notifyOS(notice);
     }
 
     /*
@@ -4172,6 +4205,8 @@ async function main() {
   const planError = document.getElementById('plan-error');
   const planSubmit = document.getElementById('plan-submit');
   const planChip = document.getElementById('plan-chip');
+  const planNotify = document.getElementById('plan-notify');
+  const planNotifyCheck = document.getElementById('plan-notify-check');
 
   for (const station of route.stations) {
     for (const select of [planBoard, planAlight]) {
@@ -4192,6 +4227,25 @@ async function main() {
     planError.hidden = !same;
   }
 
+  /*
+   * ロック中も届く通知のチェック欄を、いまの許可状況に合わせる。
+   *
+   * 対応しない端末（iPhone の Safari など）や、一度「許可しない」を
+   * 選んだあとは行ごと隠す。ねだり直しても Notification.requestPermission
+   * は同じ答えを黙って返すだけで、行が残っていると押せない飾りになる。
+   * すでに許可済みなら、チェックだけ入れて押せなくする（もう選ぶことがない）。
+   */
+  function refreshNotifyRow() {
+    if (!NOTIFY_SUPPORTED || Notification.permission === 'denied') {
+      planNotify.hidden = true;
+      return;
+    }
+    planNotify.hidden = false;
+    const granted = Notification.permission === 'granted';
+    planNotifyCheck.checked = granted;
+    planNotifyCheck.disabled = granted;
+  }
+
   /** 選び直すときに開く。初回（未設定）は閉じるボタンを出さない（スキップさせないため） */
   function openPlanSetup() {
     /*
@@ -4206,6 +4260,7 @@ async function main() {
     }
     planClose.hidden = !currentPlan;
     updatePlanValidity();
+    refreshNotifyRow();
     planSetup.hidden = false;
   }
 
@@ -4236,6 +4291,15 @@ async function main() {
 
   planSubmit.addEventListener('click', () => {
     if (planBoard.value === planAlight.value) return;
+    /*
+     * requestPermission はユーザー操作（クリック）の中でしか呼べない
+     * ブラウザが多い。「決定」のクリックそのものがその操作にあたる。
+     * すでに許可済み・拒否済みなら、ここに来たときは行ごと隠れているので
+     * 呼ばれない（disabled のチェックは checked のまま届く）。
+     */
+    if (NOTIFY_SUPPORTED && !planNotify.hidden && planNotifyCheck.checked && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     setPlan({
       board: planBoard.value,
       alight: planAlight.value,

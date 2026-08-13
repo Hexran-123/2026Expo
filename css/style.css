@@ -2304,6 +2304,22 @@ button.line-name:active {
   color: #B23A3A;
 }
 
+/* ロック中も届く通知（対応する端末だけに出す。上の HTML の注記を参照） */
+.plan-notify {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.plan-notify input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--ink);
+}
+
 .plan-submit {
   width: 100%;
   min-height: 46px;

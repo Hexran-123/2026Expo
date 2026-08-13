@@ -166,6 +166,16 @@
           <select id="plan-alight" aria-label="降りる駅"></select>
         </label>
         <p class="plan-error" id="plan-error" hidden>同じ駅は選べません。</p>
+        <!--
+          ロック中も届く通知（設計書 9.1）。対応する端末（主に Android）に
+          しか出さない。iPhone はホーム画面に追加しないと Notification API
+          自体が無いので、その場合は行ごと隠す（動かないなら黙って隠す、9.3）。
+          一度「許可しない」を選んだ端末でも隠す。ねだり直さない。
+        -->
+        <label class="plan-notify" id="plan-notify" hidden>
+          <input type="checkbox" id="plan-notify-check">
+          ロック中もスマホに通知する
+        </label>
         <button type="button" class="plan-submit" id="plan-submit">決定</button>
       </div>
     </section>
