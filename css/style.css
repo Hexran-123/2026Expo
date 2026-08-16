@@ -904,7 +904,9 @@ button.line-name:active {
 }
 
 .credits-list {
-  margin: 0;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .credits-list dt {
@@ -1623,11 +1625,21 @@ button.line-name:active {
   display: none;
 }
 
+/*
+ * コマごとに文字数が違う（55〜69字など）。すべてのコマは横並びの
+ * flexアイテムとして最長コマの高さに揃うので（.origin-panelsの
+ * align-items: stretch）、短いコマは箱の中で余白が余る。上寄せのまま
+ * だとその余白がフッターとの間に間延びして見えるので、中身を
+ * 縦方向にも中央へ寄せて、余白を上下に均等に逃がす。
+ */
 .origin-panel {
   flex: 0 0 100%;
   scroll-snap-align: center;
   padding: 0 18px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /*
@@ -1636,18 +1648,67 @@ button.line-name:active {
  */
 .origin-image {
   width: 100%;
-  height: 168px;
+  /*
+   * 高さを固定しない。箱を写真の実際の縦横比そのものに決めさせることで、
+   * トリミングも余白（レターボックス）も出さずに全体を見せる。
+   * コマの高さは横並びコマ全体の中でいちばん高いもの（.origin-panels の
+   * align-items: stretch）に揃うので、写真が縦長になるほどそのスポットの
+   * カード全体（文字コマも含む）が伸びる。成因カードの写真は横長のみを
+   * 想定しているので、上限は設けていない（縦長写真が来たら要見直し）。
+   */
+  height: auto;
   margin: 0 0 12px;
-  object-fit: cover;
   border-radius: 12px;
+  /* 読み込み中や、万一の端数のずれのための保険。通常は見えない */
   background: var(--panel-tint, #EDEAE2);
   display: block;
 }
 
+/*
+ * 文字数がコマの目安（60〜80字）を超える情報源（例：引用元の説明文を
+ * そのまま載せるコマ）もある。文をこちらで割ったり言い換えたりはせず、
+ * 10行（line-height 1.75 × 10 ＝ 262.5px）を超えたぶんはコマの中で
+ * 縦にスクロールさせる。10行に収まる文はそのまま全文表示、収まらない文
+ * だけが実質的にスクロール対象になる（overflow-y: auto は中身が枠に
+ * 収まっていれば何も起きない）。
+ *
+ * 262.5px は .origin-image の実測高さ（写真の実寸比率での表示高さ約
+ * 250.5px＋margin-bottom 12px、写真コマがあるスポットではそちらが
+ * コマ全体の高さを決めるため）に合わせてある。写真の無いスポットでは
+ * この根拠は無いが、6行では余白が余っていた（前は写真の高さの方が
+ * 常に高く、文字コマが中央寄せの空白で埋めていた）ので、上げても損はない。
+ *
+ * 横方向のコマ送り（.origin-panels、touch-action: pan-x）とジェスチャーが
+ * ぶつからないよう、縦方向だけ touch-action で明示的に許可する。
+ */
 .origin-text {
   margin: 0;
+  padding-right: 6px;
   font-size: 15px;
   line-height: 1.75;
+  max-height: 17.5em;
+  overflow-y: auto;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+/*
+ * 続きがあることに気づけるよう、コマ内スクロールのバーはホバー待ちにせず
+ * 常時薄く見せる（.origin-panelsの横送りバーは逆に隠している。あちらは
+ * 指の左右はらいだけで送るのが前提で、バーを見せる意味が無いため）。
+ */
+.origin-text::-webkit-scrollbar {
+  width: 4px;
+}
+
+.origin-text::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+}
+
+.origin-text::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /*
@@ -1751,12 +1812,18 @@ button.line-name:active {
 
    降車後に、画面いっぱいに出る。地図の上に重なる帯とは別に、
    ここだけは「読むための画面」として静かにしておく。
+
+   z-index を 1 枚デモの操作盤（js/simulate.js の .sim は 100）より
+   上げてあるのは、記録の中身を押せるようになったため（設計書 7.2）。
+   結びの一文は本文のいちばん下＝画面の左下に来るので、操作盤の下に
+   潜ると押せない。本物のサイトに操作盤は無いが、確認は demo/all.html で
+   するので、そこで押せないものは「動いていない」のと同じになる。
    ------------------------------------------------------------------ */
 
 .journal {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 105;
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -1871,16 +1938,31 @@ button.line-name:active {
   color: var(--ink-soft);
 }
 
-/* ③ 体験としての結び。箇条書きにはしない */
+/*
+ * ③ 体験としての結び。箇条書きにはしない。
+ *
+ * 押すと自分の言葉に書き換えられる（設計書 7.2）。ボタンではあるが、
+ * 読むための文であることを崩さないよう、枠も地色も持たせない。
+ */
 .journal-closing {
+  display: block;
+  width: 100%;
   margin: 26px 0 0;
-  padding-top: 20px;
+  padding: 20px 0 0;
+  border: none;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
   font-size: 17px;
   line-height: 1.85;
+  text-align: left;
+  cursor: pointer;
 }
 
 .journal-foot {
+  display: grid;
+  gap: 8px;
   padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -1896,6 +1978,375 @@ button.line-name:active {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/*
+ * 投稿（ADR-0004）。書いたものがあるときだけ出る。
+ *
+ * 保存より控えめな見た目にしてある。旅の記録は端末の中で完結するのが
+ * 既定で、外へ出すのはそのつど選んでもらうこと、という順序を、
+ * ボタンの重さでも表す。
+ */
+.journal-post {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------
+   乗客が書いたひとこと（設計書 7.2）
+
+   絶景を見て、写真ではなく文字で残したい人のための場所。
+   通過した絶景ごとに 1 行、写真に 1 行、旅全体に 1 つ。
+   どれも押すと書き換えられる。
+   ------------------------------------------------------------------ */
+
+.journal-notes {
+  margin: 18px 0 0;
+  display: grid;
+  gap: 2px;
+}
+
+.journal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 6px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.journal-note:hover { background: rgba(0, 0, 0, 0.035); }
+
+.journal-note-mark {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 5px;
+  background: var(--mark-color);
+  transform: rotate(45deg);
+}
+
+.journal-note-body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.journal-note-name {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.journal-note-text {
+  font-size: 15px;
+  line-height: 1.7;
+  /* 長いひとことも、行の途中で切らずに折り返す */
+  overflow-wrap: anywhere;
+}
+
+/* まだ書いていない行。誘い文句だと分かるように薄くする */
+.journal-note-text--empty {
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+/* 写真に添えた一言。写真の下に 1 行だけ置く */
+.journal-figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.journal-caption {
+  margin: 4px 0 0;
+}
+
+.journal-caption-edit {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.journal-caption-edit--empty {
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+/* まだ書いていないときの誘い文句（結びの一文は上で組んである） */
+.journal-closing--empty {
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+/*
+ * 累積人気の記章は、押せるボタンでもある（設計書 7.2）。
+ * 押すと、その絶景へのひとことを書ける。
+ *
+ * 見た目は記章のまま変えない ── あれは「読まれている度合い」を表す絵で、
+ * 押せることを枠や地色で主張させると、二つの意味が混ざる。
+ * 書いたあとだけ、右下に小さな印が付く。
+ *
+ * ここが .origin-badge の定義より下にあるのは、ブラウザが与える
+ * button の既定（枠・地色・内側の余白）を後から消すため。
+ */
+button.origin-badge {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  /*
+   * 押せるようにする。飾りだったころは pointer-events: none にしてあった
+   * （上の .origin-badge）── カードを下へはらって閉じる操作を、記章が
+   * 邪魔しないようにするためである。押す先になった以上これは外す。
+   * 代わりに、閉じる操作のほうで記章を避けている
+   * （js/main.js の pointerdown、'.origin-badge' を除いてある）。
+   */
+  pointer-events: auto;
+}
+
+/* 書く先が無いとき（旅の記録を読めなかったとき）は、ただの記章に戻る */
+button.origin-badge:disabled {
+  cursor: default;
+}
+
+.origin-badge--noted::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  background: var(--theme-industry);
+}
+
+/* ------------------------------------------------------------------
+   書いてもらう下敷き（設計書 7.2）
+
+   写真を撮った直後・成因カードの記章・旅の記録の三か所から、同じものが
+   出る。旅の記録（z-index 10）より上に出す必要があるので、地図の上に
+   重なる帯より高いところに置く。
+
+   **1 枚デモの操作盤より高くしてある**（js/simulate.js の .sim は
+   z-index 100）。書いてもらう下敷きは押し切るまで閉じられないので、
+   下に潜ると「やめる」も「残す」も押せなくなる。実際、40 で作ったときに
+   デモの操作盤が「やめる」の上に乗って押せなくなった（2026-08-16、
+   demo/all.html で確認）。
+   ------------------------------------------------------------------ */
+
+.memo {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* 下敷きの外を押したら、書かずに閉じる */
+.memo-veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 22, 20, 0.4);
+}
+
+.memo-sheet {
+  position: relative;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+}
+
+.memo-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.memo-hint {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.memo-input {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: var(--ink);
+  font-family: inherit;
+  /* 16px を下回ると、端末によっては開いた拍子に画面が寄る */
+  font-size: 16px;
+  line-height: 1.7;
+  /* 上限を持たない欄（結びの一文）は、伸びずにこの中でスクロールする */
+  max-height: 40vh;
+  resize: none;
+}
+
+.memo-count {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  /* 上限のない欄では空になる。行ごと消えると下のボタンが飛び跳ねる */
+  min-height: 1em;
+}
+
+.memo-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+
+.memo-cancel,
+.memo-keep {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.memo-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: none;
+  color: var(--ink);
+}
+
+.memo-keep {
+  border: none;
+  background: var(--theme-industry);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------
+   投稿の同意（ADR-0004）
+
+   書いたものを外へ出す前に、必ずここを通す。
+   条件そのものは ADR-0004「どこまでを持つか」の約束で、文言は
+   index.html にある。片方だけ直さないこと。
+   ------------------------------------------------------------------ */
+
+/* 書いてもらう下敷き（110）より上。理由はあちらの注記と同じ */
+.post {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.post-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.post-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.post-lead {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.post-terms {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.post-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.post-cancel,
+.post-send {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.post-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: none;
+  color: var(--ink);
+}
+
+.post-send {
+  border: none;
+  background: var(--theme-industry);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.post-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.post-state {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.post-state:empty {
+  display: none;
 }
 
 /* ------------------------------------------------------------------

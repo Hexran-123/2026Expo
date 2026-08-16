@@ -114,5 +114,13 @@
     }
   }
 
-  global.Popularity = { record, levelFor, STEPS, SPOT_ID };
+  /*
+   * 宛先と鍵は、投稿（js/journal.js の submit）でも使う。
+   *
+   * 二か所に書き写さないのは、上の「ここを空文字にすれば、この機能は
+   * まるごと止まる」を保つため。書き写すと、片方だけ残って通信が続く。
+   * js/journal.js は Popularity が読めていないときは投稿の口そのものを
+   * 出さない（設計書 9.3 の「無いなら出さない」）。
+   */
+  global.Popularity = { record, levelFor, STEPS, SPOT_ID, ENDPOINT, ANON_KEY, TIMEOUT_MS };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

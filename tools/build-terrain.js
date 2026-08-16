@@ -60,6 +60,32 @@ const route = JSON.parse(fs.readFileSync(ROUTE_PATH, 'utf8'));
 
 const { width, height, bounds } = grid;
 
+/*
+ * 線路沿いの標高（開始画面のカードに出す。路線ごとに違う値になる）。
+ *
+ * 格子全体の最高点・最低点は使わない。路線から離れた丘や谷まで拾ってしまい、
+ * 「この路線の標高」としては誇張になる。線路の各点でいちばん近いマスの、
+ * ならす前の生の値を拾う（ならすと山の高さが少しつぶれるため）。
+ *
+ * 海（値が null）は線路上には出ないはずだが、DEM の穴などで紛れても
+ * 無視できるよう、拾えた値だけで min/max を取る。
+ */
+function elevationAt(lat, lon) {
+  const col = Math.round(((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * (width - 1));
+  const row = Math.round(((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * (height - 1));
+  if (col < 0 || col >= width || row < 0 || row >= height) return null;
+  return grid.values[row * width + col];
+}
+
+const routeElevations = route.track
+  .map(([lat, lon]) => elevationAt(lat, lon))
+  .filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
+
+const elevationAlongRoute = routeElevations.length === 0 ? null : {
+  min: Math.floor(Math.min(...routeElevations)),
+  max: Math.ceil(Math.max(...routeElevations)),
+};
+
 // ---------------------------------------------------------------
 // 2. 地図の座標系を決める
 //
@@ -455,12 +481,14 @@ const output = {
   },
 
   bands,
+  elevationAlongRoute,
 };
 
 fs.writeFileSync(OUT_PATH, JSON.stringify(output), 'utf8');
 
 const sizeKb = fs.statSync(OUT_PATH).size / 1024;
-console.log(`\n地図の大きさ: ${MAP_WIDTH} × ${MAP_HEIGHT}`);
+console.log(`\n線路沿いの標高: ${elevationAlongRoute ? `${elevationAlongRoute.min}〜${elevationAlongRoute.max}m` : '（取れなかった）'}`);
+console.log(`地図の大きさ: ${MAP_WIDTH} × ${MAP_HEIGHT}`);
 console.log(`実際の範囲  : 東西 ${(spanEastWestMeters / 1000).toFixed(2)} km × 南北 ${(spanNorthSouthMeters / 1000).toFixed(2)} km`);
 console.log(`書き出し    : ${OUT_PATH}（${sizeKb.toFixed(0)} KB）`);
 

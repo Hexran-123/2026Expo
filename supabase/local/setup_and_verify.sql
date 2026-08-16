@@ -6,7 +6,7 @@
 --
 --   psql -U postgres -f supabase/local/setup_and_verify.sql
 --
--- 期待する出力は OK が 13 行。FAIL が 1 行でも出たら、そのまま公開しない。
+-- 期待する出力は OK が 21 行。FAIL が 1 行でも出たら、そのまま公開しない。
 --
 -- 日本語版 Windows では、この一手も要る（コマンドプロンプトの表示を UTF-8 にする）:
 --
@@ -44,10 +44,13 @@ set app.visitor_salt = 'local-test-salt';
 \echo '--- schema を流す ---'
 -- \ir はこのファイルからの相対。どのディレクトリで psql を起動しても通る。
 \ir ../schema/001_spot_opens.sql
+-- 投稿（ADR-0004）。visitor_key() を使うので 001 のあとに流すこと
+\ir ../schema/002_notes.sql
 
 -- 前回の試行を消しておく
 delete from spot_open_log;
 delete from spot_open_count;
+delete from note_submission;
 
 \echo ''
 \echo '--- ここから検査 ---'
@@ -265,6 +268,165 @@ begin
   end if;
 end $$;
 
+-- ===============================================================
+-- 投稿（ADR-0004、設計書 7.2）
+--
+-- 累積人気と違い、こちらは**他人の書いた文**を預かる。読めてはいけない
+-- ものが読めないことを、匿名の権限で実際に確かめる。
+-- ===============================================================
+
+-- 14. 匿名は、審査を通っていない投稿を読めない
+do $$
+declare n integer;
+begin
+  insert into note_submission (line_id, spot_id, kind, body, visitor)
+  values ('choshi', 'S01', 'spot', 'まだ審査を通っていない文', 'test-visitor');
+
+  set role anon;
+  select count(*) into n from note_submission;
+  reset role;
+
+  if n = 0 then
+    raise notice 'OK  : 匿名には未審査の投稿が見えない';
+  else
+    raise warning 'FAIL: 匿名に未審査の投稿が % 件見えている', n;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 14 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 15. 匿名は表へ直接書けない（書けるのは submit_notes の中だけ）
+do $$
+begin
+  set role anon;
+  insert into note_submission (line_id, kind, body)
+  values ('choshi', 'trip', '直接の書き込み');
+  reset role;
+  raise warning 'FAIL: 匿名が note_submission へ直接書けてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は note_submission へ直接書けない';
+end $$;
+
+-- 16. 匿名は submit_notes で送れる
+do $$
+declare n integer;
+begin
+  set role anon;
+  select submit_notes('choshi', '[
+    {"kind":"spot","spot_id":"S01","body":"醤油のにおいがした"},
+    {"kind":"trip","spot_id":null,"body":"きょうはよく晴れていた"}
+  ]'::jsonb) into n;
+  reset role;
+
+  if n = 2 then
+    raise notice 'OK  : 匿名は submit_notes で 2 件送れる';
+  else
+    raise warning 'FAIL: 送れた件数が 2 でなく % だった', n;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 匿名が submit_notes を呼べない（%）', sqlerrm;
+end $$;
+
+-- 17. 同じ文を二度送っても増えない
+do $$
+declare n integer;
+begin
+  set role anon;
+  select submit_notes('choshi', '[
+    {"kind":"spot","spot_id":"S01","body":"醤油のにおいがした"}
+  ]'::jsonb) into n;
+  reset role;
+
+  if n = 0 then
+    raise notice 'OK  : 同じ文を二度送っても増えない';
+  else
+    raise warning 'FAIL: 同じ文が % 件、二重に入った', n;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 17 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 18. 形の壊れたものは落として、残りは預かる
+--     （1 件の書き損じで、旅ぶんの言葉を失わせない）
+do $$
+declare n integer;
+begin
+  set role anon;
+  select submit_notes('choshi', '[
+    {"kind":"うそ","spot_id":"S01","body":"知らない種類"},
+    {"kind":"spot","spot_id":"S01","body":"   "},
+    {"kind":"spot","spot_id":"XX9","body":"知らない形の絶景id"}
+  ]'::jsonb) into n;
+  reset role;
+
+  if n = 1 then
+    raise notice 'OK  : 壊れた 2 件を落として、残る 1 件だけを預かる';
+  else
+    raise warning 'FAIL: 預かった件数が 1 でなく % だった', n;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 18 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 19. 審査を通したものは、匿名にも読める
+do $$
+declare n integer;
+begin
+  update note_submission set approved_at = now() where body = '醤油のにおいがした';
+
+  set role anon;
+  select count(*) into n from public_note;
+  reset role;
+
+  if n = 1 then
+    raise notice 'OK  : 審査を通した 1 件だけが public_note から読める';
+  else
+    raise warning 'FAIL: public_note から読めた件数が 1 でなく % だった', n;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 19 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 20. 匿名は自分で審査を通せない
+do $$
+begin
+  set role anon;
+  update note_submission set approved_at = now();
+  reset role;
+  raise warning 'FAIL: 匿名が自分の投稿を審査済みにできてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は approved_at を書き換えられない';
+end $$;
+
+-- 21. 匿名は visitor（IP のハッシュ）だけは読めない
+--
+--     19 番を通すために approved_at を匿名へ開けた（002_notes.sql の grant）。
+--     そのとき「ならば全部の列を開ければ早い」に流れないよう、渡していない
+--     列が本当に渡っていないことを、ここで押さえておく。
+do $$
+declare v text;
+begin
+  set role anon;
+  select visitor into v from note_submission limit 1;
+  reset role;
+  raise warning 'FAIL: 匿名が visitor（IP のハッシュ）を読めてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は visitor を読めない';
+end $$;
+
 \echo ''
 \echo '--- 集計の中身 ---'
 select spot_id, opens, updated_at from spot_open_count order by spot_id;
+
+\echo ''
+\echo '--- 預かった投稿（visitor は本番では 90 日で外れる） ---'
+select id, line_id, spot_id, kind, body, approved_at is not null as approved
+  from note_submission order by id;

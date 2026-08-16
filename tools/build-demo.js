@@ -67,6 +67,7 @@ const JS_FILES = [
   'js/onboard.js',
   'js/journal.js',
   'js/popularity.js',
+  'js/ambient.js',
   ...(USE_GPS && !SWITCHABLE ? [] : ['js/simulate.js']),
   'js/main.js',
 ];
@@ -121,6 +122,72 @@ for (const line of lines) {
   const file = `${line.dir}/terrain-hillshade.webp`;
   const raw = fs.readFileSync(path.join(ROOT, ...file.split('/')));
   assets[file] = `data:image/webp;base64,${raw.toString('base64')}`;
+}
+
+/*
+ * 環境音（js/ambient.js、設計書 8.3）は、**埋め込まずに置き場所だけ差し替える**。
+ *
+ * かつては 4 本の mp3 を base64 で埋め込んでいた。ところがこの 1 枚は
+ * 「サーバーなしで開ける」ために全部を 1 ファイルへ畳む作りなので、
+ * 埋め込んだ音は **開いた人が聞くと決める前に、まるごと落ちてくる**。
+ * demo/all.html 18.0MB のうち音声が 12.1MB（67%）を占めていた。本体
+ * （index.html）は既定オフの人に音源を取りに行かせないのに、1 枚デモだけが
+ * その逆を行っていた。
+ *
+ * かといって音を落としてしまうと、サーバー越しに配っている公開サイトでも
+ * 鳴らなくなる。そこで data URI ではなく **相対パス** を入れる。
+ * 下の setAttribute の差し替えは値を DEMO_ASSETS で引いて置き換えるだけなので、
+ * 引いた先が data URI でなくてもそのまま働く。
+ *
+ *   サーバー越し（localhost:8080・GitHub Pages）… ../audio/ から取れるので鳴る
+ *   file:// で直接開く                          … 取れないので鳴らない（9.3）
+ *
+ * どちらの場合も、鳴らすと決めた人が「決定」を押すまで 1 バイトも取りに
+ * 行かない（js/ambient.js の preload='none' と、鳴らすまで要素を作らない作り）。
+ *
+ * **`../audio/` は出力先から計算しないこと。** tools/check-demo-fresh.js は
+ * 一時ディレクトリへ同じ引数で作り直し、demo/*.html とバイト単位で突き合わせる。
+ * 出力先しだいで変わる文字列を入れると、作り直し忘れが無くても必ず食い違う。
+ * 1 枚デモは demo/ に置くと README で決めてあるので、その前提で固定する。
+ */
+const THEME_SOUND = {
+  '地形': 'audio/wind-terrain.mp3',
+  '気候と農業': 'audio/wind-field.mp3',
+  '産業と水運': 'audio/water-flow.mp3',
+  '海と空': 'audio/ocean-waves.mp3',
+};
+for (const file of Object.values(THEME_SOUND)) {
+  assets[file] = `../${file}`;
+}
+
+/*
+ * 成因カードのコマの絵（panel.image、設計書 6.2）。
+ *
+ * 環境音と違って枚数もファイル名も路線・スポットごとにまちまちなので、
+ * 固定の対応表は持たず、選んだ路線の spots.json を実際に読んで
+ * 参照されているぶんだけ埋め込む。js/main.js・js/ambient.js が
+ * setAttribute('src', …) で貼っている理由と同じ（上の Element.prototype
+ * の差し替えで拾えるようにするため）。
+ */
+const IMAGE_MIME = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+};
+for (const line of lines) {
+  const spotsFile = payload[`${line.dir}/spots.json`];
+  for (const spot of spotsFile.spots) {
+    for (const panel of spot.panels || []) {
+      const file = panel.image;
+      if (!file || assets[file]) continue;
+      const mime = IMAGE_MIME[path.extname(file).toLowerCase()];
+      if (!mime) {
+        console.error(`成因カードの絵が未対応の形式: ${file}`);
+        process.exit(1);
+      }
+      const raw = fs.readFileSync(path.join(ROOT, ...file.split('/')));
+      assets[file] = `data:${mime};base64,${raw.toString('base64')}`;
+    }
+  }
 }
 
 const dataJson = JSON.stringify(payload);
@@ -220,10 +287,14 @@ window.fetch = function (input, init) {
   return realFetch(input, init);
 };
 
-/* 陰影の絵は <image href> で貼られるので、属性を書く手前で data URI に差し替える */
+/*
+ * 陰影の絵は <image href> で、環境音は <audio> の src 属性で貼られるので、
+ * 属性を書く手前で差し替える（js/ambient.js の setAttribute('src', …)）。
+ * 絵は data URI に、環境音だけは相対パスに置き換わる（上の注記を参照）。
+ */
 const setAttr = Element.prototype.setAttribute;
 Element.prototype.setAttribute = function (name, value) {
-  if ((name === 'href' || name === 'xlink:href') && window.DEMO_ASSETS[value]) {
+  if ((name === 'href' || name === 'xlink:href' || name === 'src') && window.DEMO_ASSETS[value]) {
     value = window.DEMO_ASSETS[value];
   }
   return setAttr.call(this, name, value);
@@ -830,6 +901,6 @@ console.log(`  路線  : ${lines.map((l) => l.name).join('・')}${lines.length >
 console.log(
   `  動かし方: ${MODE_TEXT[INITIAL_MODE]}${SWITCHABLE ? ' ／ パネルで切り替えられる' : ''}`
 );
-console.log(`  陰影  : ${kb(assetsJson.length)}`);
+console.log(`  陰影+画像: ${kb(assetsJson.length)}`);
 console.log(`  データ: ${kb(dataJson.length)}`);
 console.log(`  CSS+JS: ${kb(css.length + Object.values(scripts).reduce((n, s) => n + s.length, 0))}`);

@@ -219,6 +219,8 @@ const preview = {
     stationCount: route.stations.length,
     from: route.stations[0].name,
     to: route.stations[route.stations.length - 1].name,
+    // terrain.json の elevationAlongRoute をそのまま運ぶ（js/main.js の pickLine が開始画面のカードに出す）
+    elevation: terrain.elevationAlongRoute || null,
   },
 };
 

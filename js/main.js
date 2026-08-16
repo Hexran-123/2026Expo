@@ -1841,7 +1841,28 @@ function createTimetable(schedule) {
 // 1 スポット 400 字ほどを 5〜6 コマに分け、めくって読む。
 // ------------------------------------------------------------------
 
-function createOriginCard(screenElement) {
+/**
+ * ひとことに書ける字数（設計書 7.2）。
+ *
+ * 持ち主は js/journal.js。書いたものをしまうのがあちらなので、
+ * 上限もあちらが決める。読めなかったときは書いたものを残す先そのものが
+ * 無いのでここへは来ないが、それでも落ちないように控えを置いてある。
+ */
+function noteLimit(kind) {
+  if (typeof Journal === 'undefined') return kind === 'photo' ? 15 : 60;
+  return kind === 'photo' ? Journal.PHOTO_NOTE_LIMIT : Journal.SPOT_NOTE_LIMIT;
+}
+
+/**
+ * @param {{
+ *   noteFor?: (spotId: string) => string,
+ *   onNote?: (spotId: string, text: string) => void,
+ *   askText?: (ask: object) => Promise<string|null>,
+ * }} hooks
+ *   記章を押したときに、その絶景へのひとことを書いてもらうための口
+ *   （設計書 7.2）。無くても成因カードは読める。
+ */
+function createOriginCard(screenElement, hooks = {}) {
   const card = document.getElementById('origin');
   const themeElement = document.getElementById('origin-theme');
   const nameElement = document.getElementById('origin-name');
@@ -1917,8 +1938,10 @@ function createOriginCard(screenElement) {
       // まだ 5 に届いていない。数が乏しいうちは何も言わない
       if (level === 0) return;
 
-      const badge = document.createElement('div');
+      const badge = document.createElement('button');
+      badge.type = 'button';
       badge.className = 'origin-badge';
+      attachMemo(badge, spot);
 
       // 段が上がるほど情景が進む三段。路線ごとに物語が違う
       // （popularityBadgeScene 参照）。灯りの強さではなく情景そのものを
@@ -1933,6 +1956,48 @@ function createOriginCard(screenElement) {
       card.appendChild(badge);
       // 貼ってから浮かせる。いきなり足すと唐突に見える
       requestAnimationFrame(() => badge.classList.add('origin-badge--in'));
+    });
+  }
+
+  /*
+   * 記章を押すと、その絶景へのひとことを書ける（設計書 7.2）。
+   *
+   * 記章そのものを入口にしたのは、通り過ぎた絶景の「スタンプを押す」
+   * という感覚に合わせたいという指摘による（2026-08-16）。
+   *
+   * **ここだけを入口にしないこと。** 記章はサーバーに届いて、かつ 5 回
+   * 以上読まれている絶景にしか出ない（showPopularity）。電波の弱い区間や
+   * 公開直後・現地展示では出ないほうが普通なので、ここで書けなかったぶんは
+   * 旅の記録の側から書き足せるようにしてある（js/journal.js の renderNotes）。
+   */
+  function attachMemo(badge, spot) {
+    if (typeof hooks.askText !== 'function' || typeof hooks.onNote !== 'function') {
+      // 書く先が無い。記章は今までどおり、読まれている度合いを見せるだけ
+      badge.disabled = true;
+      return;
+    }
+
+    /** 書いたものがあるかどうかを、記章の見た目と読み上げに映す */
+    function reflect() {
+      const written = hooks.noteFor ? hooks.noteFor(spot.id) : '';
+      badge.classList.toggle('origin-badge--noted', written !== '');
+      badge.setAttribute(
+        'aria-label',
+        written ? `書いたひとことを直す（${written}）` : 'この絶景にひとことを残す'
+      );
+    }
+    reflect();
+
+    badge.addEventListener('click', async () => {
+      const written = await hooks.askText({
+        title: spot.name,
+        hint: 'この絶景に、ひとこと',
+        value: hooks.noteFor ? hooks.noteFor(spot.id) : '',
+        limit: noteLimit('spot'),
+      });
+      if (written === null) return;
+      hooks.onNote(spot.id, written);
+      reflect();
     });
   }
 
@@ -2218,12 +2283,17 @@ function createOriginCard(screenElement) {
       if (panel.image) {
         const image = document.createElement('img');
         image.className = 'origin-image';
-        image.src = panel.image;
         image.alt = '';
         image.loading = 'eager';
         image.style.setProperty('--panel-tint', theme.color + '22');
         // 読めなかった絵は、枠だけ残さず消す
         image.addEventListener('error', () => image.remove());
+        /*
+         * .src ではなく setAttribute('src', …) にしてあるのは、js/ambient.js の
+         * 音声と同じ理由（tools/build-demo.js が Element.prototype.setAttribute の
+         * 差し替えで、1 枚デモに埋め込んだコマの絵へ付け替えられるようにするため）。
+         */
+        image.setAttribute('src', panel.image);
         item.appendChild(image);
       }
 
@@ -2262,8 +2332,12 @@ function createOriginCard(screenElement) {
      * 閉じる操作を拾わない。ここで setPointerCapture すると、以降の
      * pointerup がボタンではなくこの card 自身に向くようになり、
      * ボタンの click が発火しなくなる（実機確認で見つかった不具合）。
+     *
+     * 記章（.origin-badge）も同じ理由で外す。あれはカードの直下に
+     * 置いてあるので、外し忘れると押しても何も起きない
+     * ── ひとことを書く入口がそこなので、黙って効かなくなる（設計書 7.2）。
      */
-    if (event.target.closest('.origin-panels, .origin-foot')) return;
+    if (event.target.closest('.origin-panels, .origin-foot, .origin-badge')) return;
     grabbedAt = event.clientY;
     pulled = 0;
     card.style.transition = 'none';
@@ -2301,7 +2375,8 @@ function preloadPanelImages(spots) {
     for (const panel of spot.panels || []) {
       if (!panel.image) continue;
       const image = new Image();
-      image.src = panel.image;
+      // setAttribute にする理由は createOriginCard の同様の箇所を参照
+      image.setAttribute('src', panel.image);
     }
   }
 }
@@ -3096,6 +3171,27 @@ function createTrip(route, spots, schedule, parts) {
     onRecord({ mode, passed: passedLog, direction });
   }
 
+  /*
+   * 通過した絶景への、乗客のひとこと（設計書 7.2）。
+   *
+   * 通過の記録と同じ行に持つ。別の置き場にすると、「どの日のどの絶景に
+   * 書いたのか」を突き合わせる仕掛けが要る。ここに混ぜておけば、
+   * 旅の記録へも保存へも（js/journal.js の persist）そのまま流れていく。
+   */
+  function noteFor(spotId) {
+    const entry = passedLog.find((item) => item.id === spotId);
+    return entry && entry.note ? entry.note : '';
+  }
+
+  function setNote(spotId, text) {
+    const entry = passedLog.find((item) => item.id === spotId);
+    // 通過していない絶景には書けない（記章はそもそも通過後にしか出ない）
+    if (!entry) return;
+    if (text) entry.note = text;
+    else delete entry.note;
+    onRecord({ mode, passed: passedLog, direction });
+  }
+
   // ---- 位置情報が来るたび ----
 
   function onPosition(coords, timestamp) {
@@ -3341,6 +3437,9 @@ function createTrip(route, spots, schedule, parts) {
     mode: () => mode,
     passedLog: () => passedLog,
     isPassed: (id) => passed.has(id),
+    /** 記章から書くひとこと（設計書 7.2）。成因カードがここへ渡してくる */
+    noteFor,
+    setNote,
     /**
      * 旅を終えた扱いを解く。
      *
@@ -3351,14 +3450,108 @@ function createTrip(route, spots, schedule, parts) {
   };
 }
 
+/**
+ * 文を書いてもらう小さな下敷き（設計書 7.2）。
+ *
+ * 出る場所は三つある。写真を撮った直後の一言、成因カードの記章を押した
+ * とき、旅の記録で書き直すとき。どれも同じ形にそろえてあるので、
+ * 一度おぼえれば同じ操作で書ける。
+ *
+ * **書くことは、どこでも「したければする」ことにしてある。**「やめる」で
+ * 閉じても、写真も通過の記録も何も失われない。絶景を見た直後に文字を
+ * 書かせる作りにすると、車窓を見るほうが留守になる。
+ *
+ * @returns {(ask: {title:string, hint:string, value:string, limit:number|null})
+ *            => Promise<string|null>}
+ *   「残す」で書かれた文（空文字なら消したということ）、「やめる」で null。
+ */
+function createTextSheet() {
+  const screen = document.getElementById('memo');
+  const titleElement = document.getElementById('memo-title');
+  const hintElement = document.getElementById('memo-hint');
+  const input = document.getElementById('memo-input');
+  const countElement = document.getElementById('memo-count');
+  const keepButton = document.getElementById('memo-keep');
+
+  /** いま待っている約束の返し口。開いていなければ null */
+  let settle = null;
+  let limit = null;
+
+  function finish(value) {
+    if (settle === null) return;
+    const done = settle;
+    settle = null;
+    screen.hidden = true;
+    done(value);
+  }
+
+  /*
+   * 字数は「文字の数」で数える（Array.from）。
+   *
+   * textarea の maxlength は UTF-16 の単位で数えるので、絵文字や一部の
+   * 漢字が 2 字ぶんとして弾かれる。15 字しか書けない欄でそれが起きると、
+   * 見えている字数と残りが食い違う。
+   */
+  function fit(text) {
+    if (limit === null) return text;
+    const characters = Array.from(text);
+    return characters.length <= limit ? text : characters.slice(0, limit).join('');
+  }
+
+  function updateCount() {
+    if (limit === null) {
+      // 上限を持たない欄（結びの一文）。数えるものが無い
+      countElement.textContent = '';
+      return;
+    }
+    countElement.textContent = `あと ${limit - Array.from(input.value).length} 字`;
+  }
+
+  input.addEventListener('input', () => {
+    const fitted = fit(input.value);
+    if (fitted !== input.value) input.value = fitted;
+    updateCount();
+  });
+
+  keepButton.addEventListener('click', () => finish(fit(input.value).trim()));
+  document.getElementById('memo-cancel').addEventListener('click', () => finish(null));
+  document.getElementById('memo-veil').addEventListener('click', () => finish(null));
+
+  return function ask({ title, hint, value, limit: max }) {
+    // 前のものが開いたままなら、書かなかったことにして閉じる
+    finish(null);
+
+    limit = typeof max === 'number' ? max : null;
+    titleElement.textContent = title;
+    hintElement.textContent = hint || '';
+    hintElement.hidden = !hint;
+    input.value = fit(value || '');
+    // 上限のない欄は、はじめから広く見せる（結びの一文はここに書く）
+    input.rows = limit === null ? 6 : 3;
+    updateCount();
+
+    screen.hidden = false;
+    // hidden を外した直後だと、端末によっては入力欄に入れない
+    requestAnimationFrame(() => input.focus());
+
+    return new Promise((resolve) => { settle = resolve; });
+  };
+}
+
 /** 旅の記録を組み立てる（中身は js/journal.js） */
-function createJournal(spots, closings, route) {
+function createJournal(spots, closings, route, askText) {
   return Journal.create(spots, THEMES, closings || {}, {
     from: route.stations[0].name,
     to: route.stations[route.stations.length - 1].name,
     line: currentLine.name,
     lineId: currentLine.id,
-  });
+    /*
+     * 中身が本物かどうか。投稿の口を出すかの判断に使う（js/journal.js）。
+     * 作り物の絶景に寄せられた言葉を本物と混ぜないため、累積人気を
+     * 数えないのと同じ条件にそろえてある（CLAUDE.md）。
+     */
+    dataSource: currentLine.dataSource,
+  }, askText);
 }
 
 /**
@@ -3374,6 +3567,7 @@ function silentJournal() {
     update() {},
     show() {},
     savePhoto: () => Promise.resolve(),
+    setPhotoNote: () => Promise.resolve(),
     onClose() {},
     last: () => null,
   };
@@ -3384,8 +3578,12 @@ function silentJournal() {
  *
  * capture を付けた file input なので、押すと端末のカメラがそのまま開く。
  * 撮った写真は、そのとき直近だった絶景スポットと一緒にしまう。
+ *
+ * しまったあと、一言を添えるかどうかを聞く（設計書 7.2）。聞くのは
+ * カメラから戻ってきたこの瞬間だけで、書かずに閉じても写真は残る。
+ * あとから旅の記録でも書けるので、揺れる車内で書けなければ後回しにできる。
  */
-function setUpPhotoButton(journal, passedLog) {
+function setUpPhotoButton(journal, passedLog, askText) {
   const input = document.getElementById('shoot-input');
 
   input.addEventListener('change', async () => {
@@ -3396,10 +3594,19 @@ function setUpPhotoButton(journal, passedLog) {
     const log = passedLog();
     const near = log.length > 0 ? log[log.length - 1].name : null;
 
-    await journal.savePhoto(file, near).catch(() => {
-      // しまえなくても、写真は端末のカメラロールに残っている
-    });
+    const id = await journal.savePhoto(file, near).catch(() => null);
     input.value = '';
+
+    // しまえなかった。写真は端末のカメラロールに残っているが、添える先が無い
+    if (id === null || id === undefined) return;
+
+    const note = await askText({
+      title: '写真に一言',
+      hint: near ? `${near}のあたりで撮りました` : '',
+      value: '',
+      limit: Journal.PHOTO_NOTE_LIMIT,
+    });
+    if (note) journal.setPhotoNote(id, note);
   });
 }
 
@@ -4293,11 +4500,21 @@ async function main() {
   ensureScript('js/popularity.js', () => typeof Popularity !== 'undefined').catch(() => {
     // 読めなければ、のべ人数の記章が出ないだけ（設計書 9.3）
   });
-  ensureScript('js/ambient.js', () => typeof Ambient !== 'undefined')
-    .then(() => Ambient.setEnabled(loadSoundPref()))
-    .catch(() => {
-      // 読めなければ、環境音の機能そのものが出ないだけ（設計書 9.3）
-    });
+  /*
+   * 環境音（設計書 8.3）は、前回「流す」を選んだ人にだけ読む。
+   *
+   * 既定はオフなので、初めて開いた人・音は要らないと決めた人は、この 1 本も
+   * 音源（4 本で 9MB）も取りに行かない。オフのまま乗る人に、鳴らさない音の
+   * ぶんの通信をさせない。オフの人があとでチェックを入れたときは、
+   * 乗車計画パネル側（planSoundCheck の change）でそこから読みはじめる。
+   */
+  if (loadSoundPref()) {
+    ensureScript('js/ambient.js', () => typeof Ambient !== 'undefined')
+      .then(() => Ambient.setEnabled(true))
+      .catch(() => {
+        // 読めなければ、環境音の機能そのものが出ないだけ（設計書 9.3）
+      });
+  }
 
   // 題・路線名・区間・出典の帯。ふだんは畳んでおく
   const chrome = createChrome();
@@ -4337,7 +4554,22 @@ async function main() {
    * バッジを押したときに出るものは、通過したかどうかで変わる（設計書 6.2）。
    * まだなら予習用の下敷き、通過したあとなら成因カード。
    */
-  const originCard = createOriginCard(document.querySelector('.screen'));
+  /*
+   * 書いてもらう下敷き（設計書 7.2）。成因カードの記章・撮影の直後・
+   * 旅の記録の三か所から、同じものを出す。
+   */
+  const askText = createTextSheet();
+
+  const originCard = createOriginCard(document.querySelector('.screen'), {
+    askText,
+    /*
+     * ひとことの持ち主は車上モード（通過の記録と同じ行に入る）。
+     * trip はこの少しあとで組み立てるので、そのつど見に行く。
+     * 記章が出るのは絶景を通過したあとなので、押せる時点では必ずある。
+     */
+    noteFor: (spotId) => (trip ? trip.noteFor(spotId) : ''),
+    onNote: (spotId, text) => { if (trip) trip.setNote(spotId, text); },
+  });
   let trip = null;
 
   function openForSpot(spotElement) {
@@ -4473,6 +4705,24 @@ async function main() {
   const planNotifyCheck = document.getElementById('plan-notify-check');
   const planSoundCheck = document.getElementById('plan-sound-check');
 
+  /*
+   * オフで開いた人が、ここでチェックを入れた瞬間に js/ambient.js を読みはじめる。
+   *
+   * 「決定」を押してから読んだのでは間に合わない。iOS Safari は、ユーザー操作の
+   * 中で同期的に呼ばれた play() でないと音を許さない（ambient.js の unlock）。
+   * 読み込みを待ってから unlock() を呼ぶと、その時点はもうクリックの外になる。
+   * チェックと「決定」のあいだの数百ミリ秒で 5KB を読み終える見込みで、
+   * 間に合わなければこの旅は鳴らないだけ（次に開くと既定で読む）。
+   */
+  if (planSoundCheck) {
+    planSoundCheck.addEventListener('change', () => {
+      if (!planSoundCheck.checked) return;
+      ensureScript('js/ambient.js', () => typeof Ambient !== 'undefined').catch(() => {
+        // 読めなければ、環境音が鳴らないだけ（設計書 9.3）
+      });
+    });
+  }
+
   for (const station of route.stations) {
     for (const select of [planBoard, planAlight]) {
       const option = document.createElement('option');
@@ -4527,8 +4777,8 @@ async function main() {
     updatePlanValidity();
     refreshNotifyRow();
     /*
-     * 環境音の切り替えは、まだ index.html に無いことがある。音源を選んでいる
-     * 途中で（CLAUDE.md）、こちらの JS だけが先に入った状態がありうるため。
+     * 環境音の切り替えは、index.html に無いことがある。こちらの JS だけが
+     * 先に入った状態や、環境音を外した版を作った場合がありうるため。
      *
      * 無いまま代入すると、ここで main() ごと落ちる。地図も位置情報も
      * 発車待ちも出なくなる——環境音は無くても成り立つ飾りなのに、
@@ -4698,7 +4948,7 @@ async function main() {
 
   // 地図が出た時点で読み始めてある。ここまでに届いていれば待ち時間は無い
   const journal = await journalReady
-    .then(() => createJournal(spotsFile.spots, spotsFile.closings, route))
+    .then(() => createJournal(spotsFile.spots, spotsFile.closings, route, askText))
     .catch(() => silentJournal());
 
   trip = createTrip(route, spotsFile.spots, schedule, {
@@ -4727,7 +4977,7 @@ async function main() {
   // 発車待ちのあいだに、成因カードの絵を先読みしておく（設計書 6.2）
   stationPanel.onArrive(() => preloadPanelImages(spotsFile.spots));
 
-  setUpPhotoButton(journal, () => trip.passedLog());
+  setUpPhotoButton(journal, () => trip.passedLog(), askText);
 
   /*
    * ふだんは端末の位置情報を見張る。?demo=1 のときだけ、

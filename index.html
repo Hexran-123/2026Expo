@@ -176,6 +176,14 @@
           <input type="checkbox" id="plan-notify-check">
           ロック中もスマホに通知する
         </label>
+        <!--
+          スポットのテーマに合わせた環境音（風・波・水音など）。既定はオフ。
+          実車内で音が出るため、イヤホンでの利用を添えて案内する（js/ambient.js）。
+        -->
+        <label class="plan-notify" id="plan-sound">
+          <input type="checkbox" id="plan-sound-check">
+          近づいたら環境音を流す（イヤホン推奨）
+        </label>
         <button type="button" class="plan-submit" id="plan-submit">決定</button>
       </div>
     </section>
@@ -341,6 +349,21 @@
         <div class="credits-card">
           <button type="button" class="plan-close" id="credits-close" aria-label="閉じる">×</button>
           <h2 class="credits-title" id="credits-title">地図データの出典</h2>
+
+          <!--
+            標高の色分け（開始画面の路線選択にも同じものがある。js/main.js の
+            pickLine）。乗車中に「ⓘ→出典」でも読めるようにする。
+            色の目盛りは両路線で共通の絶対値。この路線の実際の標高（線路沿いの
+            実測、tools/build-terrain.js）は数字で別途添える。
+          -->
+          <div class="line-legend">
+            <p class="line-legend-title">標高（この路線 <span id="credits-elevation-range"></span> ・ 色は両路線で共通の絶対値）</p>
+            <div class="line-legend-bar" id="credits-elevation-bar"></div>
+            <div class="line-legend-scale">
+              <span>0 m</span><span>8</span><span>16</span><span>24</span><span>32</span><span>45 m 以上</span>
+            </div>
+          </div>
+
           <dl class="credits-list">
             <dt>線路・駅・工場・農地・海岸線</dt>
             <dd>© OpenStreetMap contributors（ODbL）</dd>
@@ -352,6 +375,22 @@
             <dd>気象庁</dd>
             <dt>時刻表</dt>
             <dd>銚子電気鉄道 公式サイト</dd>
+            <dt>環境音 ─ 地形（風）</dt>
+            <dd>“wind_forest_08_strong_l_02” by teadrinker（<a
+              href="https://freesound.org/people/teadrinker/sounds/403050/"
+              target="_blank" rel="noopener">Freesound</a>／CC0）</dd>
+            <dt>環境音 ─ 気候と農業（葉音）</dt>
+            <dd>“forest_ambience_steady_breeze…loop” by johanwestling（<a
+              href="https://freesound.org/people/johanwestling/sounds/460178/"
+              target="_blank" rel="noopener">Freesound</a>／CC0）</dd>
+            <dt>環境音 ─ 産業と水運（水音）</dt>
+            <dd>“River Flow Loop” by EminYILDIRIM（<a
+              href="https://freesound.org/people/EminYILDIRIM/sounds/608141/"
+              target="_blank" rel="noopener">Freesound</a>／CC0）</dd>
+            <dt>環境音 ─ 海と空（波音）</dt>
+            <dd>“oceanwaves-10” by Rmutt（<a
+              href="https://freesound.org/people/Rmutt/sounds/156598/"
+              target="_blank" rel="noopener">Freesound</a>／CC0）</dd>
           </dl>
         </div>
       </section>
@@ -521,16 +560,87 @@
       <!-- ① 路線のタイムライン。通過したスポットをテーマ色で並べる -->
       <div class="journal-line" id="journal-line"></div>
 
+      <!--
+        通過した絶景ごとの、乗客が書いたひとこと（設計書 7.2）。
+        押すと書き足せる・書き直せる。中身は js/journal.js が作る。
+      -->
+      <div class="journal-notes" id="journal-notes"></div>
+
       <!-- ② 撮った写真 -->
       <div class="journal-shots" id="journal-shots"></div>
 
-      <!-- ③ 体験としての結び -->
-      <p class="journal-closing" id="journal-closing"></p>
+      <!--
+        ③ 体験としての結び。
+
+        最初はテーマから選ばれた一文が入っていて、押すと自分の言葉に
+        書き換えられる（設計書 7.2）。書き換えたことは端末に残るので、
+        開き直しても自分の文のままになる。
+      -->
+      <button type="button" class="journal-closing" id="journal-closing"></button>
     </div>
 
     <footer class="journal-foot">
       <button type="button" class="journal-save" id="journal-save">画像として保存</button>
+      <!--
+        書いた文字をサーバーへ送る（ADR-0004 の投稿）。
+        押しても、すぐには送らない。同意の画面（#post）を必ず挟む。
+      -->
+      <button type="button" class="journal-post" id="journal-post" hidden>書いた文字をみんなに送る</button>
     </footer>
+  </section>
+
+  <!--
+    書いてもらう小さな下敷き（設計書 7.2）。
+
+    使う場所は三つ ── 写真を撮った直後の一言、成因カードの記章を押したとき、
+    旅の記録で書き直すとき。どれも同じ形にそろえてあるので、
+    一度おぼえれば同じ操作で書ける。中身は js/main.js が入れ替える。
+  -->
+  <section class="memo" id="memo" hidden aria-labelledby="memo-title">
+    <div class="memo-veil" id="memo-veil"></div>
+    <div class="memo-sheet" role="dialog" aria-modal="true" aria-labelledby="memo-title">
+      <h2 class="memo-title" id="memo-title"></h2>
+      <p class="memo-hint" id="memo-hint"></p>
+      <textarea class="memo-input" id="memo-input" rows="3"></textarea>
+      <p class="memo-count" id="memo-count" aria-live="polite"></p>
+      <div class="memo-buttons">
+        <button type="button" class="memo-cancel" id="memo-cancel">やめる</button>
+        <button type="button" class="memo-keep" id="memo-keep">残す</button>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    投稿の同意（ADR-0004）。
+
+    送るのは**利用者が書いた文字だけ**で、写真は送らない。
+    ここを通らないかぎり、書いたものは端末から出ない。
+    この画面の文言は ADR-0004「どこまでを持つか」の約束そのものなので、
+    条件を変えるときは、あちらの記述も一緒に直すこと。
+  -->
+  <section class="post" id="post" hidden aria-labelledby="post-title">
+    <div class="memo-veil" id="post-veil"></div>
+    <div class="post-sheet" role="dialog" aria-modal="true" aria-labelledby="post-title">
+      <h2 class="post-title" id="post-title">書いた文字を、みんなに送りますか</h2>
+
+      <p class="post-lead" id="post-lead"></p>
+
+      <ul class="post-terms">
+        <li><b>送るのは、あなたが書いた文字だけです。</b>写真は端末から出ません。</li>
+        <li>名前は受け取りません。誰が書いたかは分かりません。</li>
+        <li>すぐには公開されません。制作者が目で見て通したものだけが表に出ます。</li>
+        <li><b>2027年4月30日に、預かったものはすべて消します。</b></li>
+        <li>自分で書いたものだけを送ってください。人が特定できることは書かないでください。</li>
+        <li>16歳未満のかたは、保護者のかたに聞いてから送ってください。</li>
+      </ul>
+
+      <div class="post-buttons">
+        <button type="button" class="post-cancel" id="post-cancel">やめる</button>
+        <button type="button" class="post-send" id="post-send">送る</button>
+      </div>
+
+      <p class="post-state" id="post-state" role="status"></p>
+    </div>
   </section>
 
   <!--
