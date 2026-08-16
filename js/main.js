@@ -208,6 +208,38 @@ const LABEL_ZOOM = 1.6;
 const HERE_ZOOM = 4;
 
 /*
+ * 現在位置の印を、位置情報の合間もなめらかに動かすための値（設計書 4.3）。
+ *
+ * 実機の位置情報は 1 秒に 1 回しか届かない。届いた地点をそのまま描くと、
+ * 1 秒止まっては飛ぶ、を繰り返す（実機での試乗で判明。走行シミュレーターは
+ * 0.2 秒ごとに渡すので、手元では気づけなかった。js/simulate.js の TICK_MS）。
+ *
+ * そこで「描く位置」を実測とは別に持ち、直前の速さから割り出した
+ * 「いまごろここだろう」へ向けて、毎コマ少しずつ寄せる。合間が埋まって
+ * 動きがつながり、同時に位置情報のばらつき（停まっていても 10m ほど揺れる）も
+ * ならされる。
+ */
+
+/**
+ * 寄せ方の時定数（ミリ秒）。
+ *
+ * 大きいほどなめらかになり、そのぶん遅れる。380ms は、時速 60km で
+ * 約 6m の遅れにあたる。位置情報そのものの誤差（5〜10m）より小さいので、
+ * 実際の位置より遅れて見えることはない。
+ */
+const HERE_SMOOTH_MS = 380;
+
+/**
+ * これ以上離れていたら、寄せずに飛ばす（m）。
+ * トンネルを抜けて電波が戻ったときなど、何百 m もずれていることがある。
+ * そこを寄せてしまうと、線路の上を延々と滑っていく絵になる。
+ */
+const HERE_SNAP_METERS = 120;
+
+/** 寄せ終わったとみなす差（m）。これを下回ったら、毎コマの描き直しをやめる */
+const HERE_SETTLED_METERS = 0.05;
+
+/*
  * 駅にいるとみなす半径（m）。設計書 3.2。
  *
  * 市販の端末の位置情報は 5〜15m ずれ、駅前の建物のあいだではさらに悪くなる。
@@ -2317,7 +2349,7 @@ function createWakeLock() {
 }
 
 function createTrip(route, spots, schedule, parts) {
-  const { stationPanel, spotCard, originCard, view, project, points, spotElements, onRecord, getPlan, setPlan, getK } = parts;
+  const { stationPanel, spotCard, originCard, view, project, points, spotElements, onRecord, getPlan, setPlan, getK, motion } = parts;
   const track = Onboard.prepareTrack(route);
   const wakeLock = createWakeLock();
 
@@ -2435,6 +2467,24 @@ function createTrip(route, spots, schedule, parts) {
    * 読んで、下りが上りに裏返る。
    */
   let lastRealAlong = null;
+  /**
+   * 画面に描いている地点。実測の along とは別に持つ（設計書 4.3）。
+   *
+   * along は「位置情報が言っている地点」で、1 秒に 1 回しか動かない。
+   * こちらは毎コマ動かす。along をそのまま描くと 1 秒ごとに飛ぶので、
+   * その合間を埋めるためのもの。null なら、まだ一度も描いていない。
+   */
+  let shownAlong = null;
+  /**
+   * 推し量りの起点。実測が届くたびに置き直す。
+   *
+   * along・fixedAt を使わないのは、あちらが onStale の推定でも書き換わるため。
+   * 推定を起点にして更に推定すると、ずれが積み重なる。
+   */
+  let anchorAlong = null;
+  let anchorAt = 0;
+  /** 起点での速さ（m/s、符号なし）。進む向きは direction が持つ */
+  let anchorSpeed = 0;
   /** 前回この関数を通ったときの地点。スポットを跨いだかどうかを見るのに使う */
   let lastUpdateAlong = null;
   /** 車上モードに入ったときの地点。降りる駅でまとめて拾う範囲を決めるのに使う */
@@ -2545,6 +2595,152 @@ function createTrip(route, spots, schedule, parts) {
     noticeBar.hidden = false;
   }
 
+  /* ---- 現在位置の印を、位置情報の合間もなめらかに動かす（設計書 4.3）----
+   *
+   * 位置情報が届くのは 1 秒に 1 回。その 1 回をそのまま描くと、印は
+   * 1 秒止まってから飛ぶ。ここでやるのは次の 3 つ。
+   *
+   * 1. 直前の速さから「いまごろここだろう」を割り出す（predictAlong）
+   * 2. そこへ向けて、描く位置を毎コマ少しずつ寄せる（stepShown）
+   * 3. 動かしているあいだは地図を軽いモードにする（.screen--moving）
+   *
+   * 2 の「少しずつ寄せる」が、位置情報のばらつきをならす役目も兼ねる。
+   * 揺れた 1 回にすぐ飛びつかず、何コマかかけて寄るため。
+   */
+
+  const trackLength = track.length ? track[track.length - 1].along : 0;
+
+  /** 実測が届いたときに、推し量りの起点を置き直す */
+  function setAnchor(nextAlong, now) {
+    /*
+     * 速さは、端末が言う値をまず信じる。持っていない端末もあるので
+     * （coords.speed は null になりうる）、そのときは実測どうしの
+     * 差から見積もる。起点を書き換える前に計算する。
+     */
+    let mps = typeof speed === 'number' && Number.isFinite(speed) && speed >= 0 ? speed : null;
+    if (mps === null && anchorAlong !== null) {
+      const seconds = (now - anchorAt) / 1000;
+      // 短すぎる間隔で割ると、わずかな揺れが大きな速さに化ける
+      if (seconds >= 0.4) mps = Math.abs(nextAlong - anchorAlong) / seconds;
+    }
+
+    anchorAlong = nextAlong;
+    anchorAt = now;
+    anchorSpeed = mps === null ? 0 : mps;
+  }
+
+  /** いまごろ電車はどこか。起点から、その速さで進んだものとして推し量る */
+  function predictAlong(now) {
+    if (anchorAlong === null) return null;
+    // 乗っていない・向きが決まっていない・止まっているなら、推し量らない
+    if (mode !== '車上' || direction === null || anchorSpeed <= 0) return anchorAlong;
+
+    // 実測が絶えて久しければ、それ以上は進めない（onStale と同じ上限）
+    const elapsed = Math.min(now - anchorAt, Onboard.DEAD_RECKON_LIMIT_MS);
+    const ahead = anchorSpeed * (elapsed / 1000);
+    const next = anchorAlong + (direction === '下り' ? ahead : -ahead);
+    return Math.max(0, Math.min(trackLength, next));
+  }
+
+  /**
+   * 描く位置を、推し量った位置へ一コマぶん寄せる。
+   * @returns {boolean} まだ動いているか（false なら寄せ終わっている）
+   */
+  function stepShown(now, sinceLastFrame) {
+    const target = predictAlong(now);
+    if (target === null) return false;
+
+    if (shownAlong === null) {
+      shownAlong = target;
+      return false;
+    }
+
+    const gap = target - shownAlong;
+    if (Math.abs(gap) > HERE_SNAP_METERS) {
+      // 離れすぎ。寄せると線路の上を延々と滑る絵になる
+      shownAlong = target;
+      return false;
+    }
+    if (Math.abs(gap) < HERE_SETTLED_METERS) {
+      shownAlong = target;
+      return false;
+    }
+
+    /*
+     * 寄せ方を時間で決める（コマ数に依らせない）。コマ落ちしても
+     * 進み方が変わらないので、重い端末でも動きの速さは同じになる。
+     */
+    shownAlong += gap * (1 - Math.exp(-sinceLastFrame / HERE_SMOOTH_MS));
+    return true;
+  }
+
+  /** 毎コマの寄せを回しているか。回っていないあいだは電池を使わない */
+  let hereFrame = null;
+  let hereFrameAt = 0;
+  /** いま地図を軽いモードにしているか（.screen--moving） */
+  let mapLightened = false;
+
+  function setMapLightened(on) {
+    if (on) {
+      /*
+       * 毎コマ呼ぶ。指で地図を触ったあとの motion.end() に消されても、
+       * 次のコマで戻る。追従で地図が動いているあいだは軽いままにしたい。
+       */
+      motion.begin();
+      mapLightened = true;
+      return;
+    }
+    if (!mapLightened) return;
+    motion.end();
+    mapLightened = false;
+  }
+
+  /**
+   * @param {number} frameNow requestAnimationFrame が渡す時刻（performance.now 系）。
+   *   コマの間隔を測るのにだけ使う。位置の計算には使わない——anchorAt も
+   *   lastRealFixAt も Date.now() で入っているので、混ぜると桁違いの差が出る。
+   */
+  function hereTick(frameNow) {
+    const sinceLastFrame = Math.max(1, Math.min(frameNow - hereFrameAt, 250));
+    hereFrameAt = frameNow;
+
+    // 位置にまつわる時刻は、すべてこちら（実測が入っているのと同じ時計）で見る
+    const now = Date.now();
+
+    /*
+     * 実測が絶えて久しければ、onStale が印を消している。ここで描き直すと
+     * 消したものが戻ってしまうので、何もしない。
+     */
+    const tooOld = mode === '車上' && now - lastRealFixAt > Onboard.DEAD_RECKON_LIMIT_MS;
+    const moving = !tooOld && stepShown(now, sinceLastFrame);
+
+    if (moving) {
+      // 追従で地図が動いているあいだだけ軽くする。駅に停まれば元の絵に戻る
+      setMapLightened(mode === '車上' && following);
+      showHere(mode === '車上');
+      hereFrame = requestAnimationFrame(hereTick);
+      return;
+    }
+
+    // 寄せ終わった。最後に一度きっちり描いて、回すのをやめる
+    setMapLightened(false);
+    if (!tooOld) showHere(mode === '車上');
+    hereFrame = null;
+  }
+
+  /** 寄せを回しはじめる。すでに回っていれば何もしない */
+  function startHereLoop() {
+    if (hereFrame !== null) return;
+    hereFrameAt = performance.now();
+    hereFrame = requestAnimationFrame(hereTick);
+  }
+
+  function stopHereLoop() {
+    if (hereFrame !== null) cancelAnimationFrame(hereFrame);
+    hereFrame = null;
+    setMapLightened(false);
+  }
+
   /**
    * 現在位置の印を出す。
    *
@@ -2564,18 +2760,29 @@ function createTrip(route, spots, schedule, parts) {
      * 矢印を出すと、まだ決まっていないことを決まったように見せてしまう。
      */
     hereMarker.classList.toggle('here--still', mode !== '車上');
+
+    /*
+     * 描くのは along ではなく shownAlong（毎コマ寄せている位置）。
+     * along は 1 秒に 1 回しか動かないので、そのまま描くと印が飛ぶ。
+     * まだ一度も寄せていなければ along をそのまま使う。
+     *
+     * 通知・通過の判定・遅れの計算は along のまま（updateRiding）。
+     * 見せ方をなめらかにするだけで、判断は実測でやる。
+     */
+    const drawAlong = shownAlong === null ? along : shownAlong;
+
     /*
      * 軌道上の距離から、地図の座標へ戻す。区間の途中を線形補間する
      * （pointAtDistance）。駅の印も同じ関数で置いているので、駅に
      * 停まっているときは駅の印とぴったり重なる。
      */
-    const spot = pointAtDistance(track, points, along);
+    const spot = pointAtDistance(track, points, drawAlong);
     lastHerePoint = spot;
     refreshFollowButtonLabel();
     hereMarker.classList.remove('here--off');
 
     // 乗っているあいだだけ、通ってきた側に尾を敷く
-    if (mode === '車上') showTail(along);
+    if (mode === '車上') showTail(drawAlong);
     else hideTail();
 
     hereMarker.setAttribute('data-ax', spot.x);
@@ -2596,7 +2803,7 @@ function createTrip(route, spots, schedule, parts) {
      */
     if (direction !== null) {
       let segIndex = 1;
-      while (segIndex < track.length - 1 && track[segIndex].along < along) segIndex += 1;
+      while (segIndex < track.length - 1 && track[segIndex].along < drawAlong) segIndex += 1;
       const from = project(track[segIndex - 1].lat, track[segIndex - 1].lon);
       const to = project(track[segIndex].lat, track[segIndex].lon);
       let angle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI + 90;
@@ -2615,7 +2822,21 @@ function createTrip(route, spots, schedule, parts) {
     setScaleTransform(hereMarker, getK());
 
     if (!follow || !following) return;
-    view.goTo(spot.x, spot.y, wantedZoom, 900);
+
+    /*
+     * 印そのものが毎コマなめらかに動くようになったので、地図は
+     * 「かけて追いかける」のではなく、その場で同じ点に合わせる。
+     *
+     * 以前は 0.9 秒かけて追わせていた。印は位置情報が届いた瞬間に飛び、
+     * 地図はそのあと 0.9 秒かけて追いつくので、画面の上では印が
+     * 前へ飛び出してから中央へ戻る——つまり前後に揺れて見えていた。
+     * いま印は毎コマ少しずつしか動かないので、地図も毎コマ合わせれば
+     * 追いかける必要がない。
+     *
+     * 入るときの寄せ（wantedZoom がある間）だけは、今までどおり
+     * 時間をかける。倍率が変わる動きは、飛ぶと何が起きたか分からない。
+     */
+    view.goTo(spot.x, spot.y, wantedZoom, wantedZoom === undefined ? 0 : 900);
     // 目当ての倍率まで届いたら、あとは利用者の見え方を尊重する
     if (wantedZoom !== undefined && Math.abs(view.zoom() - wantedZoom) < 0.3) {
       wantedZoom = undefined;
@@ -2764,6 +2985,9 @@ function createTrip(route, spots, schedule, parts) {
     setFollowing(false);
     riding.hidden = true;
     shootButton.hidden = true;
+    // 印を消すので、毎コマの寄せも止める（止めないと消した印を描き戻す）
+    stopHereLoop();
+    shownAlong = null;
     setHidden(hereMarker, true);
     hideTail();
     showNotice(null);
@@ -2884,6 +3108,13 @@ function createTrip(route, spots, schedule, parts) {
     lastRealFixAt = timestamp;
 
     /*
+     * 描く位置の推し量りの起点を置き直し、毎コマの寄せを回しはじめる
+     * （設計書 4.3）。速さを見てから置くので、speed の代入より後に呼ぶ。
+     */
+    setAnchor(place.along, timestamp);
+    startHereLoop();
+
+    /*
      * 向きは実測どうしで見る（推定を混ぜない。lastRealAlong の説明を参照）。
      *
      * 比べ元は、決められるだけ動いたときにだけ進める（trackDirection）。
@@ -2932,8 +3163,19 @@ function createTrip(route, spots, schedule, parts) {
      * 地図を寄せはしない（follow = false）。乗る前は、見ている人が
      * 決めた見え方を横取りしないため（設計書 4.1）。
      */
-    if (onRoute) showHere(false);
-    else showHereOffRoute(coords);
+    if (onRoute) {
+      showHere(false);
+    } else {
+      /*
+       * 線路から離れているあいだは、受け取った緯度経度そのものに置く。
+       * 線路の上を寄せていく毎コマの処理とは置き場所が違うので、
+       * 二重に動かさないよう、寄せは止めて置きどころも忘れる。
+       * 線路へ戻ってきたら、そこから改めて寄せはじめる。
+       */
+      stopHereLoop();
+      shownAlong = null;
+      showHereOffRoute(coords);
+    }
 
     /*
      * 降りたあとは、電車が走り去る動きにつられて乗り直さない。
@@ -3092,7 +3334,7 @@ function createTrip(route, spots, schedule, parts) {
     onPosition,
     onStale,
     stopFollowing,
-    resumeFollowing() { setFollowing(true); showHere(); },
+    resumeFollowing() { setFollowing(true); startHereLoop(); showHere(); },
     goToHere,
     /** 現在位置が一度でも分かっているか。ボタンの意味を決めるのに使う */
     hasHere: () => lastHerePoint !== null,
@@ -4450,6 +4692,8 @@ async function main() {
     getPlan,
     setPlan,
     getK,
+    // 追従で地図が動いているあいだ、指で触っているときと同じ軽いモードにする
+    motion,
   });
 
   // 記録を閉じたら、まだ乗っているとみなして車上モードへ戻れるようにする
