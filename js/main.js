@@ -4526,7 +4526,16 @@ async function main() {
     planClose.hidden = !currentPlan;
     updatePlanValidity();
     refreshNotifyRow();
-    planSoundCheck.checked = loadSoundPref();
+    /*
+     * 環境音の切り替えは、まだ index.html に無いことがある。音源を選んでいる
+     * 途中で（CLAUDE.md）、こちらの JS だけが先に入った状態がありうるため。
+     *
+     * 無いまま代入すると、ここで main() ごと落ちる。地図も位置情報も
+     * 発車待ちも出なくなる——環境音は無くても成り立つ飾りなのに、
+     * 作品の本体を道連れにしてしまう。見つからなければ黙って飛ばす
+     * （設計書 9.3「無いなら出さない」。js/popularity.js と同じ構え）。
+     */
+    if (planSoundCheck) planSoundCheck.checked = loadSoundPref();
     planSetup.hidden = false;
   }
 
@@ -4570,10 +4579,13 @@ async function main() {
      * 環境音の自動再生の許可も、このクリックの中で取っておく（unlock の注記）。
      * Ambient がまだ読み込めていなければ、この旅では鳴らないだけ（設計書 9.3）。
      */
-    saveSoundPref(planSoundCheck.checked);
-    if (typeof Ambient !== 'undefined') {
-      Ambient.setEnabled(planSoundCheck.checked);
-      if (planSoundCheck.checked) Ambient.unlock();
+    // 切り替えそのものが無ければ、環境音は使わない（openPlanSetup の注記）
+    if (planSoundCheck) {
+      saveSoundPref(planSoundCheck.checked);
+      if (typeof Ambient !== 'undefined') {
+        Ambient.setEnabled(planSoundCheck.checked);
+        if (planSoundCheck.checked) Ambient.unlock();
+      }
     }
     setPlan({
       board: planBoard.value,
@@ -4599,15 +4611,24 @@ async function main() {
    * 数字はこの路線だけの実測値（terrain.json の elevationAlongRoute、
    * tools/build-terrain.js が線路沿いの生の標高から求めた min/max）。
    */
+  /*
+   * この凡例の置き場所が index.html にまだ無いことがある（作りかけの
+   * 状態で JS だけが先に入ったとき）。無ければ凡例を出さないだけにする。
+   * ここで落とすと、出典の凡例のために地図と位置情報まで道連れになる
+   * （設計書 9.3「無いなら出さない」）。
+   */
   const creditsElevationBar = document.getElementById('credits-elevation-bar');
-  for (const meters of [0, 8, 16, 24, 32, 45]) {
-    const cell = document.createElement('span');
-    cell.className = 'line-legend-cell';
-    cell.style.background = `var(--land-${meters})`;
-    creditsElevationBar.appendChild(cell);
+  if (creditsElevationBar) {
+    for (const meters of [0, 8, 16, 24, 32, 45]) {
+      const cell = document.createElement('span');
+      cell.className = 'line-legend-cell';
+      cell.style.background = `var(--land-${meters})`;
+      creditsElevationBar.appendChild(cell);
+    }
   }
-  if (terrain.elevationAlongRoute) {
-    document.getElementById('credits-elevation-range').textContent =
+  const creditsElevationRange = document.getElementById('credits-elevation-range');
+  if (creditsElevationRange && terrain.elevationAlongRoute) {
+    creditsElevationRange.textContent =
       `${terrain.elevationAlongRoute.min}〜${terrain.elevationAlongRoute.max}m`;
   }
 
