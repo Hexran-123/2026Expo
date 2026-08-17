@@ -1401,19 +1401,17 @@ function createChrome() {
 // 分単位のカウントダウンは出さない（設計書 4.2 の理由を参照）。
 // ------------------------------------------------------------------
 
-/** 2 地点の距離（m）。全長 6.4km の範囲なので、地球を球とみなせば十分。 */
-function distanceMeters(lat1, lon1, lat2, lon2) {
-  const EARTH_RADIUS = 6371000;
-  const toRadians = (degrees) => (degrees * Math.PI) / 180;
-
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
-
-  return 2 * EARTH_RADIUS * Math.asin(Math.sqrt(a));
-}
+/**
+ * 2 地点の距離（m）。
+ *
+ * 中身は js/onboard.js が持っている（あちらは線路への射影でも同じ式を使う）。
+ * ここに同じ式をもう一本置いていたが、二本あると片方だけ直したときに
+ * 黙って食い違う。onboard.js は main.js より先に読み込まれる決まりなので
+ * （index.html の script の並び・tools/build-demo.js の JS_FILES）、
+ * 呼ばれる時点では必ずある。
+ */
+const distanceMeters = (lat1, lon1, lat2, lon2) =>
+  Onboard.distanceMeters(lat1, lon1, lat2, lon2);
 
 /**
  * いまいる場所が、どの駅の構内とみなせるか。
@@ -3354,11 +3352,17 @@ function createTrip(route, spots, schedule, parts) {
      * 通知。前のスポットを通過するまで、次には移らない（設計書 4.3）。
      * 乗車区間が設定されていれば、区間外のスポットには接近通知を出さない
      * （通過判定・成因カード・旅の記録は区間の内外にかかわらず今まで通り。US5）。
+     *
+     * 相手に選ぶのは「前方でいちばん近い、予告を出す種類のもの」
+     * （Onboard.announces）。ahead[0] をそのまま採っていたころは、
+     * いちばん近いものが雑学（kind: 'trivia'、車窓に出ない）だと、その先に
+     * ある景色ものへ近づいても通知が出なかった ── 雑学を通り過ぎるまで
+     * 打ち止めになる。有楽町線は 10 件中 8 件が雑学なので、ここは実際に効く。
      */
     const ahead = withinPlan(route, getPlan(), Onboard.spotsAhead(spots, along, direction));
     const target = noticedId
       ? spots.find((spot) => spot.id === noticedId && !passed.has(spot.id))
-      : ahead[0];
+      : ahead.find(Onboard.announces);
 
     const notice = target && !passed.has(target.id)
       ? Onboard.noticeFor(target, along, direction, speed)
@@ -3604,7 +3608,8 @@ function setUpPhotoButton(journal, passedLog, askText) {
       title: '写真に一言',
       hint: near ? `${near}のあたりで撮りました` : '',
       value: '',
-      limit: Journal.PHOTO_NOTE_LIMIT,
+      // 直に Journal を見ない。読めていないときの控えは noteLimit が持っている
+      limit: noteLimit('photo'),
     });
     if (note) journal.setPhotoNote(id, note);
   });
@@ -3992,14 +3997,6 @@ function metersToTrack(track, lat, lon) {
   return best;
 }
 
-function svgEl(name, attributes) {
-  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
-  for (const [key, value] of Object.entries(attributes)) {
-    element.setAttribute(key, value);
-  }
-  return element;
-}
-
 /*
  * 1 路線ぶんの小さな地図を作る。
  *
@@ -4013,7 +4010,8 @@ function buildLinePreview(preview) {
   const inside = (lat, lon) =>
     lon >= bounds.minLon && lon <= bounds.maxLon && lat >= bounds.minLat && lat <= bounds.maxLat;
 
-  const svg = svgEl('svg', {
+  // 変数名を root にしてあるのは、部品を作る svg() を覆い隠さないため
+  const root = svg('svg', {
     class: 'line-preview',
     viewBox: `0 0 ${width} ${height}`,
     preserveAspectRatio: 'xMidYMid slice',
@@ -4021,18 +4019,18 @@ function buildLinePreview(preview) {
   });
 
   for (const band of preview.bands) {
-    svg.appendChild(svgEl('path', { class: `band band--${band.minElevation}`, d: band.path }));
+    root.appendChild(svg('path', { class: `band band--${band.minElevation}`, d: band.path }));
   }
 
   const d = preview.track
     .map(([lat, lon], i) => `${i === 0 ? 'M' : 'L'}${toX(lon).toFixed(1)} ${toY(lat).toFixed(1)}`)
     .join('');
-  svg.appendChild(svgEl('path', { class: 'line-preview-halo', d }));
-  svg.appendChild(svgEl('path', { class: 'line-preview-rail', d }));
+  root.appendChild(svg('path', { class: 'line-preview-halo', d }));
+  root.appendChild(svg('path', { class: 'line-preview-rail', d }));
 
   preview.stations.forEach(([lat, lon], i) => {
     const isEnd = i === 0 || i === preview.stations.length - 1;
-    svg.appendChild(svgEl('circle', {
+    root.appendChild(svg('circle', {
       class: `line-preview-stop${isEnd ? ' line-preview-end' : ''}`,
       cx: toX(lon).toFixed(1),
       cy: toY(lat).toFixed(1),
@@ -4040,7 +4038,7 @@ function buildLinePreview(preview) {
     }));
   });
 
-  return { svg, width, height, toX, toY, inside, track: preview.track, herePoint: null };
+  return { svg: root, width, height, toX, toY, inside, track: preview.track, herePoint: null };
 }
 
 /*
@@ -4058,9 +4056,9 @@ function setPreviewHere(view, here) {
   if (!here || !view.inside(here.lat, here.lon)) return;
 
   view.herePoint = { cx: view.toX(here.lon), cy: view.toY(here.lat) };
-  const group = svgEl('g', { class: 'line-here-group' });
+  const group = svg('g', { class: 'line-here-group' });
   for (const [cls, r] of [['line-here-wave', 6], ['line-here-ring', 8], ['line-here-dot', 6.5]]) {
-    group.appendChild(svgEl('circle', {
+    group.appendChild(svg('circle', {
       class: cls,
       cx: view.herePoint.cx.toFixed(1),
       cy: view.herePoint.cy.toFixed(1),

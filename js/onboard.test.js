@@ -16,7 +16,8 @@ require('./onboard.js');
 const Schedule = globalThis.Schedule;
 const {
   prepareTrack, projectOntoTrack, looksLikeRiding, isOnRoute,
-  directionOf, trackDirection, spotsAhead, noticeFor, delayMinutes, nextStopEta, distanceMeters,
+  directionOf, trackDirection, spotsAhead, announces, noticeFor,
+  delayMinutes, nextStopEta, distanceMeters,
 } = globalThis.Onboard;
 
 const read = (name) =>
@@ -217,6 +218,20 @@ check('kind: trivia は 80m 手前でも出ない', noticeFor(trivia, 1863 - 80,
 check('kind: trivia は停車中でも出ない', noticeFor(trivia, 1863 - 10, '下り', 0), null);
 check('kind が無いスポットは景色ものとして扱う（既存路線を壊さない）',
   noticeFor({ ...tunnel, kind: undefined }, 1863 - 80, '下り', 11.1) !== null, true);
+
+/*
+ * 予告する相手を選ぶための判定（announces）。
+ *
+ * 呼ぶ側（js/main.js の updateRiding）は、前方のいちばん近いものが雑学
+ * だったときに、その先の景色ものへ進めるためにこれを使う。ahead[0] を
+ * そのまま採っていたころは、雑学を通り過ぎるまで通知が打ち止めになっていた。
+ * 有楽町線は 10 件中 8 件が雑学なので、ここは実際に効く。
+ */
+check('景色ものは予告する', announces(tunnel), true);
+check('雑学は予告しない', announces(trivia), false);
+check('kind が無ければ予告する', announces({ ...tunnel, kind: undefined }), true);
+check('前方が 雑学・景色 と並んでいたら、景色のほうを選ぶ',
+  [trivia, cabbage].find(announces).id, 'S04');
 
 // 減速しても秒数が伸び続けないこと（速度が落ちれば残り距離も減っているはず）
 console.log('  ── 駅に近づきながら減速していく流れ');

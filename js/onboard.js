@@ -256,6 +256,21 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
   }
 
   /**
+   * このスポットは、そもそも事前の予告を出す相手か（設計書 8.2）。
+   *
+   * kind: 'trivia'（車窓に出ない雑学。地下区間など）は出さない。
+   * kind が無いスポットは景色ものとして扱う（既存路線を壊さないため）。
+   *
+   * noticeFor が同じことを内側でも見ているのに別に出してあるのは、
+   * 呼ぶ側が「次に予告する相手」を選ぶのに要るため。前方のいちばん近い
+   * ものが雑学だと、そこで打ち止めになって、その先の景色ものが
+   * 近づいても何も出なくなる（js/main.js の updateRiding）。
+   */
+  function announces(spot) {
+    return Boolean(spot) && spot.kind !== 'trivia';
+  }
+
+  /**
    * いま出すべき通知。出すものが無ければ null。
    *
    * 秒数は「残り距離 ÷ 速度」で求める。固定の距離にしないのは、
@@ -279,7 +294,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
      * ロック中通知（notifyOS）だけ。kind が無いスポット（未設定）は
      * 景色ものとして扱う（既存路線を壊さないため）。
      */
-    if (spot.kind === 'trivia') return null;
+    if (!announces(spot)) return null;
 
     const remaining = Math.abs(spot.distanceAlong - along);
     const side = windowSideOf(spot, direction);
@@ -397,6 +412,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     trackDirection,
     spotsAhead,
     windowSideOf,
+    announces,
     noticeFor,
     delayMinutes,
     nextStopEta,

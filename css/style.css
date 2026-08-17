@@ -1871,6 +1871,7 @@ button.line-name:active {
 
 /* ① 路線のタイムライン。通過したスポットをテーマ色の並びとして示す */
 .journal-line {
+  position: relative;                 /* 下の ::before（線路にあたる横線）の基準 */
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1886,10 +1887,6 @@ button.line-name:active {
   height: 2px;
   background: var(--rail);
   opacity: 0.35;
-}
-
-.journal-line {
-  position: relative;
 }
 
 .journal-end {

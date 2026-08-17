@@ -149,14 +149,26 @@ for (const line of lines) {
  * 一時ディレクトリへ同じ引数で作り直し、demo/*.html とバイト単位で突き合わせる。
  * 出力先しだいで変わる文字列を入れると、作り直し忘れが無くても必ず食い違う。
  * 1 枚デモは demo/ に置くと README で決めてあるので、その前提で固定する。
+ *
+ * 対応表そのものはここに書き写さない。同じ表を 2 か所に置いていたころは、
+ * js/ambient.js 側で音源を差し替えると、この表に載っていないファイルは
+ * 置き場所を差し替えてもらえず、1 枚デモでだけ 404 になる（気づけるのは
+ * サーバー越しに開いて鳴らしたときだけ）。実物から拾えば食い違わない。
  */
-const THEME_SOUND = {
-  '地形': 'audio/wind-terrain.mp3',
-  '気候と農業': 'audio/wind-field.mp3',
-  '産業と水運': 'audio/water-flow.mp3',
-  '海と空': 'audio/ocean-waves.mp3',
-};
-for (const file of Object.values(THEME_SOUND)) {
+const AMBIENT_SOURCES = [
+  ...new Set(
+    [...read('js', 'ambient.js').matchAll(/'(audio\/[^']+)'/g)].map((found) => found[1])
+  ),
+];
+if (AMBIENT_SOURCES.length === 0) {
+  console.error('js/ambient.js から環境音の置き場所を読み取れなかった。');
+  process.exit(1);
+}
+for (const file of AMBIENT_SOURCES) {
+  if (!fs.existsSync(path.join(ROOT, ...file.split('/')))) {
+    console.error(`環境音が見あたらない: ${file}（js/ambient.js が参照している）`);
+    process.exit(1);
+  }
   assets[file] = `../${file}`;
 }
 
