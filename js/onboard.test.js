@@ -298,6 +298,53 @@ check('走っていない時間は次の停車駅も出さない',
   nextStopEta(Schedule, schedule, route, '下り', 3000, at('9:40')), null);
 
 // ------------------------------------------------------------------
+console.log('\nその駅で列車の運転が終わるか（路線の終点まで行かない列車）');
+/*
+ * 銚子電鉄はどの列車も全線を走るので、終着は外川（下り）と銚子（上り）だけ。
+ * 有楽町線の辰巳どまりのように、路線の終点の手前で終わる列車があると、
+ * 終点に着かないまま車上モードが終わらず、旅の記録が出なくなる。
+ */
+const downTrain = schedule.列車.find((t) => t.番号 === 15);
+const downNames = Object.keys(downTrain.時刻);
+const downLast = downNames[downNames.length - 1];
+const downLastMinute = Schedule.toMinutes(downTrain.時刻[downLast]);
+const clockAt = (minutes) => at(`${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`);
+
+check('終着駅に、その時刻に着いていれば「ここで終わり」',
+  Onboard.trainTerminatesAt(Schedule, schedule, '下り', downLast, clockAt(downLastMinute)), true);
+check('途中の駅では終わりにしない',
+  Onboard.trainTerminatesAt(Schedule, schedule, '下り', '笠上黒生', clockAt(downLastMinute)), false);
+check('向きが違えば終わりにしない',
+  Onboard.trainTerminatesAt(Schedule, schedule, '上り', downLast, clockAt(downLastMinute)), false);
+
+/*
+ * 時刻のずれの効きめは、列車 1 本だけにして見る。
+ * 全部の時刻表で見ると、外川には次々と列車が着くので、1 時間ずらしても
+ * 別の列車が 5 分以内に着いてしまい、この道具の幅を測ったことにならない。
+ */
+const onlyDown = { ...schedule, 列車: [downTrain] };
+check('時刻が離れていれば終わりにしない（遅れの幅を超える）',
+  Onboard.trainTerminatesAt(Schedule, onlyDown, '下り', downLast, clockAt(downLastMinute + 60)), false);
+check('少しの遅れなら拾う（5分まで）',
+  Onboard.trainTerminatesAt(Schedule, onlyDown, '下り', downLast, clockAt(downLastMinute + 4)), true);
+
+/*
+ * 路線の終点の手前で終わる列車を作って確かめる（有楽町線の辰巳どまりに相当）。
+ * 銚子電鉄の時刻表には無い形なので、ここで組み立てる。
+ */
+const shortTrain = {
+  番号: 999,
+  方向: '下り',
+  時刻: { 銚子: '10:00', 仲ノ町: '10:02', 笠上黒生: '10:08' },
+};
+check('路線の終点まで行かない列車でも、その終着駅で終わりにする',
+  Onboard.trainTerminatesAt(
+    Schedule, { ...schedule, 列車: [shortTrain] }, '下り', '笠上黒生', at('10:08')), true);
+check('その列車の途中の駅では、まだ終わりにしない',
+  Onboard.trainTerminatesAt(
+    Schedule, { ...schedule, 列車: [shortTrain] }, '下り', '仲ノ町', at('10:02')), false);
+
+// ------------------------------------------------------------------
 console.log('');
 if (failures === 0) {
   console.log('OK すべて通った');

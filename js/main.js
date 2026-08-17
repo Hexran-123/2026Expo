@@ -290,6 +290,27 @@ function setHidden(element, value) {
   element.toggleAttribute('hidden', value);
 }
 
+/*
+ * 位置にまつわる「いまの時刻」。
+ *
+ * 現在地の推し量り（predictAlong）・実測が絶えたかの判定（onStale）は、
+ * どれも「位置情報が届いた時刻」との引き算で成り立っている。だから、
+ * 引き算する二つの値は必ず同じ時計から出ていなければならない。
+ *
+ * ふだんは実時計（端末の位置情報も Date.now で受ける）。テスト走行のときだけ
+ * 走行シミュレーターが自分の時計を差しこむ（js/simulate.js の positionClock）。
+ * あちらは発車時刻を起点に「速さ×」倍の速さで進む時計なので、実時計と混ぜると
+ * 経過時間が桁ちがいに狂い、現在地の印が毎コマ飛ぶ。
+ *
+ * 時刻表の見た目に使う時計（Schedule.useClock）とは役目が別なので、分けてある。
+ * あちらは「何時何分か」を見せるためのもの、こちらは「何秒経ったか」を測るもの。
+ */
+let positionNow = () => Date.now();
+
+function usePositionClock(clock) {
+  positionNow = clock;
+}
+
 /** SVG の部品を作る。createElementNS は SVG 専用の書き方。 */
 function svg(tag, attributes = {}) {
   const element = document.createElementNS(SVG_NS, tag);
@@ -2728,9 +2749,22 @@ function createTrip(route, spots, schedule, parts) {
       return false;
     }
 
+    /*
+     * 離れすぎていたら、寄せずに飛ばす（トンネルを抜けて電波が戻ったときなど）。
+     *
+     * ただし「離れすぎ」の目安は、速さによって変わる。この寄せ方は、
+     * 一定の速さで動く相手を追うと HERE_SMOOTH_MS ぶんうしろに落ち着く
+     * （時速 40km なら約 4m）。その落ち着き先まで飛ばしてしまうと、
+     * 落ち着くたびに飛ぶ、を繰り返すことになる。
+     *
+     * 実機の速さでは 4m ほどなので 120m とほとんど変わらないが、
+     * テスト走行を ×30 にすると、電車は実時間 1 秒で 300m 進む見当になり、
+     * 落ち着き先は 120m の外へ出る。そのままだと、正しく追えているのに
+     * 毎回「離れすぎ」と見なされて飛び、飛び飛びの絵になる。
+     */
+    const settleLag = anchorSpeed * (HERE_SMOOTH_MS / 1000);
     const gap = target - shownAlong;
-    if (Math.abs(gap) > HERE_SNAP_METERS) {
-      // 離れすぎ。寄せると線路の上を延々と滑る絵になる
+    if (Math.abs(gap) > HERE_SNAP_METERS + settleLag) {
       shownAlong = target;
       return false;
     }
@@ -2771,14 +2805,16 @@ function createTrip(route, spots, schedule, parts) {
   /**
    * @param {number} frameNow requestAnimationFrame が渡す時刻（performance.now 系）。
    *   コマの間隔を測るのにだけ使う。位置の計算には使わない——anchorAt も
-   *   lastRealFixAt も Date.now() で入っているので、混ぜると桁違いの差が出る。
+   *   lastRealFixAt も positionNow() で入っているので、混ぜると桁違いの差が出る。
+   *   （寄せ方の時定数 HERE_SMOOTH_MS は「見た目のなめらかさ」の話なので、
+   *   テスト走行の倍率とは関係なく、実時間で測るのが正しい。）
    */
   function hereTick(frameNow) {
     const sinceLastFrame = Math.max(1, Math.min(frameNow - hereFrameAt, 250));
     hereFrameAt = frameNow;
 
     // 位置にまつわる時刻は、すべてこちら（実測が入っているのと同じ時計）で見る
-    const now = Date.now();
+    const now = positionNow();
 
     /*
      * 実測が絶えて久しければ、onStale が印を消している。ここで描き直すと
@@ -3100,9 +3136,19 @@ function createTrip(route, spots, schedule, parts) {
     const goal = route.stations.find((s) => s.name === destinationName());
     if (!goal || direction === null) return station.name === destinationName();
 
-    return direction === '下り'
+    const reached = direction === '下り'
       ? station.distanceAlong >= goal.distanceAlong
       : station.distanceAlong <= goal.distanceAlong;
+    if (reached) return true;
+
+    /*
+     * 路線の終点まで行かずに、途中の駅で運転を終える列車がある
+     * （有楽町線の辰巳どまり）。乗っている列車がそこで終わるなら、
+     * 降ろされるのだから、そこが旅の終わり（Onboard.trainTerminatesAt）。
+     * これを見ていなかったころは、辰巳で降ろされたあとも車上モードが
+     * 続いたまま、旅の記録が出なかった。
+     */
+    return Onboard.trainTerminatesAt(Schedule, schedule, direction, station.name, Schedule.now());
   }
 
   /** 降りる駅に着いた。まだ通過扱いでないスポットを拾ってから降車後へ（設計書 3.2）*/
@@ -3672,8 +3718,10 @@ function loadScript(source) {
 function watchPosition(trip) {
   if (!navigator.geolocation) return;
 
+  // 時刻は positionNow() で取る。実機では Date.now そのものだが、
+  // 経過時間を測る側（predictAlong・onStale）と出どころをそろえておく。
   navigator.geolocation.watchPosition(
-    (position) => trip.onPosition(position.coords, Date.now()),
+    (position) => trip.onPosition(position.coords, positionNow()),
     () => {
       // 断られた・取れなかった。乗車前モードのままでよい。
     },
@@ -3681,7 +3729,7 @@ function watchPosition(trip) {
   );
 
   // 位置情報が来ないあいだも時間は進む。推定はこちらで回す。
-  setInterval(() => trip.onStale(Date.now()), 2000);
+  setInterval(() => trip.onStale(positionNow()), 2000);
 }
 
 // ------------------------------------------------------------------
@@ -4985,6 +5033,8 @@ async function main() {
     await loadScript('js/simulate.js');
     Simulator.start({
       route, spots: spotsFile.spots, schedule, trip, setWeather: applyWeather, getPlan,
+      // 位置まわりの経過時間を、実時計ではなくこの列車の時計で測らせる
+      usePositionClock,
     });
   } else {
     watchPosition(trip);

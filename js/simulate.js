@@ -257,48 +257,75 @@
 
     // ---- アプリへ渡す ----
 
+    /**
+     * 直近に virtualMs を進めた実時刻。コマの合間を埋めるのに使う。
+     * @see positionClock
+     */
+    let advancedAtReal = Date.now();
+
     function send() {
       const raw = positionAt(track, state.along);
       const place = state.jitter ? scatter(raw, JITTER_METERS) : raw;
 
       /*
-       * trip.onPosition の第2引数は「実測が届いた実時刻」（js/main.js の
-       * fixedAt・lastRealFixAt・setAnchor の起点）。あちらは Date.now() と
-       * 直接引き算して経過時間を測る（predictAlong・onStale）。ここへ
-       * state.virtualMs（発車時刻ぶんだけずれていて、しかも「速さ×」で
-       * 実時間より速く進む見せかけの時計）を渡すと、その引き算が数分〜
-       * 数時間ぶん狂い、現在地の印が毎フレーム全然ちがう位置へスナップし
-       * 続けてぶれる。virtualMs は Schedule.useClock(shownClock) で
-       * 時刻表の見た目にだけ使われていて、ここに混ぜる理由はない。
+       * 渡す位置と時計の足並みをそろえる。tick 以外からも呼ばれるので
+       * （仕立て直し・次のスポットへ・終点へ）、ここで置き直しておかないと
+       * positionClock が前回の tick から数えつづけ、飛ばした直後だけ
+       * 印が先へ行き過ぎる。
        */
+      advancedAtReal = Date.now();
+
       /*
-       * coords.speed も同じ理由で、そのまま渡すと壊れる。state.speed は
-       * 「仮想 1 秒あたり何 m 進むか」（列車としての物理量）で、実時間
-       * 1 秒あたりでは state.rate 倍進む（advance が仮想秒を刻み、
-       * その仮想秒は実時間の rate 倍の速さで過ぎるため）。js/main.js の
-       * 予測（predictAlong の anchorSpeed）と通知の秒数（Onboard.noticeFor
-       * の seconds = remaining / speedMps）はどちらも「実時間 1 秒あたり
-       * 何 m」だと思って使うので、rate を掛けずに渡すと ×30 のような
-       * 高倍率で実際の移動量より大きく遅れて追いつけず、120m 離れるたび
-       * スナップする（＝飛び飛びに見える）。低倍率では遅れが 120m に
-       * 届かず気づかれなかっただけで、同じ食い違いは元からあった。
+       * 渡すのは、この列車の時計（virtualMs）と、列車としての速さ（state.speed）。
+       * どちらも「仮想の時間」でそろえてある。本体（js/main.js）は位置に
+       * まつわる時刻をぜんぶ positionClock 越しに見るので（下の
+       * usePositionClock）、実時計とは混ざらない。
+       *
+       * ここを実時計（Date.now）や実時間あたりの速さ（state.speed * rate）に
+       * すり替えてはいけない。coords.speed は現在地の推し量りだけでなく、
+       * 「あと何秒でスポット」（Onboard.noticeFor）・「電車に乗っているか」
+       * （Onboard.looksLikeRiding）・「駅にいるか」（js/main.js の stationAt）の
+       * 判定にも使われる。rate を掛けると、それらが軒並み「速さ×」の倍率ぶん
+       * 狂う（実際に、カウントダウンが 1/30 の秒数になり、駅に着いても
+       * 降車と認めなくなった）。
        */
       trip.onPosition(
         {
           latitude: place.latitude,
           longitude: place.longitude,
           accuracy: state.jitter ? JITTER_METERS : 5,
-          speed: state.speed * state.rate,
+          speed: state.speed,
           // 停まっているあいだ、実機は向きを返さないことが多い
           heading: state.speed > 0.5
             ? (state.direction === '下り' ? place.bearing : (place.bearing + 180) % 360)
             : null,
         },
-        Date.now()
+        state.virtualMs
       );
     }
 
     let timer = null;
+
+    /**
+     * 本体（js/main.js）が「位置にまつわる、いまの時刻」を読むための時計。
+     *
+     * virtualMs をそのまま返すと、200ms（TICK_MS）ごとにしか進まない時計に
+     * なる。本体は現在地の印を毎コマ（60fps）描き直すので、時計が止まって
+     * いるあいだは印も止まり、tick のたびにまとめて飛ぶ ── 「速さ×」を
+     * 上げるほど 1 回の飛びが大きくなり、飛び飛びに見える。
+     *
+     * そこで、前回 tick からの実時間を「速さ×」倍して足し、コマの合間も
+     * なめらかに進む時計にする。止めているあいだは進めない（そのため
+     * 「⏸ 止める」を押せば印もその場で止まる）。
+     *
+     * 進めるのは 1 tick ぶんまで。タブが裏に回るなどで tick が遅れたとき、
+     * 実時間ぶん先へ延々と進んで、戻ってきた瞬間に大きく引き戻されるのを防ぐ。
+     */
+    function positionClock() {
+      if (!state.playing) return state.virtualMs;
+      const realElapsed = Math.min(Date.now() - advancedAtReal, TICK_MS);
+      return state.virtualMs + realElapsed * state.rate;
+    }
 
     function tick() {
       let remaining = (TICK_MS / 1000) * state.rate;
@@ -307,10 +334,10 @@
         advance(step);
         remaining -= step;
       }
+      advancedAtReal = Date.now();
 
       // 電波が無いあいだは位置を渡さない。アプリ側の推定（設計書 3.3）が働く
-      // ここも実時刻で（send() と同じ理由）
-      if (state.offline) trip.onStale(Date.now());
+      if (state.offline) trip.onStale(state.virtualMs);
       else send();
 
       render();
@@ -318,6 +345,8 @@
 
     function play(on) {
       state.playing = on;
+      // 止めていたあいだの実時間を、動かした瞬間に取り戻させない
+      advancedAtReal = Date.now();
       if (timer !== null) clearInterval(timer);
       timer = on ? setInterval(tick, TICK_MS) : null;
       render();
@@ -333,10 +362,30 @@
       if (ahead.length === 0) return;
 
       const sign = state.direction === '下り' ? 1 : -1;
-      const wanted = ahead[0].distanceAlong - sign * JUMP_MARGIN_METERS;
+      /** そのスポットの 320m 手前は、線路のどこか */
+      const landing = (spot) => spot.distanceAlong - sign * JUMP_MARGIN_METERS;
+
+      /*
+       * 降ろす先は「まだ前方にある」ものだけから選ぶ。
+       *
+       * いちばん近いスポットを無条件に選んでいたころは、そのスポットまで
+       * 320m を切って（＝接近通知が出ている最中に）押すと、320m 手前へ
+       * 戻るために**うしろへ飛んでいた**。本体は位置の変化から進行方向を
+       * 読むので（Onboard.trackDirection）、この後退を「向きが変わった」と
+       * 受け取って下りが上りに裏返る。裏返れば車窓の左右も入れ替わり、
+       * 同じスポットに「右の窓」と出たり「左側の車窓」と出たりする。
+       * 前方のスポットまで通過済みの扱いになり、通知も記録も総崩れになる。
+       *
+       * すでに 320m を切っているスポットは「もう着いている」とみなし、
+       * その次のものへ送る。押すたびに先へ進むだけになり、後退しない。
+       */
+      const target = ahead.find((spot) => (sign > 0
+        ? landing(spot) > state.along
+        : landing(spot) < state.along));
+      if (target === undefined) return;
 
       // 飛んだ先が、いま向かっている駅より先なら、目標の駅も繰り上げる
-      state.along = Math.max(0, Math.min(route.totalLength, wanted));
+      state.along = Math.max(0, Math.min(route.totalLength, landing(target)));
       while (
         state.target < state.stops.length - 1 &&
         (sign > 0 ? state.stops[state.target].along < state.along
@@ -355,7 +404,13 @@
       if (state.stops.length < 2) return;
       const last = state.stops[state.stops.length - 1];
       const sign = state.direction === '下り' ? 1 : -1;
-      state.along = last.along - sign * 260;
+      /*
+       * ここもうしろへは戻さない（jumpToNextSpot と同じ理由。後退させると
+       * 本体が進行方向を裏返して読む）。終点の 260m 手前をもう過ぎていたら、
+       * そのまま走らせて着かせる。
+       */
+      const wanted = last.along - sign * 260;
+      state.along = sign > 0 ? Math.max(state.along, wanted) : Math.min(state.along, wanted);
       state.target = state.stops.length - 1;
       state.phase = 'run';
       state.speed = state.cruise = MIN_CRUISE;
@@ -382,6 +437,7 @@
       clearRecords,
       onRender,
       shownClock,
+      positionClock,
       /** アプリが今どのモードにいるか（操作盤の表示に使う） */
       mode: trip.mode,
       /** 次に通るスポットの名前。操作盤の表示に使う */
@@ -647,6 +703,16 @@
     /** js/main.js から呼ばれる入口 */
     start(parts) {
       const sim = create(parts);
+
+      /*
+       * 本体に、位置まわりの時刻をこの列車の時計で見るよう伝える。
+       *
+       * これを渡さないと、本体は実時計（Date.now）で経過時間を測る一方、
+       * こちらが渡す時刻（virtualMs）は発車時刻を起点に「速さ×」倍の速さで
+       * 進むため、両者が食い違って現在地の印が飛び飛びになる。
+       */
+      if (parts.usePositionClock) parts.usePositionClock(sim.positionClock);
+
       const panel = mount(sim, parts.route, parts.setWeather, parts.getPlan ? parts.getPlan() : null);
       /*
        * 動かしているものを外から掴めるようにしておく。

@@ -394,6 +394,46 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     return { station: ahead.name, scheduledMinute: ahead.minute };
   }
 
+  /**
+   * この駅で、乗っている列車の運転が終わるか（＝そこで降ろされるか）。
+   *
+   * 旅の終わりは、ふだん「降りると決めた駅」か「進行方向の終点」で決まる
+   * （js/main.js の isJourneyEnd）。ところが、路線の終点まで行かずに
+   * 途中の駅で運転を終える列車がある。有楽町線の辰巳どまりがそれで、
+   * 新木場（路線の終点）の 1.5km 手前で運転を終える。それに乗っていると、
+   * 終点に着かないまま車上モードが終わらず、**旅の記録がいつまでも出ない**。
+   * 銚子電鉄はどの列車も全線を走るので、ここまで表に出てこなかった。
+   *
+   * 判定は「その向きの列車で、この駅を終着とするものが、ちょうど今ごろ着く」。
+   * 列車を runningTrains で特定しないのは、終着駅に着いた瞬間はその列車の
+   * 時間帯のちょうど端にあたり、1 分ずれただけで「走っていない」ことに
+   * なってしまうため。
+   *
+   * 停まっていること・その駅にいることは、呼ぶ側が確かめている。
+   *
+   * @param {object} scheduleTools js/schedule.js が出す道具
+   * @param {number} graceMinutes 何分のずれまで「今ごろ」とみなすか。
+   *   遅れて走っていても拾えるように幅をもたせる。
+   */
+  function trainTerminatesAt(
+    scheduleTools, schedule, direction, stationName, now, graceMinutes = 5
+  ) {
+    const order = schedule && schedule.駅順 ? schedule.駅順[direction] : null;
+    if (!order) return false;
+
+    const currentMinutes = scheduleTools.minutesOfDay(now);
+
+    return schedule.列車.some((train) => {
+      if (train.方向 !== direction) return false;
+
+      const names = Object.keys(train.時刻);
+      const last = names.reduce((a, b) => (order.indexOf(a) > order.indexOf(b) ? a : b));
+      if (last !== stationName) return false;
+
+      return Math.abs(currentMinutes - scheduleTools.toMinutes(train.時刻[last])) <= graceMinutes;
+    });
+  }
+
   global.Onboard = {
     ON_ROUTE_METERS,
     TRAIN_SPEED_MPS,
@@ -416,5 +456,6 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     noticeFor,
     delayMinutes,
     nextStopEta,
+    trainTerminatesAt,
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
