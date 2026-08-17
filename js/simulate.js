@@ -39,6 +39,20 @@
    */
   const TICK_MS = 200;
 
+  /*
+   * ただし「速さ×」を上げると、この間隔のあいだに進む仮想の時間も倍率ぶん
+   * 伸びる。×30 なら 1 回の位置に 6 仮想秒ぶんが乗る。本体はそのあいだを
+   * 直前の速さで推し量るので（js/main.js の predictAlong）、加速・減速して
+   * いる区間では推し量りと実際がずれ、次の位置が届いた拍子に印がわずかに
+   * ずれ直る。倍率が高いほど、そのずれ直りが大きく目につく。
+   *
+   * そこで、倍率が高いときは間隔のほうを詰めて、1 回あたりの仮想時間を
+   * 1 秒前後（実機の位置情報とおなじくらい）に保つ。×1〜×5 ではこれまで
+   * どおり 200ms のまま。詰めすぎても意味がないので 30ms で止める。
+   */
+  const MIN_TICK_MS = 30;
+  const VIRTUAL_SECONDS_PER_FIX = 1;
+
   /** 物理計算のきざみ（仮想秒）。速さを上げても飛び越さないように */
   const STEP_SECONDS = 0.5;
 
@@ -306,13 +320,18 @@
 
     let timer = null;
 
+    /** いまの倍率での、位置を渡す間隔（実時間 ms）。@see MIN_TICK_MS */
+    function tickMs() {
+      return Math.max(MIN_TICK_MS, Math.min(TICK_MS, (VIRTUAL_SECONDS_PER_FIX * 1000) / state.rate));
+    }
+
     /**
      * 本体（js/main.js）が「位置にまつわる、いまの時刻」を読むための時計。
      *
-     * virtualMs をそのまま返すと、200ms（TICK_MS）ごとにしか進まない時計に
-     * なる。本体は現在地の印を毎コマ（60fps）描き直すので、時計が止まって
-     * いるあいだは印も止まり、tick のたびにまとめて飛ぶ ── 「速さ×」を
-     * 上げるほど 1 回の飛びが大きくなり、飛び飛びに見える。
+     * virtualMs をそのまま返すと、tick ごとにしか進まない時計になる。本体は
+     * 現在地の印を毎コマ（60fps）描き直すので、時計が止まっているあいだは
+     * 印も止まり、tick のたびにまとめて飛ぶ ── 「速さ×」を上げるほど
+     * 1 回の飛びが大きくなり、飛び飛びに見える。
      *
      * そこで、前回 tick からの実時間を「速さ×」倍して足し、コマの合間も
      * なめらかに進む時計にする。止めているあいだは進めない（そのため
@@ -323,12 +342,12 @@
      */
     function positionClock() {
       if (!state.playing) return state.virtualMs;
-      const realElapsed = Math.min(Date.now() - advancedAtReal, TICK_MS);
+      const realElapsed = Math.min(Date.now() - advancedAtReal, tickMs());
       return state.virtualMs + realElapsed * state.rate;
     }
 
     function tick() {
-      let remaining = (TICK_MS / 1000) * state.rate;
+      let remaining = (tickMs() / 1000) * state.rate;
       while (remaining > 0) {
         const step = Math.min(STEP_SECONDS, remaining);
         advance(step);
@@ -348,7 +367,7 @@
       // 止めていたあいだの実時間を、動かした瞬間に取り戻させない
       advancedAtReal = Date.now();
       if (timer !== null) clearInterval(timer);
-      timer = on ? setInterval(tick, TICK_MS) : null;
+      timer = on ? setInterval(tick, tickMs()) : null;
       render();
     }
 

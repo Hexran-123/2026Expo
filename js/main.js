@@ -2738,9 +2738,14 @@ function createTrip(route, spots, schedule, parts) {
 
   /**
    * 描く位置を、推し量った位置へ一コマぶん寄せる。
+   *
+   * @param {number} sinceLast 前のコマからの経過（**位置の時計**でのミリ秒）。
+   *   実時間ではないことに注意。寄せる相手（predictAlong）が位置の時計で
+   *   動く以上、追いかける側も同じ時計で測らないと、時計の進み方が変わった
+   *   とたんに追いつけなくなる。
    * @returns {boolean} まだ動いているか（false なら寄せ終わっている）
    */
-  function stepShown(now, sinceLastFrame) {
+  function stepShown(now, sinceLast) {
     const target = predictAlong(now);
     if (target === null) return false;
 
@@ -2752,19 +2757,13 @@ function createTrip(route, spots, schedule, parts) {
     /*
      * 離れすぎていたら、寄せずに飛ばす（トンネルを抜けて電波が戻ったときなど）。
      *
-     * ただし「離れすぎ」の目安は、速さによって変わる。この寄せ方は、
-     * 一定の速さで動く相手を追うと HERE_SMOOTH_MS ぶんうしろに落ち着く
-     * （時速 40km なら約 4m）。その落ち着き先まで飛ばしてしまうと、
-     * 落ち着くたびに飛ぶ、を繰り返すことになる。
-     *
-     * 実機の速さでは 4m ほどなので 120m とほとんど変わらないが、
-     * テスト走行を ×30 にすると、電車は実時間 1 秒で 300m 進む見当になり、
-     * 落ち着き先は 120m の外へ出る。そのままだと、正しく追えているのに
-     * 毎回「離れすぎ」と見なされて飛び、飛び飛びの絵になる。
+     * ここへ来るのは、実測そのものが飛んだときだけにしたい。追いかけ方が
+     * 遅れているだけで飛ばすと、遅れが溜まるたびに飛ぶ、を繰り返す。
+     * 遅れは位置の時計で測った HERE_SMOOTH_MS ぶん（時速 40km で約 4m）に
+     * とどまるので、120m はもっぱら実測の飛びだけを拾う。
      */
-    const settleLag = anchorSpeed * (HERE_SMOOTH_MS / 1000);
     const gap = target - shownAlong;
-    if (Math.abs(gap) > HERE_SNAP_METERS + settleLag) {
+    if (Math.abs(gap) > HERE_SNAP_METERS) {
       shownAlong = target;
       return false;
     }
@@ -2777,13 +2776,14 @@ function createTrip(route, spots, schedule, parts) {
      * 寄せ方を時間で決める（コマ数に依らせない）。コマ落ちしても
      * 進み方が変わらないので、重い端末でも動きの速さは同じになる。
      */
-    shownAlong += gap * (1 - Math.exp(-sinceLastFrame / HERE_SMOOTH_MS));
+    shownAlong += gap * (1 - Math.exp(-sinceLast / HERE_SMOOTH_MS));
     return true;
   }
 
   /** 毎コマの寄せを回しているか。回っていないあいだは電池を使わない */
   let hereFrame = null;
-  let hereFrameAt = 0;
+  /** 前のコマを描いたときの「位置の時計」。コマの間隔を測るのに使う */
+  let hereClockAt = 0;
   /** いま地図を軽いモードにしているか（.screen--moving） */
   let mapLightened = false;
 
@@ -2803,25 +2803,36 @@ function createTrip(route, spots, schedule, parts) {
   }
 
   /**
-   * @param {number} frameNow requestAnimationFrame が渡す時刻（performance.now 系）。
-   *   コマの間隔を測るのにだけ使う。位置の計算には使わない——anchorAt も
-   *   lastRealFixAt も positionNow() で入っているので、混ぜると桁違いの差が出る。
-   *   （寄せ方の時定数 HERE_SMOOTH_MS は「見た目のなめらかさ」の話なので、
-   *   テスト走行の倍率とは関係なく、実時間で測るのが正しい。）
+   * 毎コマ、描く位置を寄せて描き直す。
+   *
+   * 時刻はすべて positionNow()（実測が入っているのと同じ時計）で測る。
+   * requestAnimationFrame が渡す時刻は使わない。コマの間隔もこちらで測る
+   * ——寄せる相手（predictAlong）が位置の時計で動くので、追いかける側だけ
+   * 実時間で測ると、時計の進み方が変わったとたんに追いつけなくなる。
+   * テスト走行を ×30 にすると相手は 30 倍の速さで動くのに、寄せる速さは
+   * そのままなので、遅れが 120m（HERE_SNAP_METERS）を越えて「離れすぎ」と
+   * 見なされ、巡航のたびに印が飛んでいた（銚子電鉄の全線で 2 回）。
+   *
+   * ふだん（実機の位置情報）は positionNow() が Date.now() そのものなので、
+   * これまでと同じ実時間で測ることになる。
    */
-  function hereTick(frameNow) {
-    const sinceLastFrame = Math.max(1, Math.min(frameNow - hereFrameAt, 250));
-    hereFrameAt = frameNow;
-
+  function hereTick() {
     // 位置にまつわる時刻は、すべてこちら（実測が入っているのと同じ時計）で見る
     const now = positionNow();
+
+    /*
+     * 上限は時定数の 5 倍。裏に回っていたタブが戻ったときは、そこまでの
+     * ぶんを一度に寄せきってしまってよい（そのために上限を置いている）。
+     */
+    const sinceLast = Math.max(1, Math.min(now - hereClockAt, HERE_SMOOTH_MS * 5));
+    hereClockAt = now;
 
     /*
      * 実測が絶えて久しければ、onStale が印を消している。ここで描き直すと
      * 消したものが戻ってしまうので、何もしない。
      */
     const tooOld = mode === '車上' && now - lastRealFixAt > Onboard.DEAD_RECKON_LIMIT_MS;
-    const moving = !tooOld && stepShown(now, sinceLastFrame);
+    const moving = !tooOld && stepShown(now, sinceLast);
 
     if (moving) {
       // 追従で地図が動いているあいだだけ軽くする。駅に停まれば元の絵に戻る
@@ -2840,7 +2851,7 @@ function createTrip(route, spots, schedule, parts) {
   /** 寄せを回しはじめる。すでに回っていれば何もしない */
   function startHereLoop() {
     if (hereFrame !== null) return;
-    hereFrameAt = performance.now();
+    hereClockAt = positionNow();
     hereFrame = requestAnimationFrame(hereTick);
   }
 
