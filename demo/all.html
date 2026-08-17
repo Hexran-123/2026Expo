@@ -5678,12 +5678,24 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
        * 続けてぶれる。virtualMs は Schedule.useClock(shownClock) で
        * 時刻表の見た目にだけ使われていて、ここに混ぜる理由はない。
        */
+      /*
+       * coords.speed も同じ理由で、そのまま渡すと壊れる。state.speed は
+       * 「仮想 1 秒あたり何 m 進むか」（列車としての物理量）で、実時間
+       * 1 秒あたりでは state.rate 倍進む（advance が仮想秒を刻み、
+       * その仮想秒は実時間の rate 倍の速さで過ぎるため）。js/main.js の
+       * 予測（predictAlong の anchorSpeed）と通知の秒数（Onboard.noticeFor
+       * の seconds = remaining / speedMps）はどちらも「実時間 1 秒あたり
+       * 何 m」だと思って使うので、rate を掛けずに渡すと ×30 のような
+       * 高倍率で実際の移動量より大きく遅れて追いつけず、120m 離れるたび
+       * スナップする（＝飛び飛びに見える）。低倍率では遅れが 120m に
+       * 届かず気づかれなかっただけで、同じ食い違いは元からあった。
+       */
       trip.onPosition(
         {
           latitude: place.latitude,
           longitude: place.longitude,
           accuracy: state.jitter ? JITTER_METERS : 5,
-          speed: state.speed,
+          speed: state.speed * state.rate,
           // 停まっているあいだ、実機は向きを返さないことが多い
           heading: state.speed > 0.5
             ? (state.direction === '下り' ? place.bearing : (place.bearing + 180) % 360)
