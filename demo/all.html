@@ -5668,6 +5668,16 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       const raw = positionAt(track, state.along);
       const place = state.jitter ? scatter(raw, JITTER_METERS) : raw;
 
+      /*
+       * trip.onPosition の第2引数は「実測が届いた実時刻」（js/main.js の
+       * fixedAt・lastRealFixAt・setAnchor の起点）。あちらは Date.now() と
+       * 直接引き算して経過時間を測る（predictAlong・onStale）。ここへ
+       * state.virtualMs（発車時刻ぶんだけずれていて、しかも「速さ×」で
+       * 実時間より速く進む見せかけの時計）を渡すと、その引き算が数分〜
+       * 数時間ぶん狂い、現在地の印が毎フレーム全然ちがう位置へスナップし
+       * 続けてぶれる。virtualMs は Schedule.useClock(shownClock) で
+       * 時刻表の見た目にだけ使われていて、ここに混ぜる理由はない。
+       */
       trip.onPosition(
         {
           latitude: place.latitude,
@@ -5679,7 +5689,7 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
             ? (state.direction === '下り' ? place.bearing : (place.bearing + 180) % 360)
             : null,
         },
-        state.virtualMs
+        Date.now()
       );
     }
 
@@ -5694,7 +5704,8 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
       }
 
       // 電波が無いあいだは位置を渡さない。アプリ側の推定（設計書 3.3）が働く
-      if (state.offline) trip.onStale(state.virtualMs);
+      // ここも実時刻で（send() と同じ理由）
+      if (state.offline) trip.onStale(Date.now());
       else send();
 
       render();
