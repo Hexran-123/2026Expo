@@ -1883,8 +1883,7 @@ function noteLimit(kind) {
  */
 function createOriginCard(screenElement, hooks = {}) {
   const card = document.getElementById('origin');
-  const themeElement = document.getElementById('origin-theme');
-  const nameElement = document.getElementById('origin-name');
+  const headElement = document.getElementById('origin-head');
   const panelsElement = document.getElementById('origin-panels');
   const pagerElement = document.getElementById('origin-pager');
   const backButton = document.getElementById('origin-back');
@@ -1949,7 +1948,14 @@ function createOriginCard(screenElement, hooks = {}) {
      */
     if (!currentLine || currentLine.dataSource !== 'real') return;
 
-    Popularity.record(spot.id).then((opens) => {
+    /*
+     * 成因カードを一本化したスポットどうしは、人気も一つの数として
+     * 共有する（FB 2026-08-18）。`popularityId` を持つ側だけ、数える
+     * 先をそちらへ差し替える。データベース側の id はそのまま
+     * （spots.json の `_comment` を参照）、front-end で読み替えるだけ
+     * なので、Supabase のスキーマは変えていない。
+     */
+    Popularity.record(spot.popularityId || spot.id).then((opens) => {
       // 待っているあいだに閉じられた・別のカードへ移った
       if (openedId !== spot.id) return;
 
@@ -2276,19 +2282,48 @@ function createOriginCard(screenElement, hooks = {}) {
 
     openedId = spot.id;
     count = spot.panels.length;
+    // コマの絵の縁取りは、いま開いたスポット自身のテーマ色を使う
+    const theme = THEMES[spot.theme];
 
     // 前のスポットのスタンプが残らないよう、貼り直す前にはがす
     const staleBadge = card.querySelector('.origin-badge');
     if (staleBadge) staleBadge.remove();
 
-    const theme = THEMES[spot.theme];
-    // 予習用の下敷きと同じ札。絵とテーマ名がここでも結びつく
-    themeElement.replaceChildren(
-      diamondMark(THEME_GLYPHS[spot.theme], theme.color, 'card-theme-mark'),
-      document.createTextNode(spot.theme)
-    );
-    themeElement.style.setProperty('--card-color', theme.color);
-    nameElement.textContent = spot.name;
+    /*
+     * ふつうは自分だけの札と名前。成因カードを一本化したスポットどうし
+     * （FB 2026-08-18、`spot.mergedWith`）は、二組を並べる。順序は
+     * どちらを開いても同じになるよう、銚子駅からの距離（distanceAlong）
+     * の順にそろえる ── 「森のトンネル」を先に通過して開いても、
+     * 見出しは「遠くに見える海」が先という一つの並びで安定させるため。
+     */
+    const paired = spot.mergedWith && hooks.spotById ? hooks.spotById.get(spot.mergedWith) : null;
+    const headSpots = paired
+      ? [spot, paired].sort((a, b) => a.distanceAlong - b.distanceAlong)
+      : [spot];
+
+    headElement.replaceChildren();
+    headSpots.forEach((headSpot, index) => {
+      const headTheme = THEMES[headSpot.theme];
+      // 予習用の下敷きと同じ札。絵とテーマ名がここでも結びつく
+      const themeElement = document.createElement('p');
+      themeElement.className = 'card-theme';
+      themeElement.style.setProperty('--card-color', headTheme.color);
+      themeElement.append(
+        diamondMark(THEME_GLYPHS[headSpot.theme], headTheme.color, 'card-theme-mark'),
+        document.createTextNode(headSpot.theme)
+      );
+
+      const nameElement = document.createElement('h2');
+      nameElement.className = 'card-name';
+      nameElement.textContent = headSpot.name;
+      // aria-labelledby（#origin）が指す先。組が二つあっても一つに保つ
+      if (index === 0) nameElement.id = 'origin-name';
+
+      const group = document.createElement('div');
+      group.className = 'origin-head-group';
+      group.append(themeElement, nameElement);
+      headElement.appendChild(group);
+    });
 
     panelsElement.replaceChildren();
     for (const panel of spot.panels) {
@@ -2450,6 +2485,10 @@ function createTrip(route, spots, schedule, parts) {
   const noticeBar = document.getElementById('notice-bar');
   const noticeLead = document.getElementById('notice-lead');
   const noticeDetail = document.getElementById('notice-detail');
+  // 二つ目の通知帯（FB 2026-08-18）。成因カードを一本化した相方の分だけ使う
+  const noticeBar2 = document.getElementById('notice-bar-2');
+  const noticeLead2 = document.getElementById('notice-lead-2');
+  const noticeDetail2 = document.getElementById('notice-detail-2');
   const riding = document.getElementById('riding');
   const ridingTowards = document.getElementById('riding-towards');
   const ridingDelay = document.getElementById('riding-delay');
@@ -2597,7 +2636,13 @@ function createTrip(route, spots, schedule, parts) {
   let offRouteSince = null;
   /** いま通知を出しているスポット。通過するまで次に移らない */
   let noticedId = null;
-  let vibratedId = null;
+  /*
+   * 振動・ロック中通知をもう出したスポットの id。1 スポットに一度だけ
+   * （設計書 4.3）。Set にしてあるのは、成因カードを一本化した相方どうし
+   * （FB 2026-08-18）で二つの通知が同時に出ているとき、それぞれ独立に
+   * 一度だけ鳴らす必要があるため。
+   */
+  const vibratedIds = new Set();
   let delayShown = null;
   /** 遅れを最後に引き直した時刻。null なら「まだこの乗車で引いていない」 */
   let delayCheckedAt = null;
@@ -2655,38 +2700,57 @@ function createTrip(route, spots, schedule, parts) {
 
   // ---- 見た目を書き換える ----
 
-  function showNotice(notice) {
-    // 環境音はテーマ別なので、通知の中身が変わるたびに合わせる（js/ambient.js。消えていてもよい）
-    if (typeof Ambient !== 'undefined') Ambient.update(notice);
-
-    if (notice === null) {
-      noticeBar.hidden = true;
-      return;
-    }
+  /** 通知帯 1 枚ぶんの中身を書く。showNotice が 1 枚目・2 枚目の両方でこれを使う */
+  function paintNotice(bar, leadElement, detailElement, notice) {
     const theme = THEMES[notice.spot.theme];
-    noticeBar.style.setProperty('--notice-color', theme.color);
-    noticeBar.dataset.phase = notice.phase;
+    bar.style.setProperty('--notice-color', theme.color);
+    bar.dataset.phase = notice.phase;
 
     if (notice.phase === 'いま') {
       /*
        * 地下のスポットは窓の外が壁なので、「見てください」と言わない
        * （UNDERGROUND の注記）。かわりに、いま足もとにあるものを告げる。
        */
-      noticeLead.textContent =
+      leadElement.textContent =
         notice.side === UNDERGROUND ? 'いま、足もとを通っています'
         : notice.side === '両' ? 'どちらの車窓を見てください'
         : `${notice.side}側の車窓を見てください`;
-      noticeDetail.textContent = notice.spot.name;
+      detailElement.textContent = notice.spot.name;
     } else {
-      noticeLead.textContent = `まもなく ${notice.spot.name}`;
+      leadElement.textContent = `まもなく ${notice.spot.name}`;
       const side =
         notice.side === UNDERGROUND ? UNDERGROUND_SHORT
         : notice.side === '両' ? 'どちらの窓でも'
         : `${notice.side}の窓`;
-      noticeDetail.textContent =
+      detailElement.textContent =
         notice.seconds === null ? side : `${side} ・ あと ${notice.seconds} 秒`;
     }
-    noticeBar.hidden = false;
+    bar.hidden = false;
+  }
+
+  /*
+   * @param {object|null} notice 1 枚目（ふつうはこれだけ）
+   * @param {object|null} [second] 2 枚目。成因カードを一本化したスポットどうし
+   *   （spot.mergedWith）で、相方も予告の範囲に入っているときだけ渡される
+   *   （FB 2026-08-18）。ふつうのスポットでは同時に二つ出さない方針
+   *   （設計書 4.3）を変えていない ── ここに来る組み合わせ自体が無い。
+   */
+  function showNotice(notice, second = null) {
+    // 環境音はテーマ別なので、通知の中身が変わるたびに合わせる（js/ambient.js。消えていてもよい）
+    if (typeof Ambient !== 'undefined') Ambient.update(notice);
+
+    if (notice === null) {
+      noticeBar.hidden = true;
+      noticeBar2.hidden = true;
+      return;
+    }
+    paintNotice(noticeBar, noticeLead, noticeDetail, notice);
+
+    if (second === null) {
+      noticeBar2.hidden = true;
+    } else {
+      paintNotice(noticeBar2, noticeLead2, noticeDetail2, second);
+    }
   }
 
   /* ---- 現在位置の印を、位置情報の合間もなめらかに動かす（設計書 4.3）----
@@ -3215,11 +3279,21 @@ function createTrip(route, spots, schedule, parts) {
     if (element) element.classList.add('spot--passed');
 
     /*
+     * 成因カードを一本化したスポットどうし（spot.mergedWith、FB 2026-08-18）は、
+     * 中身が同じカードを二度せり出させない。相方がまだ通過していなければ、
+     * ここでは自動で出さず、相方を通過したときに一度だけ出す。バッジは
+     * それぞれ押した時点で通過扱いの見た目になる（上の spot--passed）ので、
+     * 待っているあいだも自分から開いて読むことはできる。
+     */
+    const partnerId = spot.mergedWith;
+    const waitingForPartner = partnerId !== undefined && !passed.has(partnerId);
+
+    /*
      * 予習用の下敷き（4.1）が開いたままだと、成因カードと二重に重なる。
      * 車上モードでバッジを押して下敷きを見ているあいだに通過することは
      * 普通に起こりうるので、自動で出すときも必ず先に下敷きを閉じる。
      */
-    if (options.silent !== true) {
+    if (options.silent !== true && !waitingForPartner) {
       spotCard.close();
       originCard.open(spot);
     }
@@ -3425,15 +3499,30 @@ function createTrip(route, spots, schedule, parts) {
       ? Onboard.noticeFor(target, along, direction, speed)
       : null;
 
-    showNotice(notice);
+    /*
+     * 二つ目の通知（FB 2026-08-18）。成因カードを一本化したスポットどうし
+     * （spot.mergedWith）だけの特例。相方がまだ通過しておらず、相方も
+     * それ自身の予告の範囲に入っていれば、重ねて出す。相方が遠ければ
+     * null のままで、いつもどおり一つだけになる。
+     */
+    const partner = notice && target.mergedWith
+      ? spots.find((spot) => spot.id === target.mergedWith)
+      : null;
+    const secondNotice = partner && !passed.has(partner.id)
+      ? Onboard.noticeFor(partner, along, direction, speed)
+      : null;
+
+    showNotice(notice, secondNotice);
     noticedId = notice ? notice.spot.id : null;
 
     // 振動は 1 スポットにつき一度だけ。短く 1 回（設計書 4.3）
     // ロック中も届く通知（設計書 9.1）も、対応する端末・許可済みならここで一緒に出す
-    if (notice && vibratedId !== notice.spot.id) {
-      vibratedId = notice.spot.id;
-      if (navigator.vibrate) navigator.vibrate(200);
-      notifyOS(notice);
+    for (const one of [notice, secondNotice]) {
+      if (one && !vibratedIds.has(one.spot.id)) {
+        vibratedIds.add(one.spot.id);
+        if (navigator.vibrate) navigator.vibrate(200);
+        notifyOS(one);
+      }
     }
 
     /*
@@ -4626,6 +4715,8 @@ async function main() {
      */
     noteFor: (spotId) => (trip ? trip.noteFor(spotId) : ''),
     onNote: (spotId, text) => { if (trip) trip.setNote(spotId, text); },
+    // 成因カードを一本化したスポット（`spot.mergedWith`）の相方を引くため
+    spotById,
   });
   let trip = null;
 

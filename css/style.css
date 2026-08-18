@@ -1621,6 +1621,15 @@ button.line-name:active {
 }
 
 /*
+ * 成因カードを一本化したスポットどうし（FB 2026-08-18）だけ、
+ * 札と名前の組が二つ並ぶ。ふつうは一組だけなので margin は次の組との
+ * あいだにしか付かない。
+ */
+.origin-head-group + .origin-head-group {
+  margin-top: 10px;
+}
+
+/*
  * コマを横に並べ、はらってめくる。
  * scroll-snap を使うと、指を離したところでコマの切れ目に吸いつく。
  */
@@ -1975,6 +1984,48 @@ button.line-name:active {
   gap: 8px;
   padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/*
+ * SNS への共有（FB 2026-08-18）。押せる範囲は他の丸ボタンと同じ 48px を
+ * 保つが、ここは地図の上ではないので浮かせず、帯の中に並べて置く。
+ */
+.journal-share {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+
+.journal-share-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.journal-share-btn:active {
+  transform: scale(0.93);
+}
+
+.journal-share-btn svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.journal-share-dot {
+  stroke-width: 2.4;
 }
 
 .journal-save {

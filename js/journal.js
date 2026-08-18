@@ -33,6 +33,18 @@
   const SHARE_WIDTH = 1080;
 
   /*
+   * 端末の共有シートを呼べるか（FB 2026-08-18）。
+   *
+   * Instagram にも X にも、ウェブから画像つきで直接投稿する公式な手段は
+   * 無い。代わりに OS の共有シート（Web Share API）を呼び、そこに並ぶ
+   * Instagram・X などから利用者に選んでもらう。対応するのは主に
+   * スマートフォンのブラウザで、パソコンの多くは対応しない。
+   * NOTIFY_SUPPORTED（js/main.js）と同じ考え方で、一度だけ判定して
+   * 対応しない端末では行ごと隠す（動かないなら黙って隠す、設計書 9.3）。
+   */
+  const SHARE_SUPPORTED = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  /*
    * 書ける字数（設計書 7.2）。
    *
    * 写真の一言が短いのは、共有画像で写真 1 枚の下（300px）に 1 行で
@@ -285,6 +297,16 @@
       });
     document.getElementById('journal-save')
       .addEventListener('click', () => saveAsImage());
+
+    // SNS への共有（FB 2026-08-18）。対応する端末でだけ行を出す
+    const journalShare = document.getElementById('journal-share');
+    journalShare.hidden = !SHARE_SUPPORTED;
+    if (SHARE_SUPPORTED) {
+      document.getElementById('journal-share-instagram')
+        .addEventListener('click', () => shareToSns());
+      document.getElementById('journal-share-x')
+        .addEventListener('click', () => shareToSns());
+    }
 
     /*
      * 書いたものを端末に残す。
@@ -667,8 +689,11 @@
      * ② 共有用の画像（設計書 7）。
      * タイムライン・写真・結びを 1 枚の縦長画像にまとめる。
      * 乗客が SNS に上げれば、そのまま銚子電鉄の宣伝になる。
+     *
+     * 描くところ（この関数）と、できた画像をどうするか（保存・共有）を
+     * 分けてある。共有シート（shareToSns）も同じ絵を使うため。
      */
-    async function saveAsImage() {
+    async function renderShareCanvas() {
       const padding = 64;
       const shotSize = 300;
       const columns = 3;
@@ -805,18 +830,62 @@
       context.font = '22px sans-serif';
       context.fillText('車窓絶景ナビ', padding, height - 48);
 
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'きょうの旅.png';
-        link.click();
-        /*
-         * 取り消しは次の回へ回す。押した直後にここで取り消すと、
-         * 保存が始まる前に中身が消えて、何も落ちてこない端末がある。
-         */
-        setTimeout(() => URL.revokeObjectURL(link.href), 60000);
-      }, 'image/png');
+      return canvas;
+    }
+
+    /** canvas → blob。Promise にしてあるだけで、絵の中身は renderShareCanvas が持つ */
+    function canvasToBlob(canvas) {
+      return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
+    }
+
+    /** 画像をダウンロードとして保存する（従来どおりの「画像として保存」） */
+    async function saveAsImage() {
+      const blob = await canvasToBlob(await renderShareCanvas());
+      if (!blob) return;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'きょうの旅.png';
+      link.click();
+      /*
+       * 取り消しは次の回へ回す。押した直後にここで取り消すと、
+       * 保存が始まる前に中身が消えて、何も落ちてこない端末がある。
+       */
+      setTimeout(() => URL.revokeObjectURL(link.href), 60000);
+    }
+
+    /**
+     * SNS への共有（FB 2026-08-18）。
+     *
+     * Instagram にも X にも、ウェブから画像つきで直接投稿する公式な手段が
+     * 無いので、端末の共有シート（Web Share API）を呼ぶ。共有シートは
+     * OS がまとめて出すもので、Instagram のアイコンから押しても X の
+     * アイコンから押しても、開くのは同じ一覧になる ── 一覧のどれを選ぶかは
+     * そこで利用者が決める。呼べない・失敗したときは、いつもの
+     * 「画像として保存」と同じ手段に静かに切り替える。
+     */
+    async function shareToSns() {
+      const blob = await canvasToBlob(await renderShareCanvas());
+      if (!blob) return;
+
+      const file = new File([blob], 'きょうの旅.png', { type: 'image/png' });
+      const payload = { files: [file], title: 'きょうの旅', text: closingNow() };
+
+      if (SHARE_SUPPORTED && navigator.canShare && navigator.canShare(payload)) {
+        try {
+          await navigator.share(payload);
+          return;
+        } catch (error) {
+          // 利用者が共有シートを閉じただけなら、それ以上は何もしない
+          if (error && error.name === 'AbortError') return;
+        }
+      }
+
+      // 共有できない端末・失敗したときは保存にする
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'きょうの旅.png';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 60000);
     }
 
     /** 文を、はみ出さない幅で折り返す */
