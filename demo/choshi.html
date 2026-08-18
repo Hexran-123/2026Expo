@@ -454,8 +454,21 @@ body {
 /*
  * すりガラスをやめる。透け具合が変わらないよう、
  * ぼかしのぶんだけ地の色を濃くして置きかえる。
+ *
+ * 接近の通知（.bar--notice）だけは外す。あれはすりガラスではなく
+ * テーマの色で塗りつぶしてあり、文字は白い。ここで白い地に塗り替えると
+ * 白い文字が白い地に乗って、通知がまるごと読めなくなる。
+ *
+ * 実際そうなっていた。乗っているあいだ、現在位置の印を毎コマ寄せている
+ * かぎり .screen--moving は付きっぱなしになる（js/main.js の
+ * setMapLightened）ので、**走行中はずっと通知が白い箱にしか見えない**。
+ * 「あと何秒」も「どちら側の窓か」も、この作品でいちばん見せたいものが
+ * 出ていないように見えていた。
+ *
+ * そもそも .bar--notice は backdrop-filter: none なので、
+ * ここで軽くしてやる必要もない。
  */
-.screen--moving .bar,
+.screen--moving .bar:not(.bar--notice),
 .screen--moving .reset-view,
 .screen--moving .shoot {
   -webkit-backdrop-filter: none;
@@ -2463,7 +2476,7 @@ button.origin-badge:disabled {
 .line-picker {
   position: fixed;
   inset: 0;
-  z-index: 25;                 /* 乗車区間の設定（20）より前に出す */
+  z-index: 107;                /* 乗車区間の設定（106）より前に出す */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2689,12 +2702,18 @@ button.origin-badge:disabled {
    保存された区間が無ければ、地図より先にこれを画面いっぱいに出す。
    旅の記録（.journal）より優先して最前面に置く。両方が同時に出ることは
    運用上ない（旅の記録は降車後、こちらは主に乗車前）が、念のため。
+
+   z-index は、旅の記録（105）と同じ理由で 1 枚デモの操作盤
+   （js/simulate.js の .sim は 100）より上げてある。20 のままだったころは、
+   スマホの幅で操作盤（畳んであっても左下に居座る）が「決定」に重なり、
+   **押せなかった**。本物のサイトに操作盤は無いが、配るのも確認するのも
+   demo/all.html なので、そこで押せないものは動いていないのと同じになる。
    ------------------------------------------------------------------ */
 
 .plan {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 106;
   display: flex;
   align-items: center;
   justify-content: center;
