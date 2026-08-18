@@ -1,0 +1,716 @@
+<title>絶景掲示板 試作 v4</title>
+<style>
+  :root {
+    --land-0:  #E2EACB;
+    --land-8:  #D2E0B4;
+    --land-16: #C6D69C;
+    --land-24: #C7CC85;
+    --land-32: #C9B96D;
+    --land-45: #C29A5A;
+    --water:   #9DC3D7;
+
+    --rail:    #4A4640;
+    --station: #FFFFFF;
+
+    --theme-sea:     #2A6E8F;
+    --theme-sea-sub: #7FC4D9;
+
+    --paper:   #F3EBD8;
+    --panel:   rgba(255, 255, 255, 0.90);
+    --panel-solid: rgba(255, 255, 255, 0.96);
+    --ink:     #2B2A28;
+    --ink-soft:#6B6862;
+
+    --radius:  14px;
+
+    --font-body: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+                 "Noto Sans JP", "Meiryo", sans-serif;
+    --font-map:  "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic",
+                 "Noto Sans JP", "Meiryo", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #24262B; color: var(--ink);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  button { font-family: inherit; }
+
+  .app { position: relative; width: 100%; height: 100vh; display: flex; flex-direction: column; background: #24262B; }
+
+  .topbar {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 18px; background: #1B1D21; border-bottom: 1px solid #35383F;
+  }
+  .topbar-title { font-family: var(--font-map); color: var(--station); font-size: 15px; letter-spacing: .02em; display: flex; align-items: baseline; gap: 10px; }
+  .topbar-title small { color: #8B8E96; font-weight: 400; font-size: 12px; }
+
+  .stage { position: relative; flex: 1; display: flex; min-height: 0; }
+
+  /* ---------------- 3D 地図ステージ ---------------- */
+
+  .map-wrap {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    background: radial-gradient(120% 100% at 50% 15%, #2c2f36 0%, #1c1e22 70%, #17181b 100%);
+    perspective: 1700px;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .map-wrap.dragging { cursor: grabbing; }
+  .map-wrap.rotating { cursor: ew-resize; }
+
+  .camera-rig {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  .world {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+  }
+
+  .band-layer {
+    position: absolute;
+    left: -500px;
+    top: -634px;
+    width: 1000px;
+    height: 1268px;
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+  .band-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .band--0  { fill: var(--land-0); }
+  .band--8  { fill: var(--land-8); }
+  .band--16 { fill: var(--land-16); }
+  .band--24 { fill: var(--land-24); }
+  .band--32 { fill: var(--land-32); }
+  .band--45 { fill: var(--land-45); }
+  .band-layer .rim { fill: none; stroke: rgba(60, 70, 60, .32); stroke-width: 2; }
+  .sea-plate {
+    position: absolute;
+    left: -700px; top: -834px; width: 1400px; height: 1668px;
+    background: var(--water);
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+  .sea-plate::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.10) 0 2px, transparent 2px 26px);
+    opacity: .5;
+  }
+
+  .rail-layer { position: absolute; left: -500px; top: -634px; width: 1000px; height: 1268px; pointer-events: none; }
+  .rail-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .rail-halo { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+  .rail { fill: none; stroke: var(--rail); stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; }
+  .rail-offline { fill: none; stroke: #5B564C; stroke-width: 2.6; stroke-dasharray: 5 6; stroke-linecap: round; opacity: .85; }
+  .pylon-line { fill: none; stroke: rgba(20,22,26,.55); stroke-width: 1.6; stroke-dasharray: 2 3; }
+  .rail-ramp-bar { position: absolute; left: 0; top: 0; transform-origin: 0 0; border-radius: 3px; }
+  .rail-ramp-bar.halo { background: rgba(255,255,255,.85); }
+  .rail-ramp-bar.core { background: var(--rail); }
+
+  /* ---------------- 駅（3Dアンカー＋ビルボード・ラベル） ---------------- */
+
+  .station-anchor { position: absolute; left: 0; top: 0; transform-style: preserve-3d; pointer-events: none; }
+  .station-billboard { position: absolute; left: 0; top: 0; transform-style: flat; transform-origin: 0 0; pointer-events: none; }
+  .station-mark { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .station-mark .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--station); border: 2px solid var(--rail); box-shadow: 0 1px 4px rgba(0,0,0,.4); flex: none; }
+  .station-mark.offline .dot { width: 9px; height: 9px; background: #D8D4C6; }
+  .station-mark .name {
+    font-family: var(--font-map); font-size: 13.5px; font-weight: 600; color: #fff;
+    -webkit-text-stroke: 3px rgba(18,20,24,.55); paint-order: stroke fill;
+  }
+  .station-mark.offline .name { font-size: 11.5px; font-weight: 500; color: #F0EEE6; -webkit-text-stroke-width: 2.5px; }
+
+  .ground-shadow {
+    position: absolute;
+    left: -560px; top: -60px; width: 1120px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent 72%);
+    filter: blur(6px);
+    pointer-events: none;
+  }
+
+  /* ---------------- ピン（3Dビルボード） ---------------- */
+
+  .pins-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+  .pin-anchor { position: absolute; left: 0; top: 0; transform-style: preserve-3d; pointer-events: none; }
+  .pin-billboard { position: absolute; left: 0; top: 0; transform-style: flat; transform-origin: 0 0; pointer-events: none; }
+
+  .pin {
+    position: absolute;
+    left: 0; top: 0;
+    transform: translate(-50%, -100%);
+    cursor: pointer;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 7px 11px rgba(0,0,0,.5));
+  }
+  .pin:hover, .pin.active { filter: drop-shadow(0 9px 15px rgba(0,0,0,.62)); }
+  .pin:focus-visible { outline: none; }
+
+  .pin-photo {
+    width: 58px; height: 42px; border-radius: 7px; border: 3px solid #fff;
+    background-size: cover; background-position: center; background-color: #555;
+  }
+  .pin-tail { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 11px solid #fff; margin-top: -1px; }
+  .pin-count {
+    position: absolute; top: -7px; right: -9px; min-width: 19px; height: 19px; padding: 0 4px;
+    border-radius: 999px; background: var(--theme-sea); color: #fff; font-size: 10.5px; font-weight: 700;
+    display: grid; place-items: center; border: 1.5px solid #fff;
+  }
+  .pin-label {
+    margin-top: 4px; font-family: var(--font-map); font-size: 10.5px; color: #fff;
+    background: rgba(20,22,26,.62); padding: 1px 6px; border-radius: 6px; white-space: nowrap;
+    opacity: 0; transform: translateY(-2px); transition: opacity .12s ease, transform .12s ease; pointer-events: none;
+  }
+  .pin:hover .pin-label, .pin.active .pin-label { opacity: 1; transform: translateY(0); }
+  .pin.active .pin-photo { border-color: var(--theme-sea-sub); box-shadow: 0 0 0 3px rgba(127,196,217,.45); }
+
+  /* ---------------- 操作UI ---------------- */
+
+  .controls-hint {
+    position: absolute; left: 22px; top: 16px; z-index: 6;
+    color: #C7C9CE; font-size: 11.5px; line-height: 1.7;
+    background: rgba(20,22,26,.5); backdrop-filter: blur(3px);
+    padding: 8px 12px; border-radius: 10px;
+  }
+  .controls-hint b { color: #fff; font-weight: 600; }
+
+  .zoom-controls {
+    position: absolute; right: 22px; top: 74px; z-index: 6;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .zoom-controls button {
+    width: 34px; height: 34px; border-radius: 10px; border: none;
+    background: rgba(20,22,26,.6); color: #fff; font-size: 17px; cursor: pointer;
+  }
+  .zoom-controls button:hover { background: rgba(42,110,143,.85); }
+
+  .compass {
+    position: absolute; left: 22px; bottom: 20px; z-index: 5;
+    display: flex; align-items: flex-end; gap: 14px;
+    color: var(--station); font-family: var(--font-map); font-size: 12px;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+  }
+  .compass .needle-wrap {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(20,22,26,.55); border: 1px solid rgba(255,255,255,.35);
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .compass .needle { font-size: 12px; transition: transform .05s linear; }
+  .scale-bar { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .scale-bar .bar { width: 60px; height: 3px; background: var(--station); border-radius: 2px; }
+
+  .legend-note {
+    position: absolute; right: 22px; bottom: 20px; z-index: 5;
+    color: #C7C9CE; font-size: 11.5px; text-align: right; line-height: 1.6;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6); white-space: nowrap;
+  }
+
+  .rail-picker {
+    position: absolute; left: 22px; top: 66px; z-index: 6;
+    background: rgba(20,22,26,.62); backdrop-filter: blur(3px);
+    border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .rail-picker .title { font-size: 10.5px; color: #9EA1A8; margin-bottom: 1px; }
+  .rail-picker label {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: #E7E8EA;
+    cursor: pointer; padding: 2px 2px;
+  }
+  .rail-picker input { accent-color: var(--theme-sea); }
+
+  .post-fab {
+    position: absolute; right: 22px; top: 18px; z-index: 6;
+    display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 14px;
+    border-radius: 999px; border: none; cursor: pointer; background: var(--theme-sea); color: #fff;
+    font-size: 13.5px; font-family: var(--font-map); box-shadow: 0 8px 20px -6px rgba(0,0,0,.55);
+  }
+  .post-fab:hover { background: #235d79; }
+  .post-fab .plus { font-size: 16px; line-height: 1; }
+
+  /* ---------------- 右パネル ---------------- */
+
+  .panel {
+    flex: none; width: 0; max-width: 40vw; overflow: hidden;
+    background: var(--panel-solid); border-left: 0 solid rgba(0,0,0,.08);
+    display: flex; flex-direction: column;
+    transition: width .45s cubic-bezier(.4,0,.2,1), border-left-width .45s cubic-bezier(.4,0,.2,1);
+  }
+  .panel.open { width: 380px; border-left-width: 1px; }
+  .panel-inner {
+    width: 380px; min-width: 380px; flex: 1; min-height: 0; display: flex; flex-direction: column;
+    opacity: 0; transform: translateX(34px);
+    transition: opacity .32s ease .08s, transform .38s cubic-bezier(.2,.7,.3,1) .08s;
+  }
+  .panel.open .panel-inner { opacity: 1; transform: translateX(0); }
+  .panel-head { flex: none; padding: 18px 20px 14px; border-bottom: 1px solid rgba(0,0,0,.08); }
+  .panel-head h2 { font-family: var(--font-map); font-size: 17px; margin: 0 0 4px; color: var(--ink); }
+  .panel-head .count { font-size: 12.5px; color: var(--ink-soft); }
+  .panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px 26px; display: flex; flex-direction: column; gap: 18px; }
+  .post-card { flex: none; background: var(--panel); border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); border: 1px solid rgba(0,0,0,.05); position: relative; }
+  .post-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #ddd; }
+  .post-card-name {
+    position: absolute; top: 10px; left: 10px; z-index: 1;
+    font-family: var(--font-map); font-size: 12px; font-weight: 600; color: #fff;
+    background: rgba(20,22,26,.55); backdrop-filter: blur(2px);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .post-card-body { padding: 12px 14px 14px; }
+  .post-badges { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .badge { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; font-family: var(--font-map); letter-spacing: .02em; }
+  .badge-official { background: #F3E3BE; color: #7A5A16; }
+  .badge-user { background: #E7E5E1; color: var(--ink-soft); }
+  .post-caption { font-size: 13px; line-height: 1.75; color: var(--ink); margin: 0 0 8px; }
+  .post-credit { font-size: 11px; color: var(--ink-soft); margin: 0 0 10px; }
+  .post-foot { display: flex; align-items: center; justify-content: space-between; }
+  .like-btn { appearance: none; border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink); }
+  .like-btn .diamond { width: 9px; height: 9px; background: #B9B6AD; transform: rotate(45deg); display: inline-block; transition: background .15s ease, transform .15s ease; }
+  .like-btn.liked .diamond { background: var(--theme-sea); transform: rotate(45deg) scale(1.15); }
+  .like-btn:hover { border-color: var(--theme-sea); }
+
+  /* ---------------- 投稿モーダル ---------------- */
+
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(15,16,19,.55); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-backdrop.open { display: flex; }
+  .modal { width: 420px; max-width: 90vw; max-height: 84vh; overflow-y: auto; background: var(--paper); border-radius: var(--radius); padding: 24px 24px 20px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); }
+  .modal h3 { font-family: var(--font-map); margin: 0 0 4px; font-size: 17px; }
+  .modal p.sub { margin: 0 0 16px; font-size: 12.5px; color: var(--ink-soft); }
+  .modal .field { margin-bottom: 14px; }
+  .modal label { font-size: 12.5px; color: var(--ink-soft); display: block; margin-bottom: 5px; }
+  .modal .dropzone { border: 1.5px dashed #B7AE98; border-radius: 10px; padding: 22px 12px; text-align: center; color: var(--ink-soft); font-size: 12.5px; background: rgba(255,255,255,.5); }
+  .modal textarea { width: 100%; border: 1px solid #C9C0A6; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; min-height: 56px; background: #fff; }
+  .modal .gps-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-soft); background: #fff; border: 1px solid #C9C0A6; border-radius: 8px; padding: 8px 10px; }
+  .modal .gps-row button { appearance: none; border: 1px solid var(--theme-sea); color: var(--theme-sea); background: #fff; border-radius: 999px; padding: 4px 11px; font-size: 11.5px; cursor: pointer; }
+  .modal ul.consent { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .modal ul.consent li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+  .modal ul.consent input { margin-top: 3px; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .modal .actions button { appearance: none; border: none; border-radius: 999px; padding: 9px 18px; font-size: 13px; cursor: pointer; font-family: var(--font-map); }
+  .modal .btn-cancel { background: transparent; color: var(--ink-soft); }
+  .modal .btn-submit { background: var(--theme-sea); color: #fff; }
+
+  @media (max-width: 900px) { .panel { width: 320px; } }
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>試作 v4 — 線路の立体表現・比較用</small></div>
+  </div>
+
+  <div class="stage">
+    <div class="map-wrap" id="mapWrap">
+      <div class="camera-rig" id="cameraRig">
+        <div class="world">
+          <div class="ground-shadow"></div>
+          <div class="sea-plate"></div>
+          __BAND_LAYERS__
+          <div class="pins-layer" id="railLayer"></div>
+          <div class="pins-layer" id="pinsLayer"></div>
+          <div class="pins-layer" id="stationsLayer"></div>
+        </div>
+      </div>
+
+      <div class="controls-hint">
+        <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
+      </div>
+      <div class="rail-picker">
+        <div class="title">線路の立体表現（試作）</div>
+        <label><input type="radio" name="railMode" value="stepped">階段状（駅ごとに一段）</label>
+        <label><input type="radio" name="railMode" value="smooth1">坂・実測ベース（軽く均す）</label>
+        <label><input type="radio" name="railMode" value="smooth2">坂・実測ベース（しっかり均す）</label>
+        <label><input type="radio" name="railMode" value="smooth3" checked>坂・駅を通る曲線</label>
+        <label><input type="radio" name="railMode" value="pylons">平坦＋支柱で高さを表示</label>
+        <div style="height:1px;background:rgba(255,255,255,.14);margin:3px 0;"></div>
+        <label><input type="checkbox" id="hideHalo">線路の点の白い縁を消す</label>
+      </div>
+      <div class="zoom-controls">
+        <button type="button" id="zoomIn">＋</button>
+        <button type="button" id="zoomOut">－</button>
+      </div>
+      <button class="post-fab" type="button" id="postFab"><span class="plus">＋</span>投稿する</button>
+      <div class="compass">
+        <div class="needle-wrap" id="compassReset" title="北を上に戻す"><span class="needle" id="needle">北</span></div>
+        <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
+      </div>
+      <div class="legend-note">◆丸数字＝近くにある投稿をまとめた件数（写真をタップすると内訳が見られます）<br>◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="panel-inner" id="panelInner"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h3>絶景スポットを投稿する</h3>
+    <p class="sub">見た目の確認用の試作です。実際には送信できません。</p>
+    <div class="field">
+      <label>写真</label>
+      <div class="dropzone">ここに写真をドラッグ、またはクリックして選択<br>（送信前に端末側でEXIFを自動的に削除します）</div>
+    </div>
+    <div class="field">
+      <label>場所</label>
+      <div class="gps-row">地図上のピンをドラッグして調整できます<button type="button">現在地を使う</button></div>
+    </div>
+    <div class="field">
+      <label>ひとこと（任意）</label>
+      <textarea placeholder="例：夕方の逆光がきれいでした"></textarea>
+    </div>
+    <ul class="consent">
+      <li><input type="checkbox">自分で撮影した写真であること</li>
+      <li><input type="checkbox">他の人の顔がはっきり写っていないこと</li>
+      <li><input type="checkbox">16歳未満の場合は保護者の同意を得ていること</li>
+      <li><input type="checkbox">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</li>
+    </ul>
+    <div class="actions">
+      <button type="button" class="btn-cancel" id="modalCancel">閉じる</button>
+      <button type="button" class="btn-submit">審査に送る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PHOTOS = {
+    inubosaki: "data:image/jpeg;base64,__B64_inubosaki__",
+    kimigahama: "data:image/jpeg;base64,__B64_kimigahama__",
+    chikyu: "data:image/jpeg;base64,__B64_chikyu__",
+    byobugaura: "data:image/jpeg;base64,__B64_byobugaura__",
+    togawako: "data:image/jpeg;base64,__B64_togawako__",
+    kinmedai: "data:image/jpeg;base64,__B64_kinmedai__",
+    togawaeki: "data:image/jpeg;base64,__B64_togawaeki__",
+    sengaiwa: "data:image/jpeg;base64,__B64_sengaiwa__",
+    inuiwa: "data:image/jpeg;base64,__B64_inuiwa__",
+    cabbage: "data:image/jpeg;base64,__B64_cabbage__",
+    traincabbage: "data:image/jpeg;base64,__B64_traincabbage__",
+    chijimi: "data:image/jpeg;base64,__B64_chijimi__",
+  };
+
+  const WORLD_W = 1000, WORLD_H = 1268;
+  const POSTS = __SPOTS_JS__;
+  POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; p.likes = 3 + Math.floor(Math.random() * 40); });
+
+  function buildClusters(posts, threshold = 0.02) {
+    const used = new Array(posts.length).fill(false);
+    const clusters = [];
+    for (let i = 0; i < posts.length; i++) {
+      if (used[i]) continue;
+      const group = [posts[i]];
+      used[i] = true;
+      for (let j = i + 1; j < posts.length; j++) {
+        if (used[j]) continue;
+        const du = posts[i].u - posts[j].u, dv = posts[i].v - posts[j].v;
+        if (Math.sqrt(du * du + dv * dv) < threshold) { group.push(posts[j]); used[j] = true; }
+      }
+      const cu = group.reduce((s, p) => s + p.u, 0) / group.length;
+      const cv = group.reduce((s, p) => s + p.v, 0) / group.length;
+      const cz = group.reduce((s, p) => s + p.z, 0) / group.length;
+      clusters.push({ u: cu, v: cv, z: cz, posts: group });
+    }
+    return clusters;
+  }
+  const CLUSTERS = buildClusters(POSTS);
+  const RAIL = __RAIL_DATA__;
+
+  // ---------------- カメラの状態 ----------------
+  const state = { panX: 0, panY: 0, zoom: 1, tilt: 52, heading: 0 };
+  let baseFitScale = 0.5;
+
+  const mapWrap = document.getElementById("mapWrap");
+  const cameraRig = document.getElementById("cameraRig");
+  const needle = document.getElementById("needle");
+
+  function fitScale() {
+    const w = mapWrap.clientWidth, h = mapWrap.clientHeight;
+    baseFitScale = Math.min(w / WORLD_W, h / WORLD_H) * 0.72;
+    render();
+  }
+  window.addEventListener("resize", fitScale);
+
+  function render() {
+    const s = baseFitScale * state.zoom;
+    cameraRig.style.transform =
+      `translate3d(${state.panX}px, ${state.panY}px, 0) scale3d(${s}, ${s}, ${s}) rotateX(${state.tilt}deg) rotateZ(${state.heading}deg)`;
+    const billboard = `rotateZ(${-state.heading}deg) rotateX(${-state.tilt}deg)`;
+    document.querySelectorAll(".pin-billboard, .station-billboard").forEach(el => el.style.transform = billboard);
+    needle.style.transform = `rotate(${-state.heading}deg)`;
+  }
+
+  // ---------------- マウス操作 ----------------
+  let dragMode = null, lastX = 0, lastY = 0, dragDistance = 0;
+
+  mapWrap.addEventListener("contextmenu", (e) => e.preventDefault());
+  mapWrap.addEventListener("mousedown", (e) => {
+    dragMode = (e.button === 2 || e.ctrlKey) ? "rotate" : "pan";
+    lastX = e.clientX; lastY = e.clientY;
+    dragDistance = 0;
+    mapWrap.classList.add(dragMode === "rotate" ? "rotating" : "dragging");
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragMode) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    dragDistance += Math.abs(dx) + Math.abs(dy);
+    if (dragMode === "pan") {
+      state.panX += dx; state.panY += dy;
+    } else {
+      state.heading += dx * 0.3;
+      state.tilt = Math.max(15, Math.min(70, state.tilt - dy * 0.25));
+    }
+    render();
+  });
+  window.addEventListener("mouseup", () => {
+    mapWrap.classList.remove("dragging", "rotating");
+    dragMode = null;
+  });
+  mapWrap.addEventListener("click", (e) => {
+    if (dragDistance < 4) closePanel();
+  });
+  mapWrap.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    state.zoom = Math.max(0.5, Math.min(4, state.zoom * factor));
+    render();
+  }, { passive: false });
+
+  document.getElementById("zoomIn").addEventListener("click", (e) => { e.stopPropagation(); state.zoom = Math.min(4, state.zoom * 1.2); render(); });
+  document.getElementById("zoomOut").addEventListener("click", (e) => { e.stopPropagation(); state.zoom = Math.max(0.5, state.zoom / 1.2); render(); });
+  document.getElementById("compassReset").addEventListener("click", (e) => { e.stopPropagation(); state.heading = 0; state.tilt = 52; render(); });
+
+  // ---------------- ピンの生成 ----------------
+  const pinsLayer = document.getElementById("pinsLayer");
+
+  function renderPins() {
+    pinsLayer.innerHTML = "";
+    CLUSTERS.forEach((cluster) => {
+      const wx = cluster.u * WORLD_W - WORLD_W / 2;
+      const wy = cluster.v * WORLD_H - WORLD_H / 2;
+      const wz = cluster.z + 36;
+
+      const anchor = document.createElement("div");
+      anchor.className = "pin-anchor";
+      anchor.style.transform = `translate3d(${wx}px, ${wy}px, ${wz}px)`;
+
+      const billboard = document.createElement("div");
+      billboard.className = "pin-billboard";
+
+      const el = document.createElement("div");
+      el.className = "pin";
+      el.tabIndex = 0;
+
+      const photoDiv = document.createElement("div");
+      photoDiv.className = "pin-photo";
+      photoDiv.style.backgroundImage = `url(${PHOTOS[cluster.posts[0].photo]})`;
+      el.appendChild(photoDiv);
+
+      const tail = document.createElement("div");
+      tail.className = "pin-tail";
+      el.appendChild(tail);
+
+      if (cluster.posts.length > 1) {
+        const count = document.createElement("div");
+        count.className = "pin-count";
+        count.textContent = cluster.posts.length;
+        el.appendChild(count);
+      }
+      const label = document.createElement("div");
+      label.className = "pin-label";
+      label.textContent = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" / ") : cluster.posts[0].name;
+      el.appendChild(label);
+
+      const open = () => openCluster(cluster, el);
+      el.addEventListener("click", (e) => { e.stopPropagation(); open(); });
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
+
+      billboard.appendChild(el);
+      anchor.appendChild(billboard);
+      pinsLayer.appendChild(anchor);
+    });
+  }
+
+  // ---------------- 線路（立体表現の3試作） ----------------
+  const railLayer = document.getElementById("railLayer");
+
+  function segmentSvg(pts, extraClass) {
+    const d = "M" + pts.map(p => p[0] + "," + p[1]).join(" L");
+    const cls = extraClass ? " " + extraClass : "";
+    return `<svg viewBox="0 0 ${WORLD_W} ${WORLD_H}"><path d="${d}" class="rail-halo${cls}"></path><path d="${d}" class="rail${cls}"></path></svg>`;
+  }
+  function flatLayerDiv(z, innerHtml) {
+    const div = document.createElement("div");
+    div.className = "rail-layer";
+    div.style.transform = `translateZ(${z}px)`;
+    div.innerHTML = innerHtml;
+    return div;
+  }
+
+  // 隣り合う2点(x0,y0,z0)-(x1,y1,z1)を、実際に傾いた1本の棒として3D空間でつなぐ
+  // （平らな板を積むのではないので、階段状にならず滑らかにつながる）。
+  function addRampBar(container, p0, p1, widthPx, cls) {
+    const [x0, y0, z0] = p0, [x1, y1, z1] = p1;
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const runXY = Math.sqrt(dx * dx + dy * dy);
+    const length3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (length3D < 0.01) return;
+    const headingDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+    const riseDeg = Math.atan2(dz, runXY) * 180 / Math.PI;
+    const wx = x0 - WORLD_W / 2, wy = y0 - WORLD_H / 2;
+
+    const bar = document.createElement("div");
+    bar.className = "rail-ramp-bar " + cls;
+    bar.style.width = length3D.toFixed(2) + "px";
+    bar.style.height = widthPx + "px";
+    bar.style.marginTop = (-widthPx / 2) + "px";
+    bar.style.transform =
+      `translate3d(${wx}px, ${wy}px, ${z0}px) rotateZ(${headingDeg}deg) rotateY(${-riseDeg}deg)`;
+    container.appendChild(bar);
+  }
+
+  function renderRail(mode) {
+    railLayer.innerHTML = "";
+
+    const offD = "M" + RAIL.offline.pts.map(p => p[0] + "," + p[1]).join(" L");
+    railLayer.appendChild(flatLayerDiv(RAIL.offline.z,
+      `<svg viewBox="0 0 ${WORLD_W} ${WORLD_H}"><path d="${offD}" class="rail-offline"></path></svg>`));
+
+    const SMOOTH_SOURCES = { smooth1: RAIL.smoothPts1, smooth2: RAIL.smoothPts2, smooth3: RAIL.smoothPts3 };
+    if (mode === "stepped") {
+      RAIL.stepped.forEach(seg => railLayer.appendChild(flatLayerDiv(seg.z, segmentSvg(seg.pts))));
+    } else if (SMOOTH_SOURCES[mode]) {
+      const pts = SMOOTH_SOURCES[mode];
+      if (!document.getElementById("hideHalo").checked) {
+        for (let i = 0; i < pts.length - 1; i++) {
+          addRampBar(railLayer, pts[i], pts[i + 1], 9, "halo");
+        }
+      }
+      for (let i = 0; i < pts.length - 1; i++) {
+        addRampBar(railLayer, pts[i], pts[i + 1], 4.4, "core");
+      }
+    } else if (mode === "pylons") {
+      railLayer.appendChild(flatLayerDiv(RAIL.pylons.railZ, segmentSvg(RAIL.pylons.pts)));
+      RAIL.pylons.stations.forEach(s => {
+        const wx = s.x - WORLD_W / 2, wy = s.y - WORLD_H / 2;
+        const z0 = RAIL.pylons.railZ, z1 = s.elevZ;
+        const base = Math.min(z0, z1), h = Math.max(2, Math.abs(z1 - z0));
+
+        const bar = document.createElement("div");
+        bar.className = "pylon-bar";
+        bar.style.cssText = "position:absolute;left:0;top:0;width:6px;margin-left:-3px;transform-origin:3px 0;";
+        bar.style.height = h + "px";
+        bar.style.background = "linear-gradient(180deg, rgba(217,164,65,.9), rgba(20,22,26,.55))";
+        bar.style.transform = `translate3d(${wx}px, ${wy}px, ${base}px) rotateX(90deg)`;
+        railLayer.appendChild(bar);
+      });
+    }
+  }
+
+  document.querySelector(".rail-picker").addEventListener("click", (e) => e.stopPropagation());
+  document.querySelectorAll('input[name="railMode"]').forEach(r => {
+    r.addEventListener("change", (e) => {
+      if (!e.target.checked) return;
+      renderRail(e.target.value);
+      renderStations(e.target.value);
+      render();
+    });
+  });
+  document.getElementById("hideHalo").addEventListener("change", () => {
+    renderRail(document.querySelector('input[name="railMode"]:checked').value);
+    render();
+  });
+
+  // ---------------- 駅名（3Dアンカー＋ビルボード） ----------------
+  const stationsLayer = document.getElementById("stationsLayer");
+  function renderStations(mode) {
+    stationsLayer.innerHTML = "";
+    RAIL.stationAnchors.forEach(s => {
+      const wx = s.x - WORLD_W / 2, wy = s.y - WORLD_H / 2, wz = s.z[mode] + 3;
+      const anchor = document.createElement("div");
+      anchor.className = "station-anchor";
+      anchor.style.transform = `translate3d(${wx}px, ${wy}px, ${wz}px)`;
+      const billboard = document.createElement("div");
+      billboard.className = "station-billboard";
+      const mark = document.createElement("div");
+      mark.className = "station-mark" + (s.offLine ? " offline" : "");
+      mark.innerHTML = `<span class="dot"></span><span class="name">${s.name}${s.offLine ? "（JR）" : ""}</span>`;
+      billboard.appendChild(mark);
+      anchor.appendChild(billboard);
+      stationsLayer.appendChild(anchor);
+    });
+  }
+
+  const panel = document.getElementById("panel");
+  const panelInner = document.getElementById("panelInner");
+  function openCluster(cluster, el) {
+    document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+    el.classList.add("active");
+    const headTitle = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" ・ ") : cluster.posts[0].name;
+    panelInner.innerHTML = `
+      <div class="panel-head"><h2>${headTitle}</h2><div class="count">${cluster.posts.length}件の投稿</div></div>
+      <div class="panel-body">${cluster.posts.map(postCardHTML).join("")}</div>
+    `;
+    panel.classList.add("open");
+    panelInner.querySelectorAll(".like-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const liked = btn.classList.toggle("liked");
+        const countEl = btn.querySelector(".count-num");
+        let n = parseInt(countEl.textContent, 10);
+        countEl.textContent = liked ? n + 1 : n - 1;
+      });
+    });
+  }
+  function closePanel() {
+    if (!panel.classList.contains("open")) return;
+    panel.classList.remove("open");
+    document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+    setTimeout(() => { if (!panel.classList.contains("open")) panelInner.innerHTML = ""; }, 480);
+  }
+  panel.addEventListener("click", (e) => e.stopPropagation());
+  panel.addEventListener("transitionend", (e) => {
+    if (e.propertyName === "width" && e.target === panel) fitScale();
+  });
+  function postCardHTML(p) {
+    return `
+      <div class="post-card">
+        <span class="post-card-name">${p.name}</span>
+        <img src="${PHOTOS[p.photo]}" alt="${p.name}">
+        <div class="post-card-body">
+          <div class="post-badges">${p.official ? '<span class="badge badge-official">公式・観光協会提供</span>' : '<span class="badge badge-user">投稿</span>'}</div>
+          <p class="post-caption">${p.caption}</p>
+          ${p.credit ? `<p class="post-credit">${p.credit}</p>` : ""}
+          <div class="post-foot">
+            <button type="button" class="like-btn"><span class="diamond"></span>いいね　<span class="count-num">${p.likes}</span></button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderPins();
+  const initialRailMode = document.querySelector('input[name="railMode"]:checked').value;
+  renderRail(initialRailMode);
+  renderStations(initialRailMode);
+  fitScale();
+
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  document.getElementById("postFab").addEventListener("click", (e) => { e.stopPropagation(); modalBackdrop.classList.add("open"); });
+  document.getElementById("modalCancel").addEventListener("click", () => modalBackdrop.classList.remove("open"));
+  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.remove("open"); });
+</script>

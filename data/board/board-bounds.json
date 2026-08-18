@@ -1,0 +1,10 @@
+{
+  "_comment": "絶景掲示板の試作用に、既存route.jsonの範囲を西（松岸）まで広げたもの。fetch-elevation.js / build-terrain.js の bounds 引数として使う。",
+  "bounds": {
+    "minLat": 35.679,
+    "maxLat": 35.751,
+    "minLon": 140.792,
+    "maxLon": 140.876
+  },
+  "track": []
+}
