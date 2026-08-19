@@ -178,12 +178,30 @@
 
   .pins-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
   .pin-anchor { position: absolute; left: 0; top: 0; transform-style: preserve-3d; pointer-events: none; }
-  .pin-billboard { position: absolute; left: 0; top: 0; transform-style: flat; transform-origin: 0 0; pointer-events: none; }
+
+  /*
+   * ピンだけは3Dの世界（.camera-rig）の中に置かず、その上に重ねた平らな層に並べる。
+   *
+   * なぜそうしたか（2026-08-19）:
+   *   CSS の3D変形には本物のZバッファが無く、地形の板（.band-layer、0〜45mの6枚）と
+   *   ピンの前後関係が正しく解かれない。3Dの中に置いていたときは、地形のいちばん上の板
+   *   （z=54）より高く持ち上げないと低地のピンが板の裏に回って消えてしまい、
+   *   実際に底上げ +80 を入れていた。地形全体の高さが 54 しかないので、
+   *   これは「地形の1.5倍の高さに浮かせる」ことになり、見た目に大きく浮いていた。
+   *
+   *   そこで、3D空間での位置を JS で画面座標に投影し（projectToScreen）、平らな層に
+   *   置く形に変えた。前後関係の問題そのものが無くなるので、ピンは実測標高そのままの
+   *   高さ——つまり地面の上——に置ける。尻尾の先が、その場所の地面にちょうど触れる。
+   *
+   * z-index 4 は、操作UI（コンパス5・ズーム6・操作説明6）より下。3Dの中にあった頃と
+   * 同じ重なり順を保つため。
+   */
+  .pins-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
 
   .pin {
     position: absolute;
     left: 0; top: 0;
-    transform: translate(-50%, -100%);
+    transform-origin: 0 0;   /* 位置・拡大は JS が transform でまとめて与える */
     cursor: pointer;
     pointer-events: auto;
     display: flex;
@@ -225,13 +243,16 @@
 
   /* ---------------- 操作UI ---------------- */
 
+  /*
+   * 操作の説明。以前は地図の左上に浮かせていたが、そこは松岸（銚子ちぢみ）の
+   * ピンが来る場所で、ピンを地面に置いたら重なるようになった。上バーの右側が
+   * 空いていた（justify-content: space-between）ので、そちらへ移した（2026-08-19）。
+   * これで地図の上には、地図そのものと最小限の操作UIだけが載る。
+   */
   .controls-hint {
-    position: absolute; left: 22px; top: 16px; z-index: 6;
-    color: #C7C9CE; font-size: 11.5px; line-height: 1.7;
-    background: rgba(20,22,26,.5); backdrop-filter: blur(3px);
-    padding: 8px 12px; border-radius: 10px;
+    color: #8B8E96; font-size: 11.5px; line-height: 1.6; text-align: right;
   }
-  .controls-hint b { color: #fff; font-weight: 600; }
+  .controls-hint b { color: #C7C9CE; font-weight: 600; }
 
   .zoom-controls {
     position: absolute; right: 22px; top: 74px; z-index: 6;
@@ -357,6 +378,9 @@
 <div class="app">
   <div class="topbar">
     <div class="topbar-title">絶景掲示板 <small>試作 v4 — 地図画面</small></div>
+    <div class="controls-hint">
+      <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
+    </div>
   </div>
 
   <div class="stage">
@@ -367,14 +391,13 @@
           <div class="sea-plate"></div>
           __BAND_LAYERS__
           <div class="pins-layer" id="railLayer"></div>
-          <div class="pins-layer" id="pinsLayer"></div>
           <div class="pins-layer" id="stationsLayer"></div>
         </div>
       </div>
 
-      <div class="controls-hint">
-        <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
-      </div>
+      <!-- ピンは3Dの外。位置は JS が投影して決める（.pins-overlay のコメント参照） -->
+      <div class="pins-overlay" id="pinsOverlay"></div>
+
       <div class="zoom-controls">
         <button type="button" id="zoomIn">＋</button>
         <button type="button" id="zoomOut">－</button>
@@ -558,11 +581,54 @@
   /*
    * ビルボード（回転しても正面を向く板）の一覧。render() はドラッグのあいだ
    * 1フレームごとに呼ばれるので、そのたび querySelectorAll で探し直さない。
-   * ピン・駅を作り直したら refreshBillboards() で取り直すこと。
+   * 駅を作り直したら refreshBillboards() で取り直すこと。
    */
   let billboards = [];
   function refreshBillboards() {
-    billboards = Array.from(document.querySelectorAll(".pin-billboard, .station-billboard"));
+    // ピンは3Dの外に出したので、向きを直すのは駅名だけになった
+    billboards = Array.from(document.querySelectorAll(".station-billboard"));
+  }
+
+  /*
+   * .map-wrap の perspective と同じ値。CSSを変えたらここも変えること。
+   * （投影を JS 側でもう一度解くので、二か所に同じ数字が要る）
+   */
+  const PERSPECTIVE = 1700;
+
+  /*
+   * 世界座標 (x, y, z) が画面のどこに来るかを解く。
+   * .camera-rig にかけている変形と、.map-wrap の perspective を、同じ順序でたどるだけ。
+   *
+   *   CSS:  translate3d(panX,panY,0) scale3d(s,s,s) rotateX(tilt) rotateZ(heading)
+   *   → 点には右から順に効くので、回転 → 拡大 → 平行移動 の順に計算する。
+   *
+   * .world は .camera-rig の中心（＝変形の原点）に置いてあるので、
+   * 世界座標はそのまま「原点からのずれ」として扱える。
+   * perspective の原点も画面中央なので、最後に中央を足す。
+   *
+   * 戻り値の scale は、そこに置くものを地図と同じ大きさに見せるための倍率
+   * （拡大率 × 遠近による縮み）。
+   */
+  function projectToScreen(x, y, z) {
+    const h = state.heading * Math.PI / 180;
+    const t = state.tilt * Math.PI / 180;
+    const s = baseFitScale * state.zoom;
+
+    const x1 = x * Math.cos(h) - y * Math.sin(h);
+    const y1 = x * Math.sin(h) + y * Math.cos(h);
+    const y2 = y1 * Math.cos(t) - z * Math.sin(t);
+    const z2 = y1 * Math.sin(t) + z * Math.cos(t);
+
+    const qx = x1 * s + state.panX;
+    const qy = y2 * s + state.panY;
+    const qz = z2 * s;
+
+    const f = PERSPECTIVE / (PERSPECTIVE - qz);
+    return {
+      sx: mapWrap.clientWidth / 2 + qx * f,
+      sy: mapWrap.clientHeight / 2 + qy * f,
+      scale: s * f,
+    };
   }
 
   function render() {
@@ -572,6 +638,7 @@
     const billboard = `rotateZ(${-state.heading}deg) rotateX(${-state.tilt}deg)`;
     for (const el of billboards) el.style.transform = billboard;
     needle.style.transform = `rotate(${-state.heading}deg)`;
+    positionPins();
   }
 
   // ---------------- マウス操作 ----------------
@@ -616,28 +683,34 @@
   document.getElementById("compassReset").addEventListener("click", (e) => { e.stopPropagation(); Object.assign(state, HOME_STATE); render(); });
 
   // ---------------- ピンの生成 ----------------
-  const pinsLayer = document.getElementById("pinsLayer");
+  const pinsOverlay = document.getElementById("pinsOverlay");
 
-  // 高さは各スポットの実測標高（z、tools/build-board-mockup.js が国土地理院DEMから計算）を使い、
-  // 地形に直接刺さって見えるようにしている。CSSの3D表現は本物のZバッファではなく、板を重ねて
-  // いるだけ。地形の板とほぼ同じ高さにピンを置くと、奥行きの前後判定がおかしくなり地形の裏に
-  // 隠れてしまう（実験で確認済み）。見た目の「地面に刺さっている」印象は保ちつつ確実に前面に
-  // 出すため、実測標高の上にこのぶんだけ底上げする。
-  const PIN_LIFT = 80;
+  /*
+   * ピンは平らな層に置き、位置は projectToScreen で毎回求める（.pins-overlay のコメント参照）。
+   * 高さ（z）は各スポットの実測標高そのまま——国土地理院DEMの値に地形と同じ誇張（×1.2）を
+   * かけたもの。以前あった底上げ（PIN_LIFT = 80）は、3Dの中では地形の板の裏に回ってしまう
+   * のを避けるための逃げだった。平らな層に移してその必要が無くなったので外した。
+   * これで尻尾の先が、その場所の地面にちょうど触れる。
+   */
+  const pinItems = [];
+
+  function positionPins() {
+    for (const it of pinItems) {
+      const { sx, sy, scale } = projectToScreen(it.x, it.y, it.z);
+      // transform-origin: 0 0 なので、まず尻尾の先を置きたい点へ動かし、そこを軸に拡大し、
+      // 最後にピン自身を「下端の中央が基準」になるようずらす（拡大後の座標系で効く）。
+      it.el.style.transform =
+        `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) scale(${scale.toFixed(4)}) translate(-50%, -100%)`;
+    }
+  }
 
   function renderPins() {
-    pinsLayer.innerHTML = "";
+    pinsOverlay.innerHTML = "";
+    pinItems.length = 0;
     CLUSTERS.forEach((cluster) => {
       const wx = cluster.u * WORLD_W - WORLD_W / 2;
       const wy = cluster.v * WORLD_H - WORLD_H / 2;
-      const wz = cluster.z + PIN_LIFT;
-
-      const anchor = document.createElement("div");
-      anchor.className = "pin-anchor";
-      anchor.style.transform = `translate3d(${wx}px, ${wy}px, ${wz}px)`;
-
-      const billboard = document.createElement("div");
-      billboard.className = "pin-billboard";
+      const wz = cluster.z;
 
       const el = document.createElement("div");
       el.className = "pin";
@@ -671,10 +744,10 @@
         open();
       });
 
-      billboard.appendChild(el);
-      anchor.appendChild(billboard);
-      pinsLayer.appendChild(anchor);
+      pinsOverlay.appendChild(el);
+      pinItems.push({ el, x: wx, y: wy, z: wz });
     });
+    positionPins();
   }
 
   // ---------------- 線路（駅を通る曲線・白い縁なし） ----------------
