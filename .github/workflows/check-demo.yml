@@ -1,9 +1,14 @@
-name: demo が最新か確かめる
+name: 生成物が最新か確かめる
 
-# css/・js/・data/ を直したのに demo/*.html（1 枚デモ 4 枚）が
-# 作り直されていないと、配る側だけ古いまま気づけない。
+# 直したのに生成物を作り直していないと、配る側・見せる側だけ古いまま気づけない。
 # .githooks/pre-commit（手元）を入れ忘れた、あるいは並行して作業していた
 # セッションの取りこぼしを、ここで拾う。
+#
+#   demo/*.html                 css・js・data から作る1枚デモ
+#   絶景掲示板のプロトタイプ     テンプレート・data/board・board-spots.json から作る
+#
+# どちらも 14.8MB の標高格子（.gitignore 済み）を必要としない作りにしてあるので、
+# clone したままの CI で走る。
 
 on:
   push:
@@ -11,11 +16,15 @@ on:
   pull_request:
 
 jobs:
-  check-demo-fresh:
+  check-generated-fresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node tools/check-demo-fresh.js
+      - name: 1枚デモ（demo/*.html）
+        run: node tools/check-demo-fresh.js
+      - name: 絶景掲示板のプロトタイプ
+        if: always()
+        run: node tools/check-board-fresh.js

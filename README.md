@@ -81,8 +81,16 @@ data/
     preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
+    board-spots.json 絶景掲示板の12スポット        ← 手で書く（下記）
   yurakucho/        有楽町線（多路線対応の実演用。中身も実データ）
+  board/            絶景掲示板の地図のもと         ← 自動生成
   source/           もとになった生データと計算結果 ← 自動生成
+
+assets/choshi/board/  絶景掲示板に出す12枚の写真（観光協会提供。WebP）
+
+ai/artifacts/絶景掲示板/    絶景掲示板のプロトタイプと、選定の記録
+  mockups/board-map-variant-v4-template.html  ← 直すのはこちら
+  mockups/board-map-variant-v4.html           ← 自動生成（開くのはこちら）
 
 tools/              データを作り直すための道具（サイトの一部ではない）
 docs/               設計書・将来構想・ADR
@@ -91,6 +99,11 @@ docs/               設計書・将来構想・ADR
 **`data/choshi/spots.json` と `data/choshi/schedule.json` は手で書くファイル。**
 絶景スポットを足したり、文章を直したりするときはこれを開く。
 プログラムを触る必要はない（設計書 8 章）。
+
+**`data/choshi/board-spots.json` も手で書くファイル。** ただしこれは別の画面
+（絶景掲示板、[設計メモ](docs/絶景掲示板_設計メモ.md)）のもので、`spots.json` とは中身も用途も別。
+座標には1件ずつ出どころ（`source`）と確からしさ（`confidence`）を書いてある。
+キャベツ畑のように両方に出てくる場所があるので、片方を直したらもう片方も確かめること（ADR-0005）。
 
 同じ階層の他のファイルと `data/source/` は自動生成なので、直接直さない。
 直したい場合は `tools/` の中身を直して作り直す。
@@ -153,6 +166,42 @@ node tools/build-spot-geometry.js  絶景スポットの位置と車窓側を計
 node tools/build-preview.js        路線選択画面に出す小さな地図を作る
                                    （terrain.json か route.json を作り直したら、これも作り直す）
 ```
+
+### 絶景掲示板のプロトタイプを作り直す
+
+絶景掲示板（[設計メモ](docs/絶景掲示板_設計メモ.md)、[ADR-0005](docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md)）
+は、車窓絶景ナビとは別の画面。本体（`board.html`）はまだ無く、地図画面のプロトタイプだけがある。
+
+`ai/artifacts/絶景掲示板/mockups/board-map-variant-v4.html` は**生成物なので直接編集しない**。
+直すのは同じフォルダの `board-map-variant-v4-template.html` のほう。
+
+```
+node tools/build-board-elevations.js   12スポットの地面の高さを焼き込む
+                                       （data/board/spot-elevations.json）
+                                       座標を直したときだけ。14.8MBの標高格子が要る
+
+node tools/build-board-rail.js         線路の高さ表現を作る（data/board/rail-variants.json）
+
+node tools/build-board-mockup.js       テンプレートにデータを流し込んでプロトタイプを作る
+```
+
+ふだん要るのはいちばん下の1行だけ。テンプレートか `data/choshi/board-spots.json` の
+文章まわりを直したら、これを走らせる。
+
+```
+node tools/check-board-fresh.js        作り直し忘れていないか確かめる
+```
+
+**なぜ標高を焼き込んであるのか**: もとの格子 `data/source/board-elevation-grid.json` は
+14.8MB で `.gitignore` してある。必要なのは12点ぶんの数値だけなので、それだけを
+`data/board/spot-elevations.json`（小さい）に落として commit してある。おかげで
+clone したばかりの手元でも GitHub Actions でも、格子なしでプロトタイプを作り直せる。
+`board-spots.json` の座標を直したのにこの表を作り直し忘れると、
+`build-board-mockup.js` が座標の食い違いに気づいて止まる。
+
+**写真について**: `assets/choshi/board/<id>.webp` をローカルパスで参照している。
+`https://www.choshikanko.com/...` への直リンクは
+[利用規約](docs/銚子市観光協会フォトダウンロード利用規約.md)の禁止事項なので絶対に書かないこと。
 
 ### サーバーなしで見せる 1 枚を作る
 
@@ -273,13 +322,20 @@ node tools/check-demo-fresh.js
 commit に 1 枚デモの作り直しが乗らないことが起きる。エラーにならないので
 気づきにくく、配る側だけ静かに古いまま残る。二重に機械へ任せてある。
 
+守っている生成物は 2 種類ある。**1 枚デモ**（`demo/*.html`）と、
+**絶景掲示板のプロトタイプ**（`ai/artifacts/絶景掲示板/mockups/board-map-variant-v4.html`）。
+
 - **手元**: 一度だけ `git config core.hooksPath .githooks` を通しておくと、
-  css・js・data・`tools/build-demo.js` を含む commit のたびに
-  `tools/check-demo-fresh.js` が走り、demo/ が古ければ commit を止める
-  （[.githooks/pre-commit](.githooks/pre-commit)）。
-- **GitHub 側**: push のたびに Actions が同じ確認をする
+  commit のたびに関係するものだけ確かめる（[.githooks/pre-commit](.githooks/pre-commit)）。
+  css・js・data・`tools/build-demo.js` が動いていれば `tools/check-demo-fresh.js`、
+  掲示板のテンプレート・`data/board/`・`board-spots.json`・掲示板の道具が動いていれば
+  `tools/check-board-fresh.js` が走り、古ければ commit を止める。
+- **GitHub 側**: push のたびに Actions が同じ確認を両方する
   （[.github/workflows/check-demo.yml](.github/workflows/check-demo.yml)）。
   上のフックを入れ忘れていても、ここで拾える。
+
+どちらの確認も、`.gitignore` してある大きな中間生成物（標高の格子・陰影のPNG）を
+必要としない作りにしてある。だから clone したままの CI でそのまま走る。
 
 `fetch-elevation` `build-terrain` `fetch-hillshade` は引数を省略すると銚子電鉄の値で動く。
 別の路線を作るときだけ引数を渡す（下記）。

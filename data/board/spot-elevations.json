@@ -1,0 +1,89 @@
+{
+  "_comment": [
+    "絶景掲示板の12スポットの地面の高さ（メートル）。自動生成なので直接編集しない。",
+    "作り直すとき: node tools/build-board-elevations.js",
+    "",
+    "lat/lon も一緒に持っているのは、data/choshi/board-spots.json の座標を直したのに",
+    "この表を作り直し忘れたことを tools/build-board-mockup.js が気づけるようにするため。",
+    "座標が食い違っていると、あちらが止まって作り直しを促す。",
+    "",
+    "地図に描く高さ（ピンのZ）はここでは決めない。段彩の頭打ち（45m）と誇張度（×1.2）と",
+    "見やすさのための底上げ（+80）は build-board-mockup.js 側で足している。"
+  ],
+  "source": "国土地理院 標高タイル DEM5A（穴はDEM10Bで補完）",
+  "gridGeneratedAt": "2026-08-18",
+  "spots": [
+    {
+      "id": "inubosaki",
+      "lat": 35.7079127,
+      "lon": 140.8685261,
+      "elevationM": 24.18
+    },
+    {
+      "id": "kimigahama",
+      "lat": 35.7137606,
+      "lon": 140.8671515,
+      "elevationM": 0
+    },
+    {
+      "id": "chikyu",
+      "lat": 35.7064187,
+      "lon": 140.8535804,
+      "elevationM": 70.27
+    },
+    {
+      "id": "byobugaura",
+      "lat": 35.7060864,
+      "lon": 140.7893142,
+      "elevationM": 0
+    },
+    {
+      "id": "togawako",
+      "lat": 35.6960941,
+      "lon": 140.8554867,
+      "elevationM": 1.81
+    },
+    {
+      "id": "kinmedai",
+      "lat": 35.6960941,
+      "lon": 140.8554867,
+      "elevationM": 1.81
+    },
+    {
+      "id": "togawaeki",
+      "lat": 35.699254,
+      "lon": 140.857025,
+      "elevationM": 25.82
+    },
+    {
+      "id": "sengaiwa",
+      "lat": 35.6963536,
+      "lon": 140.8484361,
+      "elevationM": 13.06
+    },
+    {
+      "id": "inuiwa",
+      "lat": 35.6980153,
+      "lon": 140.8454783,
+      "elevationM": 7.01
+    },
+    {
+      "id": "cabbage",
+      "lat": 35.726929,
+      "lon": 140.858751,
+      "elevationM": 25.91
+    },
+    {
+      "id": "traincabbage",
+      "lat": 35.72,
+      "lon": 140.86,
+      "elevationM": 25.46
+    },
+    {
+      "id": "chijimi",
+      "lat": 35.7426489,
+      "lon": 140.7940512,
+      "elevationM": 7.13
+    }
+  ]
+}

@@ -44,6 +44,34 @@
   }
   button { font-family: inherit; }
 
+  /*
+   * キーボードで辿れるようにする（設計メモ6章）。試作の途中で outline を
+   * 一律に消していたため、Tab で動かすと今どこにいるのか分からなくなっていた。
+   * :focus-visible だけに出すので、マウスで押したときには出ない。
+   */
+  :where(button, a, input, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--theme-sea);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /*
+   * 動きを減らす設定（prefers-reduced-motion）にしている人には、パネルの
+   * スライドインや地図の縮小を動かさない（設計メモ6章）。
+   * transition を none にはしない——パネルの幅の transitionend を合図に
+   * fitScale() を呼んでいるので、none にすると合図が来ず地図が縮んだままになる。
+   * ほぼ 0 の長さにしておけば、見た目は瞬時に切り替わりつつ合図は届く。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: .01ms !important;
+      transition-delay: 0ms !important;
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   .app { position: relative; width: 100%; height: 100vh; display: flex; flex-direction: column; background: #24262B; }
 
   .topbar {
@@ -162,8 +190,6 @@
     flex-direction: column;
     align-items: center;
   }
-  .pin:focus-visible { outline: none; }
-
   /*
    * 影は .pin に filter:drop-shadow() をかけると preserve-3d の奥行きソートが崩れ、
    * 地形の裏に隠れて見えなくなる（2026-08-19に発覚）。box-shadow は新しいスタッキング
@@ -184,6 +210,18 @@
   }
   .pin:hover .pin-label, .pin.active .pin-label { opacity: 1; transform: translateY(0); }
   .pin.active .pin-photo { border-color: var(--theme-sea-sub); box-shadow: 0 0 0 3px rgba(127,196,217,.45); }
+
+  /*
+   * ピンは preserve-3d の中にいるので outline が地形の板に隠れることがある。
+   * .pin-photo の box-shadow に足す形で出すと、影と同じ理由（上のコメント参照）で
+   * 奥行きの並び順を壊さずに済む。
+   * この2行は .pin.active より後ろに置くこと——パネルを開いたままのピン（=active）に
+   * フォーカスがあるとき、先に置くと active の box-shadow に上書きされて消える。
+   */
+  .pin:focus-visible { outline: none; }
+  .pin:focus-visible .pin-photo {
+    box-shadow: 0 7px 11px rgba(0,0,0,.5), 0 0 0 3px #fff, 0 0 0 6px var(--theme-sea);
+  }
 
   /* ---------------- 操作UI ---------------- */
 
@@ -211,10 +249,12 @@
     color: var(--station); font-family: var(--font-map); font-size: 12px;
     text-shadow: 0 1px 3px rgba(0,0,0,.6);
   }
+  /* 「初期表示に戻す」ボタン。div だとキーボードで押せないので button にしてある */
   .compass .needle-wrap {
     width: 26px; height: 26px; border-radius: 50%;
     background: rgba(20,22,26,.55); border: 1px solid rgba(255,255,255,.35);
     display: grid; place-items: center; cursor: pointer;
+    padding: 0; margin: 0; color: inherit; font: inherit; text-shadow: inherit;
   }
   .compass .needle { font-size: 12px; transition: transform .05s linear; }
   .scale-bar { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -267,6 +307,18 @@
   .badge-official { background: #F3E3BE; color: #7A5A16; }
   .badge-user { background: #E7E5E1; color: var(--ink-soft); }
   .post-caption { font-size: 13px; line-height: 1.75; color: var(--ink); margin: 0 0 8px; }
+
+  /* 位置が「概略」の4件（board-spots.json の confidence: approximate）に添える断り書き */
+  .post-approx { font-size: 11.5px; color: var(--ink-soft); margin: 0 0 8px; display: flex; gap: 5px; align-items: baseline; }
+  .post-approx::before { content: "⌖"; font-size: 12.5px; line-height: 1; }
+
+  /* 投稿例（ダミー）。実際の投稿ではないことが一目で分かるようにする */
+  .badge-sample { background: #E2E8EA; color: #3C5B69; }
+  .post-sample-note { font-size: 11px; color: var(--ink-soft); margin: 0 0 10px; padding: 6px 9px; background: rgba(42,110,143,.06); border-left: 2px solid var(--theme-sea-sub); border-radius: 0 6px 6px 0; line-height: 1.6; }
+  .post-card--nophoto .post-card-name--inline {
+    position: static; display: inline-block; margin-bottom: 8px;
+    background: rgba(20,22,26,.72);
+  }
   .post-credit { font-size: 11px; color: var(--ink-soft); margin: 0 0 10px; }
   .post-foot { display: flex; align-items: center; justify-content: space-between; }
   .like-btn { appearance: none; border: 1px solid rgba(0,0,0,.12); background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink); }
@@ -282,13 +334,15 @@
   .modal h3 { font-family: var(--font-map); margin: 0 0 4px; font-size: 17px; }
   .modal p.sub { margin: 0 0 16px; font-size: 12.5px; color: var(--ink-soft); }
   .modal .field { margin-bottom: 14px; }
-  .modal label { font-size: 12.5px; color: var(--ink-soft); display: block; margin-bottom: 5px; }
+  .modal label, .modal .field-label { font-size: 12.5px; color: var(--ink-soft); display: block; margin-bottom: 5px; }
+  /* 同意欄は文字ごと <label> で包んであるので、行全体が押せる */
+  .modal ul.consent label { display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer; }
   .modal .dropzone { border: 1.5px dashed #B7AE98; border-radius: 10px; padding: 22px 12px; text-align: center; color: var(--ink-soft); font-size: 12.5px; background: rgba(255,255,255,.5); }
   .modal textarea { width: 100%; border: 1px solid #C9C0A6; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical; min-height: 56px; background: #fff; }
   .modal .gps-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-soft); background: #fff; border: 1px solid #C9C0A6; border-radius: 8px; padding: 8px 10px; }
   .modal .gps-row button { appearance: none; border: 1px solid var(--theme-sea); color: var(--theme-sea); background: #fff; border-radius: 999px; padding: 4px 11px; font-size: 11.5px; cursor: pointer; }
   .modal ul.consent { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .modal ul.consent li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+  .modal ul.consent li { font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
   .modal ul.consent input { margin-top: 3px; }
   .modal .actions { display: flex; justify-content: flex-end; gap: 10px; }
   .modal .actions button { appearance: none; border: none; border-radius: 999px; padding: 9px 18px; font-size: 13px; cursor: pointer; font-family: var(--font-map); }
@@ -302,7 +356,7 @@
 
 <div class="app">
   <div class="topbar">
-    <div class="topbar-title">絶景掲示板 <small>試作 v4 — 線路の立体表現・比較用</small></div>
+    <div class="topbar-title">絶景掲示板 <small>試作 v4 — 地図画面</small></div>
   </div>
 
   <div class="stage">
@@ -362,7 +416,7 @@
       </div>
       <button class="post-fab" type="button" id="postFab"><span class="plus">＋</span>投稿する</button>
       <div class="compass">
-        <div class="needle-wrap" id="compassReset" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></div>
+        <button type="button" class="needle-wrap" id="compassReset" aria-label="最初の表示に戻す（角度・拡大・位置）" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></button>
         <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
       </div>
       <div class="legend-note">◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
@@ -375,26 +429,31 @@
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop">
-  <div class="modal">
-    <h3>絶景スポットを投稿する</h3>
-    <p class="sub">見た目の確認用の試作です。実際には送信できません。</p>
+  <!--
+    role="dialog" + aria-modal で、開いているあいだ背後は読み上げの対象から外れる。
+    Tab が背後へ抜けないようにするのは JS 側（trapFocus）。
+    同意欄のチェックボックスは <label> で包んであるので、文字を押しても切り替わる。
+  -->
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalSub">
+    <h3 id="modalTitle">絶景スポットを投稿する</h3>
+    <p class="sub" id="modalSub">見た目の確認用の試作です。実際には送信できません。</p>
     <div class="field">
-      <label>写真</label>
+      <span class="field-label">写真</span>
       <div class="dropzone">ここに写真をドラッグ、またはクリックして選択<br>（送信前に端末側でEXIFを自動的に削除します）</div>
     </div>
     <div class="field">
-      <label>場所</label>
+      <span class="field-label">場所</span>
       <div class="gps-row">地図上のピンをドラッグして調整できます<button type="button">現在地を使う</button></div>
     </div>
     <div class="field">
-      <label>ひとこと（任意）</label>
-      <textarea placeholder="例：夕方の逆光がきれいでした"></textarea>
+      <label for="postNote">ひとこと（任意）</label>
+      <textarea id="postNote" placeholder="例：夕方の逆光がきれいでした"></textarea>
     </div>
     <ul class="consent">
-      <li><input type="checkbox">自分で撮影した写真であること</li>
-      <li><input type="checkbox">他の人の顔がはっきり写っていないこと</li>
-      <li><input type="checkbox">16歳未満の場合は保護者の同意を得ていること</li>
-      <li><input type="checkbox">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</li>
+      <li><label><input type="checkbox">自分で撮影した写真であること</label></li>
+      <li><label><input type="checkbox">他の人の顔がはっきり写っていないこと</label></li>
+      <li><label><input type="checkbox">16歳未満の場合は保護者の同意を得ていること</label></li>
+      <li><label><input type="checkbox">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</label></li>
     </ul>
     <div class="actions">
       <button type="button" class="btn-cancel" id="modalCancel">閉じる</button>
@@ -419,9 +478,74 @@
     chijimi: "../../../../assets/choshi/board/chijimi.webp",
   };
 
+  /*
+   * innerHTML に流し込む文字は必ずこれを通す。
+   *
+   * いま入っているのは自分たちで書いた data/choshi/board-spots.json だけなので、
+   * 今日この時点では危険はない。それでも入れてあるのは、本実装（board.html）が
+   * **乗客が書いた文字**（ADR-0004 の public_note、設計メモ1章で掲示板にも出すと
+   * 決めている）を同じ場所に流し込むことになるため。エスケープなしのまま書き写すと、
+   * 投稿された文字がそのままHTMLとして動いてしまう。ここを直しておけば、
+   * このプロトタイプを手本にしても安全な形になる。
+   */
+  function esc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   const WORLD_W = 1000, WORLD_H = 1268;
-  const POSTS = [{"id":"inubosaki","name":"犬吠埼灯台","u":0.8195271717729831,"v":0.5632421283193008,"z":29,"photo":"inubosaki","caption":"太平洋を望む白亜の灯台。初日の出の名所としても知られる。","approximate":false},{"id":"kimigahama","name":"君ヶ浜","u":0.8068065595623148,"v":0.5110563148872351,"z":0,"photo":"kimigahama","caption":"遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。","approximate":false},{"id":"chikyu","name":"地球の丸く見える丘展望館","u":0.6812189701738451,"v":0.5765743681434375,"z":54,"photo":"chikyu","caption":"愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。","approximate":false},{"id":"byobugaura","name":"屏風ヶ浦","u":0.08649657205195642,"v":0.5795397652609793,"z":0,"photo":"byobugaura","caption":"約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。","approximate":false},{"id":"togawako","name":"外川漁港","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"togawako","caption":"銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。","approximate":true},{"id":"kinmedai","name":"きんめだい","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"kinmedai","caption":"外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。","approximate":true},{"id":"togawaeki","name":"外川駅","u":0.7130954584766809,"v":0.6405111142397492,"z":31,"photo":"togawaeki","caption":"銚子電鉄の終点。昔ながらの木造駅舎が今も残る。","approximate":false},{"id":"sengaiwa","name":"千騎ヶ岩","u":0.6336133791685272,"v":0.6663938641633905,"z":15.7,"photo":"sengaiwa","caption":"外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。","approximate":false},{"id":"inuiwa","name":"犬岩","u":0.6062417606636323,"v":0.6515650938047903,"z":8.4,"photo":"inuiwa","caption":"両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。","approximate":false},{"id":"cabbage","name":"キャベツ畑","u":0.7290679426000605,"v":0.3935434187024844,"z":31.1,"photo":"cabbage","caption":"風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。","approximate":false},{"id":"traincabbage","name":"銚子電鉄とキャベツ畑","u":0.7406262465803045,"v":0.4553768121036731,"z":30.6,"photo":"traincabbage","caption":"沿線随一の撮影名所。キャベツ畑を電車が横切る。","approximate":true},{"id":"chijimi","name":"銚子ちぢみ伝統工芸館","u":0.13033298994981224,"v":0.2532613057096356,"z":8.6,"photo":"chijimi","caption":"江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。","approximate":true}];
-  POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; p.likes = 3 + Math.floor(Math.random() * 40); });
+  const POSTS = [{"id":"inubosaki","name":"犬吠埼灯台","u":0.8195271717729831,"v":0.5632421283193008,"z":29,"photo":"inubosaki","caption":"太平洋を望む白亜の灯台。初日の出の名所としても知られる。","approximate":false,"likes":41},{"id":"kimigahama","name":"君ヶ浜","u":0.8068065595623148,"v":0.5110563148872351,"z":0,"photo":"kimigahama","caption":"遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。","approximate":false,"likes":18},{"id":"chikyu","name":"地球の丸く見える丘展望館","u":0.6812189701738451,"v":0.5765743681434375,"z":54,"photo":"chikyu","caption":"愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。","approximate":false,"likes":27},{"id":"byobugaura","name":"屏風ヶ浦","u":0.08649657205195642,"v":0.5795397652609793,"z":0,"photo":"byobugaura","caption":"約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。","approximate":false,"likes":33},{"id":"togawako","name":"外川漁港","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"togawako","caption":"銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。","approximate":true,"likes":12},{"id":"kinmedai","name":"きんめだい","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"kinmedai","caption":"外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。","approximate":true,"likes":21},{"id":"togawaeki","name":"外川駅","u":0.7130954584766809,"v":0.6405111142397492,"z":31,"photo":"togawaeki","caption":"銚子電鉄の終点。昔ながらの木造駅舎が今も残る。","approximate":false,"likes":36},{"id":"sengaiwa","name":"千騎ヶ岩","u":0.6336133791685272,"v":0.6663938641633905,"z":15.7,"photo":"sengaiwa","caption":"外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。","approximate":false,"likes":9},{"id":"inuiwa","name":"犬岩","u":0.6062417606636323,"v":0.6515650938047903,"z":8.4,"photo":"inuiwa","caption":"両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。","approximate":false,"likes":14},{"id":"cabbage","name":"キャベツ畑","u":0.7290679426000605,"v":0.3935434187024844,"z":31.1,"photo":"cabbage","caption":"風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。","approximate":false,"likes":24},{"id":"traincabbage","name":"銚子電鉄とキャベツ畑","u":0.7406262465803045,"v":0.4553768121036731,"z":30.6,"photo":"traincabbage","caption":"沿線随一の撮影名所。キャベツ畑を電車が横切る。","approximate":true,"likes":31},{"id":"chijimi","name":"銚子ちぢみ伝統工芸館","u":0.13033298994981224,"v":0.2532613057096356,"z":8.6,"photo":"chijimi","caption":"江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。","approximate":true,"likes":6}];
+  // likes は data/choshi/board-spots.json の sampleLikes（見本の固定値）が入っている。
+  // 読み込むたび乱数で出していたのをやめた（2026-08-19）。集計の仕組み（ADR-0004 の
+  // IP ハッシュ）につないだら、この見本の数は消すこと。
+  POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; });
+
+  /*
+   * 投稿例（ダミー）。設計メモ1章の「サンプルとして1〜2件だけ『投稿するとこう見える』
+   * という見本の投稿カードを置く」に対応する。実データではない。
+   *
+   * 地図に別のピンとしては置かず、既にあるスポットのパネルに並べている。投稿は
+   * 「その場所について書かれるもの」なので、公式写真の下に並ぶ形が本番に近い。
+   * 作り話の座標を新しく作らずに済むという利点もある。
+   *
+   * 写真つきの1件には、下でコードから描いたサンプル画像を使う。観光協会から提供された
+   * 12枚を利用者の投稿に見せかけると「著作権を偽って利用」（利用規約の禁止事項）に
+   * あたるため、本物の写真は使えない。
+   */
+  const SAMPLE_PHOTO = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">' +
+    '<rect width="400" height="300" fill="#DFDBD2"/>' +
+    '<g fill="none" stroke="#C9C3B7" stroke-width="2">' +
+    '<rect x="150" y="112" width="100" height="72" rx="8"/>' +
+    '<circle cx="200" cy="148" r="20"/>' +
+    '<path d="M168 112l10-14h44l10 14"/></g>' +
+    '<text x="200" y="212" text-anchor="middle" fill="#7C766B" ' +
+    'font-family="sans-serif" font-size="19" font-weight="600">投稿例</text>' +
+    '<text x="200" y="234" text-anchor="middle" fill="#989286" ' +
+    'font-family="sans-serif" font-size="13">サンプル画像</text></svg>'
+  );
+
+  const SAMPLE_POSTS = [
+    {
+      attachTo: "inubosaki",
+      name: "犬吠埼灯台",
+      sample: true,
+      official: false,
+      photo: SAMPLE_PHOTO,
+      caption: "朝いちばんの電車で来ました。灯台の白と海のあおの差がすごい。99段の階段をのぼると風がつよいので、帽子は手に持ったほうがよさそうです。",
+      likes: 7,
+    },
+    {
+      attachTo: "togawaeki",
+      name: "外川駅",
+      sample: true,
+      official: false,
+      photo: null,
+      caption: "木の改札がそのまま残っていて、時間が止まったみたいでした。写真は撮りそびれましたが、ホームのベンチでぬれ煎餅を食べる時間がいちばんよかったです。",
+      likes: 4,
+    },
+  ];
 
   // ほぼ同じ場所（実質同じ座標）のスポットは1本のピンにまとめる。
   // 件数バッジは出さない——地図上は普通の1本のピンに見え、開くと複数枚が出てくる
@@ -466,12 +590,22 @@
   }
   window.addEventListener("resize", fitScale);
 
+  /*
+   * ビルボード（回転しても正面を向く板）の一覧。render() はドラッグのあいだ
+   * 1フレームごとに呼ばれるので、そのたび querySelectorAll で探し直さない。
+   * ピン・駅を作り直したら refreshBillboards() で取り直すこと。
+   */
+  let billboards = [];
+  function refreshBillboards() {
+    billboards = Array.from(document.querySelectorAll(".pin-billboard, .station-billboard"));
+  }
+
   function render() {
     const s = baseFitScale * state.zoom;
     cameraRig.style.transform =
       `translate3d(${state.panX}px, ${state.panY}px, 0) scale3d(${s}, ${s}, ${s}) rotateX(${state.tilt}deg) rotateZ(${state.heading}deg)`;
     const billboard = `rotateZ(${-state.heading}deg) rotateX(${-state.tilt}deg)`;
-    document.querySelectorAll(".pin-billboard, .station-billboard").forEach(el => el.style.transform = billboard);
+    for (const el of billboards) el.style.transform = billboard;
     needle.style.transform = `rotate(${-state.heading}deg)`;
   }
 
@@ -543,6 +677,11 @@
       const el = document.createElement("div");
       el.className = "pin";
       el.tabIndex = 0;
+      // div のままなので、押せるものだと読み上げに伝わるよう役割と名前を付ける。
+      // 名前をラベルに頼らないのは、.pin-label が普段 opacity:0 で隠れているため。
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label",
+        cluster.posts.map(p => p.name).join("・") + " の写真を開く");
 
       const photoDiv = document.createElement("div");
       photoDiv.className = "pin-photo";
@@ -561,7 +700,11 @@
 
       const open = () => openSpot(cluster, el);
       el.addEventListener("click", (e) => { e.stopPropagation(); open(); });
-      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();   // Space の既定動作（ページ送り）を止める
+        open();
+      });
 
       billboard.appendChild(el);
       anchor.appendChild(billboard);
@@ -631,7 +774,7 @@
       billboard.className = "station-billboard";
       const mark = document.createElement("div");
       mark.className = "station-mark" + (s.offLine ? " offline" : "");
-      mark.innerHTML = `<span class="dot"></span><span class="name">${s.name}${s.offLine ? "（JR）" : ""}</span>`;
+      mark.innerHTML = `<span class="dot"></span><span class="name">${esc(s.name)}${s.offLine ? "（JR）" : ""}</span>`;
       billboard.appendChild(mark);
       anchor.appendChild(billboard);
       stationsLayer.appendChild(anchor);
@@ -640,21 +783,29 @@
 
   const panel = document.getElementById("panel");
   const panelInner = document.getElementById("panelInner");
+  // パネルを閉じたときにフォーカスを戻す先（キーボードで開いた人が迷子にならないように）
+  let lastOpenedPin = null;
+
   function openSpot(cluster, el) {
     document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
     el.classList.add("active");
+    lastOpenedPin = el;
     // 地図上のピンでは分からなくても、開けば同じ場所の写真が全部並ぶ
     // （外川漁港・きんめだいのように、実質同じ座標のスポットがある）。
     const headTitle = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" ・ ") : cluster.posts[0].name;
+    // 公式写真のうしろに、そのスポットに紐づけた投稿例（ダミー）を並べる
+    const ids = new Set(cluster.posts.map(p => p.id));
+    const cards = cluster.posts.concat(SAMPLE_POSTS.filter(sp => ids.has(sp.attachTo)));
     panelInner.innerHTML = `
-      <div class="panel-head"><h2>${headTitle}</h2></div>
-      <div class="panel-body">${cluster.posts.map(postCardHTML).join("")}</div>
+      <div class="panel-head"><h2>${esc(headTitle)}</h2></div>
+      <div class="panel-body">${cards.map(postCardHTML).join("")}</div>
     `;
     panel.classList.add("open");
     panelInner.querySelectorAll(".like-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const liked = btn.classList.toggle("liked");
+        btn.setAttribute("aria-pressed", String(liked));
         const countEl = btn.querySelector(".count-num");
         let n = parseInt(countEl.textContent, 10);
         countEl.textContent = liked ? n + 1 : n - 1;
@@ -665,23 +816,40 @@
     if (!panel.classList.contains("open")) return;
     panel.classList.remove("open");
     document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
-    setTimeout(() => { if (!panel.classList.contains("open")) panelInner.innerHTML = ""; }, 480);
+    if (lastOpenedPin) { lastOpenedPin.focus(); lastOpenedPin = null; }
+    // 中身を消すのは、幅が縮みきってから（下の transitionend）。
+    // 秒数を決め打ちすると CSS の .45s と二重管理になり、動きを減らす設定のときにも
+    // 無駄に待つことになる。
   }
   panel.addEventListener("click", (e) => e.stopPropagation());
   panel.addEventListener("transitionend", (e) => {
-    if (e.propertyName === "width" && e.target === panel) fitScale();
+    if (e.propertyName !== "width" || e.target !== panel) return;
+    fitScale();
+    if (!panel.classList.contains("open")) panelInner.innerHTML = "";
   });
   function postCardHTML(p) {
+    // 公式の12枚は PHOTOS から id で引く。投稿例は自前の画像（または写真なし）を持っている
+    const src = p.sample ? p.photo : PHOTOS[p.photo];
+    const badge = p.official
+      ? '<span class="badge badge-official">公式・観光協会提供</span>'
+      : (p.sample
+          ? '<span class="badge badge-sample">投稿例（見本）</span>'
+          : '<span class="badge badge-user">投稿</span>');
     return `
-      <div class="post-card">
-        <span class="post-card-name">${p.name}</span>
-        <img src="${PHOTOS[p.photo]}" alt="${p.name}">
+      <div class="post-card${src ? "" : " post-card--nophoto"}">
+        ${src
+          ? `<span class="post-card-name">${esc(p.name)}</span>
+        <img src="${esc(src)}" alt="${esc(p.sample ? "投稿例のサンプル画像" : p.name)}">`
+          : ""}
         <div class="post-card-body">
-          <div class="post-badges">${p.official ? '<span class="badge badge-official">公式・観光協会提供</span>' : '<span class="badge badge-user">投稿</span>'}</div>
-          <p class="post-caption">${p.caption}</p>
-          ${p.credit ? `<p class="post-credit">${p.credit}</p>` : ""}
+          ${src ? "" : `<span class="post-card-name post-card-name--inline">${esc(p.name)}</span>`}
+          <div class="post-badges">${badge}</div>
+          ${p.sample ? `<p class="post-sample-note">これは「投稿するとこう見えます」の見本です。実際に寄せられた投稿ではありません。</p>` : ""}
+          <p class="post-caption">${esc(p.caption)}</p>
+          ${p.approximate ? `<p class="post-approx">この場所の位置はおおよそです（現地で確かめる予定）</p>` : ""}
+          ${p.credit ? `<p class="post-credit">${esc(p.credit)}</p>` : ""}
           <div class="post-foot">
-            <button type="button" class="like-btn"><span class="diamond"></span>いいね　<span class="count-num">${p.likes}</span></button>
+            <button type="button" class="like-btn" aria-pressed="false"><span class="diamond"></span>いいね　<span class="count-num">${esc(p.likes)}</span></button>
           </div>
         </div>
       </div>
@@ -691,12 +859,49 @@
   renderPins();
   renderRail();
   renderStations();
+  refreshBillboards();
   fitScale();
 
   const modalBackdrop = document.getElementById("modalBackdrop");
-  document.getElementById("postFab").addEventListener("click", (e) => { e.stopPropagation(); modalBackdrop.classList.add("open"); });
-  document.getElementById("modalCancel").addEventListener("click", () => modalBackdrop.classList.remove("open"));
-  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) modalBackdrop.classList.remove("open"); });
+  const postFab = document.getElementById("postFab");
+  postFab.addEventListener("click", (e) => { e.stopPropagation(); openModal(); });
+  document.getElementById("modalCancel").addEventListener("click", () => closeModal());
+  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+  const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function openModal() {
+    modalBackdrop.classList.add("open");
+    // 開いたら中へフォーカスを移す。移さないと、Esc は効くのに Tab が背後の
+    // 地図を辿ってしまい、キーボードだけの人はモーダルに入れない。
+    const first = modalBackdrop.querySelector(FOCUSABLE);
+    if (first) first.focus();
+  }
+
+  function closeModal() {
+    if (!modalBackdrop.classList.contains("open")) return;
+    modalBackdrop.classList.remove("open");
+    postFab.focus();
+  }
+
+  // 開いているあいだ、Tab をモーダルの中で回す（背後の地図へ抜けさせない）
+  modalBackdrop.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const items = Array.from(modalBackdrop.querySelectorAll(FOCUSABLE))
+      .filter(el => el.offsetParent !== null);
+    if (items.length === 0) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  // Esc で写真パネル・投稿モーダルを閉じる（設計メモ6章）。
+  // 重なっているときは、手前にあるモーダルから閉じる。
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (modalBackdrop.classList.contains("open")) { closeModal(); return; }
+    closePanel();
+  });
 </script>
 
 </body>

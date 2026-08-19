@@ -15,7 +15,16 @@
     "  - この作品が既に持っている実データ（route.json の駅座標、",
     "    tools/build-spot-geometry.js が出した spots.json の畑の位置）",
     "confidence: 'exact' は地物そのものに対応するタグ・データが取れたもの。",
-    "'approximate' は地区・町丁目レベルまでしか取れず、現地確認が要るもの。"
+    "'approximate' は地区・町丁目レベルまでしか取れず、現地確認が要るもの。",
+    "",
+    "photo は、観光協会からダウンロードした元ファイルの名前。どの画像がどのスポットの",
+    "ものかを追えるように残してある記録で、コードは読んでいない（表示に使うのは id から",
+    "決まる assets/choshi/board/<id>.webp のほう）。消さないこと。",
+    "",
+    "sampleLikes は、プロトタイプの画面に出す『いいね』の見本の数。実際に集まった",
+    "数ではない。集計の仕組み（ADR-0004 の IP ハッシュ）はまだ画面につながっていない。",
+    "読み込むたび乱数で出していたのを、数が勝手に変わるのは不自然なので固定値にした",
+    "（2026-08-19）。本物の集計につないだ時点で、この項目は消すこと。"
   ],
   "_note_2026-08-19": [
     "プロトタイプの元の座標と比べると、次の4件で無視できない差があった",
@@ -36,7 +45,8 @@
       "photo": "犬吠埼灯台.jpg",
       "caption": "太平洋を望む白亜の灯台。初日の出の名所としても知られる。",
       "source": "OpenStreetMap node/1582440591（man_made=lighthouse）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 41
     },
     {
       "id": "kimigahama",
@@ -46,7 +56,8 @@
       "photo": "君ケ浜.jpg",
       "caption": "遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。",
       "source": "OpenStreetMap way/679437656（君ヶ浜しおさい公園、砂浜への入口）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 18
     },
     {
       "id": "chikyu",
@@ -56,7 +67,8 @@
       "photo": "地球の丸く見える丘展望館.jpg",
       "caption": "愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。",
       "source": "OpenStreetMap way/265726472（建物）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 27
     },
     {
       "id": "byobugaura",
@@ -67,7 +79,8 @@
       "caption": "約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。",
       "source": "OpenStreetMap node/7157718178（tourism=attraction、Wikidata Q5004737）",
       "note": "崖は約10km続くため、この座標は代表点。写真の実際の撮影地点とは数百m〜1km程度ずれている可能性がある。",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 33
     },
     {
       "id": "togawako",
@@ -78,7 +91,8 @@
       "caption": "銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。",
       "source": "OpenStreetMap の海岸線データ（natural=coastline、data/source/features_raw.json）のうち外川駅に最も近い点",
       "note": "「外川漁港」という名前の地物としては登録されていなかったため、外川駅そばの実際の海岸線上の点で代用している。現地確認が望ましい。",
-      "confidence": "approximate"
+      "confidence": "approximate",
+      "sampleLikes": 12
     },
     {
       "id": "kinmedai",
@@ -88,7 +102,8 @@
       "photo": "きんめだい.jpg",
       "caption": "外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。",
       "source": "togawako（外川漁港）と同じ座標。きんめだいは場所ではなく特産品なので、水揚げされる外川漁港の位置をそのまま使う。地図上は1本のピンにまとまり（クラスター化）、開くと外川漁港と並んで表示される",
-      "confidence": "approximate"
+      "confidence": "approximate",
+      "sampleLikes": 21
     },
     {
       "id": "togawaeki",
@@ -98,7 +113,8 @@
       "photo": "外川駅.jpg",
       "caption": "銚子電鉄の終点。昔ながらの木造駅舎が今も残る。",
       "source": "data/choshi/route.json（この作品が既に持っている実測データ。国土地理院の地名検索でも同じ位置と確認済み）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 36
     },
     {
       "id": "sengaiwa",
@@ -108,7 +124,8 @@
       "photo": "千騎ケ岩.jpg",
       "caption": "外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。",
       "source": "OpenStreetMap node/10180768055（place=islet）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 9
     },
     {
       "id": "inuiwa",
@@ -118,7 +135,8 @@
       "photo": "犬岩.jpg",
       "caption": "両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。",
       "source": "OpenStreetMap node/6383324421（tourism=attraction）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 14
     },
     {
       "id": "cabbage",
@@ -128,7 +146,8 @@
       "photo": "キャベツ畑.jpg",
       "caption": "風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。",
       "source": "data/choshi/spots.json の S04 と同じ座標（tools/build-spot-geometry.js が国土地理院データとOSMの畑ポリゴンから既に計算済み）",
-      "confidence": "exact"
+      "confidence": "exact",
+      "sampleLikes": 24
     },
     {
       "id": "traincabbage",
@@ -139,7 +158,8 @@
       "caption": "沿線随一の撮影名所。キャベツ畑を電車が横切る。",
       "source": "route.json の海鹿島〜君ヶ浜間の線路上に仮置き",
       "note": "撮影名所としての正確な立ち位置は特定できていない。この区間の線路沿いに畑はあるが、写真と同じアングルで撮れる正確な地点は現地または撮影者への確認が必要。",
-      "confidence": "approximate"
+      "confidence": "approximate",
+      "sampleLikes": 31
     },
     {
       "id": "chijimi",
@@ -150,7 +170,8 @@
       "caption": "江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。",
       "source": "国土地理院 地名検索（msearch.gsi.go.jp）の「松岸町」の町丁目中心点",
       "note": "施設そのものの座標ではなく、松岸町という地区の中心点。建物の正確な位置は現地または地図サービスでの個別確認が必要。",
-      "confidence": "approximate"
+      "confidence": "approximate",
+      "sampleLikes": 6
     }
   ]
 }

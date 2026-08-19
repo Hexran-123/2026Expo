@@ -1,27 +1,37 @@
 #!/bin/sh
 #
-# css/・js/・data/ を直したら demo/*.html も作り直す、を機械的に守らせる。
-# README「css/・js/・data/ を直したら4枚とも作り直すこと」の取りこぼし対策。
+# 生成物の作り直し忘れを機械的に防ぐ。
+#   css/・js/・data/ を直したら demo/*.html も作り直す
+#   テンプレート・データを直したら絶景掲示板のプロトタイプも作り直す
+# README「作り直し忘れ」参照。
 #
 # 有効にするには（最初に一度だけ）:
 #   git config core.hooksPath .githooks
 
 changed=$(git diff --cached --name-only --diff-filter=ACMR)
+status=0
 
+# --- 1枚デモ（demo/*.html）---
 # data/source/ は中間生成物で demo/*.html には入らないので対象外
-relevant=$(printf '%s\n' "$changed" | grep -E '^(css/|js/|tools/build-demo\.js|data/)' | grep -v '^data/source/')
+relevant_demo=$(printf '%s\n' "$changed" | grep -E '^(css/|js/|tools/build-demo\.js|data/)' | grep -v '^data/source/')
 
-if [ -z "$relevant" ]; then
-  exit 0
+if [ -n "$relevant_demo" ]; then
+  echo "css・js・data に手が入っているので、demo/ が最新か確かめる..."
+  node tools/check-demo-fresh.js || status=1
 fi
 
-echo "css・js・data に手が入っているので、demo/ が最新か確かめる..."
-node tools/check-demo-fresh.js
-status=$?
+# --- 絶景掲示板のプロトタイプ ---
+# テンプレート・掲示板のデータ・作る道具のどれかが動いたら確かめる
+relevant_board=$(printf '%s\n' "$changed" | grep -E '^(ai/artifacts/絶景掲示板/mockups/|data/board/|data/choshi/board-spots\.json|tools/build-board-mockup\.js|tools/build-board-elevations\.js)')
+
+if [ -n "$relevant_board" ]; then
+  echo "絶景掲示板のテンプレート・データに手が入っているので、プロトタイプが最新か確かめる..."
+  node tools/check-board-fresh.js || status=1
+fi
 
 if [ "$status" -ne 0 ]; then
   echo ""
-  echo "commit を中止した。demo/ を作り直してから git add し直すこと。"
+  echo "commit を中止した。生成物を作り直してから git add し直すこと。"
   echo "急ぎで確認だけ先に commit したいときは git commit --no-verify。"
   exit 1
 fi

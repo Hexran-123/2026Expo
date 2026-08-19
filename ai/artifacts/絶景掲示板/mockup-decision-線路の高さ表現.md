@@ -32,4 +32,7 @@
 
 - 核准者：（チーム内での動作確認により暫定決定。書面の承認記録は未取得）
 - 日期：2026-08-18
-- 備考：この決定の背景と Consequences は [ADR-0005](../../docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md) にも記録した。プロトタイプ本体は [mockups/board-map-variant-v4.html](mockups/board-map-variant-v4.html)（`rail-picker` の5択ラジオボタンで、いまも全案を切り替えて見比べられる）。
+- 備考：この決定の背景と Consequences は [ADR-0005](../../../docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md) にも記録した。プロトタイプ本体は [mockups/board-map-variant-v4.html](mockups/board-map-variant-v4.html)。
+  **比較用の切替パネル（`.rail-picker`、5択ラジオボタン）は2026-08-19に削除した**ので、いまは採用案
+  （駅を通る曲線・白い縁なし）で固定されており、プロトタイプ上で5案を見比べることはできない。
+  比較したときの実装は commit c2e423a 以前の同ファイルに残っている。
