@@ -200,8 +200,15 @@
 
   .pin {
     position: absolute;
-    left: 0; top: 0;
-    transform-origin: 0 0;   /* 位置・拡大は JS が transform でまとめて与える */
+    /*
+     * 基準は地図の中心。3Dの世界の原点（.world）も .map-wrap の中心に置いてあるので、
+     * ここを % で書いておくと、パネルの開閉で地図の幅が変わっても、ブラウザが同じ
+     * フレームのうちに両方の中心を動かしてくれる。JS で clientWidth/2 を足す形にして
+     * いたときは、幅が変わっていく 0.45 秒のあいだピンだけが取り残された（2026-08-19）。
+     * JS が与えるのは「中心からのずれ」だけにする。
+     */
+    left: 50%; top: 50%;
+    transform-origin: 0 0;   /* ずれ・拡大は JS が transform でまとめて与える */
     cursor: pointer;
     pointer-events: auto;
     display: flex;
@@ -576,7 +583,19 @@
     baseFitScale = Math.min(w / WORLD_W, h / WORLD_H) * 0.72;
     render();
   }
-  window.addEventListener("resize", fitScale);
+
+  /*
+   * 地図の入れ物（.map-wrap）の大きさが変わったら、baseFitScale を測り直す。
+   *
+   * window の resize では足りない。写真パネルが開くと .map-wrap は 0.45 秒かけて
+   * 幅を縮めるが、そのあいだ window の大きさは変わらないので resize は一度も飛ばない。
+   *
+   * なお、ピンが地図から離れないようにする役目はここには無い。中心の取り方は
+   * CSS の left/top: 50% に任せてあり（.pin のコメント参照）、ブラウザが同じフレームで
+   * 揃えてくれる。ResizeObserver は1フレーム遅れて呼ばれるので、これに頼ると
+   * 幅が変わっていくあいだ 80px ほどのずれが残る（2026-08-19に実測）。
+   */
+  new ResizeObserver(() => fitScale()).observe(mapWrap);
 
   /*
    * ビルボード（回転しても正面を向く板）の一覧。render() はドラッグのあいだ
@@ -596,15 +615,15 @@
   const PERSPECTIVE = 1700;
 
   /*
-   * 世界座標 (x, y, z) が画面のどこに来るかを解く。
+   * 世界座標 (x, y, z) が、地図の中心からどれだけずれた所に来るかを解く。
    * .camera-rig にかけている変形と、.map-wrap の perspective を、同じ順序でたどるだけ。
    *
    *   CSS:  translate3d(panX,panY,0) scale3d(s,s,s) rotateX(tilt) rotateZ(heading)
    *   → 点には右から順に効くので、回転 → 拡大 → 平行移動 の順に計算する。
    *
-   * .world は .camera-rig の中心（＝変形の原点）に置いてあるので、
-   * 世界座標はそのまま「原点からのずれ」として扱える。
-   * perspective の原点も画面中央なので、最後に中央を足す。
+   * .world は .camera-rig の中心（＝変形の原点）に置いてあり、perspective の原点も
+   * 同じ中心なので、ここでは中心からのずれだけを出せばよい。画面のどこが中心かは
+   * CSS の left/top: 50% に任せる（.pin のコメント参照）。
    *
    * 戻り値の scale は、そこに置くものを地図と同じ大きさに見せるための倍率
    * （拡大率 × 遠近による縮み）。
@@ -624,11 +643,7 @@
     const qz = z2 * s;
 
     const f = PERSPECTIVE / (PERSPECTIVE - qz);
-    return {
-      sx: mapWrap.clientWidth / 2 + qx * f,
-      sy: mapWrap.clientHeight / 2 + qy * f,
-      scale: s * f,
-    };
+    return { dx: qx * f, dy: qy * f, scale: s * f };
   }
 
   function render() {
@@ -696,11 +711,12 @@
 
   function positionPins() {
     for (const it of pinItems) {
-      const { sx, sy, scale } = projectToScreen(it.x, it.y, it.z);
-      // transform-origin: 0 0 なので、まず尻尾の先を置きたい点へ動かし、そこを軸に拡大し、
-      // 最後にピン自身を「下端の中央が基準」になるようずらす（拡大後の座標系で効く）。
+      const { dx, dy, scale } = projectToScreen(it.x, it.y, it.z);
+      // 起点は CSS の left/top: 50%（地図の中心）。そこから中心のずれぶん動かし、
+      // その点を軸に拡大し、最後にピン自身を「下端の中央が基準」になるようずらす
+      // （最後のずらしは拡大後の座標系で効くので、尻尾の先がぴたりと乗る）。
       it.el.style.transform =
-        `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) scale(${scale.toFixed(4)}) translate(-50%, -100%)`;
+        `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${scale.toFixed(4)}) translate(-50%, -100%)`;
     }
   }
 
@@ -860,9 +876,9 @@
     // 無駄に待つことになる。
   }
   panel.addEventListener("click", (e) => e.stopPropagation());
+  // 幅の測り直しは ResizeObserver に任せてある。ここは閉じ終わったあとの片づけだけ。
   panel.addEventListener("transitionend", (e) => {
     if (e.propertyName !== "width" || e.target !== panel) return;
-    fitScale();
     if (!panel.classList.contains("open")) panelInner.innerHTML = "";
   });
   function postCardHTML(p) {
