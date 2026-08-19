@@ -387,6 +387,30 @@
   const WORLD_W = 1000, WORLD_H = 1268;
   const POSTS = __SPOTS_JS__;
   POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; p.likes = 3 + Math.floor(Math.random() * 40); });
+
+  // ほぼ同じ場所（実質同じ座標）のスポットは1本のピンにまとめる。
+  // 件数バッジは出さない——地図上は普通の1本のピンに見え、開くと複数枚が出てくる
+  // （2026-08-19、FBを受けて。バッジ表示だけをやめ、まとめる仕組み自体は元に戻した）。
+  function buildClusters(posts, threshold = 0.02) {
+    const used = new Array(posts.length).fill(false);
+    const clusters = [];
+    for (let i = 0; i < posts.length; i++) {
+      if (used[i]) continue;
+      const group = [posts[i]];
+      used[i] = true;
+      for (let j = i + 1; j < posts.length; j++) {
+        if (used[j]) continue;
+        const du = posts[i].u - posts[j].u, dv = posts[i].v - posts[j].v;
+        if (Math.sqrt(du * du + dv * dv) < threshold) { group.push(posts[j]); used[j] = true; }
+      }
+      const cu = group.reduce((s, p) => s + p.u, 0) / group.length;
+      const cv = group.reduce((s, p) => s + p.v, 0) / group.length;
+      const cz = group.reduce((s, p) => s + p.z, 0) / group.length;
+      clusters.push({ u: cu, v: cv, z: cz, posts: group });
+    }
+    return clusters;
+  }
+  const CLUSTERS = buildClusters(POSTS);
   const RAIL = __RAIL_DATA__;
 
   // ---------------- カメラの状態 ----------------
@@ -460,21 +484,19 @@
   // ---------------- ピンの生成 ----------------
   const pinsLayer = document.getElementById("pinsLayer");
 
-  // ピンは1スポット＝1本。近いスポットをまとめる表示（件数バッジ）はしない
-  // （2026-08-19、FBを受けて廃止）。高さは各スポットの実測標高（z、tools/build-board-mockup.js
-  // が国土地理院DEMから計算）を使い、地形に直接刺さって見えるようにしている。
-  // CSSの3D表現は本物のZバッファではなく、板を重ねているだけ。地形の板とほぼ同じ高さに
-  // ピンを置くと、奥行きの前後判定がおかしくなり地形の裏に隠れてしまう（実験で確認済み）。
-  // 見た目の「地面に刺さっている」印象は保ちつつ確実に前面に出すため、実測標高の上に
-  // このぶんだけ底上げする。
+  // 高さは各スポットの実測標高（z、tools/build-board-mockup.js が国土地理院DEMから計算）を使い、
+  // 地形に直接刺さって見えるようにしている。CSSの3D表現は本物のZバッファではなく、板を重ねて
+  // いるだけ。地形の板とほぼ同じ高さにピンを置くと、奥行きの前後判定がおかしくなり地形の裏に
+  // 隠れてしまう（実験で確認済み）。見た目の「地面に刺さっている」印象は保ちつつ確実に前面に
+  // 出すため、実測標高の上にこのぶんだけ底上げする。
   const PIN_LIFT = 80;
 
   function renderPins() {
     pinsLayer.innerHTML = "";
-    POSTS.forEach((post) => {
-      const wx = post.u * WORLD_W - WORLD_W / 2;
-      const wy = post.v * WORLD_H - WORLD_H / 2;
-      const wz = post.z + PIN_LIFT;
+    CLUSTERS.forEach((cluster) => {
+      const wx = cluster.u * WORLD_W - WORLD_W / 2;
+      const wy = cluster.v * WORLD_H - WORLD_H / 2;
+      const wz = cluster.z + PIN_LIFT;
 
       const anchor = document.createElement("div");
       anchor.className = "pin-anchor";
@@ -489,19 +511,20 @@
 
       const photoDiv = document.createElement("div");
       photoDiv.className = "pin-photo";
-      photoDiv.style.backgroundImage = `url(${PHOTOS[post.photo]})`;
+      photoDiv.style.backgroundImage = `url(${PHOTOS[cluster.posts[0].photo]})`;
       el.appendChild(photoDiv);
 
       const tail = document.createElement("div");
       tail.className = "pin-tail";
       el.appendChild(tail);
 
+      // 件数バッジは出さない。同じ場所に複数枚あることは、開くまでは見せない。
       const label = document.createElement("div");
       label.className = "pin-label";
-      label.textContent = post.name;
+      label.textContent = cluster.posts[0].name;
       el.appendChild(label);
 
-      const open = () => openSpot(post, el);
+      const open = () => openSpot(cluster, el);
       el.addEventListener("click", (e) => { e.stopPropagation(); open(); });
       el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
 
@@ -582,12 +605,15 @@
 
   const panel = document.getElementById("panel");
   const panelInner = document.getElementById("panelInner");
-  function openSpot(post, el) {
+  function openSpot(cluster, el) {
     document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
     el.classList.add("active");
+    // 地図上のピンでは分からなくても、開けば同じ場所の写真が全部並ぶ
+    // （外川漁港・きんめだいのように、実質同じ座標のスポットがある）。
+    const headTitle = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" ・ ") : cluster.posts[0].name;
     panelInner.innerHTML = `
-      <div class="panel-head"><h2>${post.name}</h2></div>
-      <div class="panel-body">${postCardHTML(post)}</div>
+      <div class="panel-head"><h2>${headTitle}</h2></div>
+      <div class="panel-body">${cluster.posts.map(postCardHTML).join("")}</div>
     `;
     panel.classList.add("open");
     panelInner.querySelectorAll(".like-btn").forEach(btn => {
