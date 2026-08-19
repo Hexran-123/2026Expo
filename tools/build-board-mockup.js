@@ -10,6 +10,12 @@
  * 参照する（銚子市観光協会フォトダウンロード利用規約により直リンク禁止・ローカル保存必須のため。
  * CLAUDE.md 参照）。
  *
+ * ピンの高さはスポットごとの実測標高（国土地理院DEM）を使う。地形に浮いて見えないよう、
+ * 地図に直接刺さっているように見せるための対応（2026-08-19、FBを受けて）。
+ * data/source/board-elevation-grid.json が要る。無い場合は
+ * node tools/fetch-elevation.js data/board/board-bounds.json data/source/board-elevation-grid.json
+ * で取得すること。
+ *
  * 使い方: node tools/build-board-mockup.js
  */
 const fs = require("fs");
@@ -23,6 +29,16 @@ const OUT_PATH = path.join(MOCKUP_DIR, "board-map-variant-v4.html");
 const terrain = JSON.parse(fs.readFileSync(path.join(ROOT, "data/board/terrain.json"), "utf8"));
 const rail = JSON.parse(fs.readFileSync(path.join(ROOT, "data/board/rail-variants.json"), "utf8"));
 const boardSpots = JSON.parse(fs.readFileSync(path.join(ROOT, "data/choshi/board-spots.json"), "utf8"));
+const grid = JSON.parse(fs.readFileSync(path.join(ROOT, "data/source/board-elevation-grid.json"), "utf8"));
+
+function elevationAt(lat, lon) {
+  const { width, height, bounds } = grid;
+  const col = Math.round(((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * (width - 1));
+  const row = Math.round(((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * (height - 1));
+  if (col < 0 || col >= width || row < 0 || row >= height) return 0;
+  const v = grid.values[row * width + col];
+  return v === null || v === undefined ? 0 : v;
+}
 
 const { projection, bands } = terrain;
 const Z_SCALE = 1.2;
@@ -48,17 +64,22 @@ const bandLayers = bands.map(b => {
   </div>`;
 }).join("\n");
 
-const topZ = Math.max(...bands.map(b => b.minElevation)) * Z_SCALE;
+// 地形の段彩は45m以上をひとまとめの最上段として描いている（bands参照）。実測標高が
+// それを超える場所（chikyuの愛宕山など）でピンをそのまま置くと、描かれている地面より
+// 高い位置に浮いて見えるため、最上段の高さで頭打ちにする。
+const maxBandElevation = Math.max(...bands.map(b => b.minElevation));
 
 const spotsJs = boardSpots.spots.map(s => {
   const { u, v } = toUV(s.lat, s.lon);
+  const elevM = Math.min(elevationAt(s.lat, s.lon), maxBandElevation);
   return {
     id: s.id, name: s.name, u, v,
-    z: Math.round(topZ * 10) / 10,
+    z: Math.round(elevM * Z_SCALE * 10) / 10,
     photo: s.id, caption: s.caption,
     approximate: s.confidence === "approximate",
   };
 });
+console.log("spot elevations(m):", spotsJs.map(s => `${s.id}:${Math.round(s.z / Z_SCALE)}`).join(" "));
 
 let tpl = fs.readFileSync(TEMPLATE_PATH, "utf8");
 tpl = tpl.replace("__BAND_LAYERS__", bandLayers);

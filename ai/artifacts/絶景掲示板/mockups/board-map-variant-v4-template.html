@@ -161,21 +161,22 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    filter: drop-shadow(0 7px 11px rgba(0,0,0,.5));
   }
-  .pin:hover, .pin.active { filter: drop-shadow(0 9px 15px rgba(0,0,0,.62)); }
   .pin:focus-visible { outline: none; }
+
+  /*
+   * 影は .pin に filter:drop-shadow() をかけると preserve-3d の奥行きソートが崩れ、
+   * 地形の裏に隠れて見えなくなる（2026-08-19に発覚）。box-shadow は新しいスタッキング
+   * コンテキストを作らないため、.pin-photo に直接かけて同じ見た目にする。
+   */
+  .pin-photo { box-shadow: 0 7px 11px rgba(0,0,0,.5); }
+  .pin:hover .pin-photo, .pin.active .pin-photo { box-shadow: 0 9px 15px rgba(0,0,0,.62); }
 
   .pin-photo {
     width: 58px; height: 42px; border-radius: 7px; border: 3px solid #fff;
     background-size: cover; background-position: center; background-color: #555;
   }
   .pin-tail { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 11px solid #fff; margin-top: -1px; }
-  .pin-count {
-    position: absolute; top: -7px; right: -9px; min-width: 19px; height: 19px; padding: 0 4px;
-    border-radius: 999px; background: var(--theme-sea); color: #fff; font-size: 10.5px; font-weight: 700;
-    display: grid; place-items: center; border: 1.5px solid #fff;
-  }
   .pin-label {
     margin-top: 4px; font-family: var(--font-map); font-size: 10.5px; color: #fff;
     background: rgba(20,22,26,.62); padding: 1px 6px; border-radius: 6px; white-space: nowrap;
@@ -251,7 +252,6 @@
   .panel.open .panel-inner { opacity: 1; transform: translateX(0); }
   .panel-head { flex: none; padding: 18px 20px 14px; border-bottom: 1px solid rgba(0,0,0,.08); }
   .panel-head h2 { font-family: var(--font-map); font-size: 17px; margin: 0 0 4px; color: var(--ink); }
-  .panel-head .count { font-size: 12.5px; color: var(--ink-soft); }
   .panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px 26px; display: flex; flex-direction: column; gap: 18px; }
   .post-card { flex: none; background: var(--panel); border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); border: 1px solid rgba(0,0,0,.05); position: relative; }
   .post-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #ddd; }
@@ -330,7 +330,7 @@
         <div class="needle-wrap" id="compassReset" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></div>
         <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
       </div>
-      <div class="legend-note">◆丸数字＝近くにある投稿をまとめた件数（写真をタップすると内訳が見られます）<br>◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
+      <div class="legend-note">◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
     </div>
 
     <div class="panel" id="panel">
@@ -387,27 +387,6 @@
   const WORLD_W = 1000, WORLD_H = 1268;
   const POSTS = __SPOTS_JS__;
   POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; p.likes = 3 + Math.floor(Math.random() * 40); });
-
-  function buildClusters(posts, threshold = 0.02) {
-    const used = new Array(posts.length).fill(false);
-    const clusters = [];
-    for (let i = 0; i < posts.length; i++) {
-      if (used[i]) continue;
-      const group = [posts[i]];
-      used[i] = true;
-      for (let j = i + 1; j < posts.length; j++) {
-        if (used[j]) continue;
-        const du = posts[i].u - posts[j].u, dv = posts[i].v - posts[j].v;
-        if (Math.sqrt(du * du + dv * dv) < threshold) { group.push(posts[j]); used[j] = true; }
-      }
-      const cu = group.reduce((s, p) => s + p.u, 0) / group.length;
-      const cv = group.reduce((s, p) => s + p.v, 0) / group.length;
-      const cz = group.reduce((s, p) => s + p.z, 0) / group.length;
-      clusters.push({ u: cu, v: cv, z: cz, posts: group });
-    }
-    return clusters;
-  }
-  const CLUSTERS = buildClusters(POSTS);
   const RAIL = __RAIL_DATA__;
 
   // ---------------- カメラの状態 ----------------
@@ -481,12 +460,21 @@
   // ---------------- ピンの生成 ----------------
   const pinsLayer = document.getElementById("pinsLayer");
 
+  // ピンは1スポット＝1本。近いスポットをまとめる表示（件数バッジ）はしない
+  // （2026-08-19、FBを受けて廃止）。高さは各スポットの実測標高（z、tools/build-board-mockup.js
+  // が国土地理院DEMから計算）を使い、地形に直接刺さって見えるようにしている。
+  // CSSの3D表現は本物のZバッファではなく、板を重ねているだけ。地形の板とほぼ同じ高さに
+  // ピンを置くと、奥行きの前後判定がおかしくなり地形の裏に隠れてしまう（実験で確認済み）。
+  // 見た目の「地面に刺さっている」印象は保ちつつ確実に前面に出すため、実測標高の上に
+  // このぶんだけ底上げする。
+  const PIN_LIFT = 80;
+
   function renderPins() {
     pinsLayer.innerHTML = "";
-    CLUSTERS.forEach((cluster) => {
-      const wx = cluster.u * WORLD_W - WORLD_W / 2;
-      const wy = cluster.v * WORLD_H - WORLD_H / 2;
-      const wz = cluster.z + 36;
+    POSTS.forEach((post) => {
+      const wx = post.u * WORLD_W - WORLD_W / 2;
+      const wy = post.v * WORLD_H - WORLD_H / 2;
+      const wz = post.z + PIN_LIFT;
 
       const anchor = document.createElement("div");
       anchor.className = "pin-anchor";
@@ -501,25 +489,19 @@
 
       const photoDiv = document.createElement("div");
       photoDiv.className = "pin-photo";
-      photoDiv.style.backgroundImage = `url(${PHOTOS[cluster.posts[0].photo]})`;
+      photoDiv.style.backgroundImage = `url(${PHOTOS[post.photo]})`;
       el.appendChild(photoDiv);
 
       const tail = document.createElement("div");
       tail.className = "pin-tail";
       el.appendChild(tail);
 
-      if (cluster.posts.length > 1) {
-        const count = document.createElement("div");
-        count.className = "pin-count";
-        count.textContent = cluster.posts.length;
-        el.appendChild(count);
-      }
       const label = document.createElement("div");
       label.className = "pin-label";
-      label.textContent = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" / ") : cluster.posts[0].name;
+      label.textContent = post.name;
       el.appendChild(label);
 
-      const open = () => openCluster(cluster, el);
+      const open = () => openSpot(post, el);
       el.addEventListener("click", (e) => { e.stopPropagation(); open(); });
       el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(); });
 
@@ -600,13 +582,12 @@
 
   const panel = document.getElementById("panel");
   const panelInner = document.getElementById("panelInner");
-  function openCluster(cluster, el) {
+  function openSpot(post, el) {
     document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
     el.classList.add("active");
-    const headTitle = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" ・ ") : cluster.posts[0].name;
     panelInner.innerHTML = `
-      <div class="panel-head"><h2>${headTitle}</h2><div class="count">${cluster.posts.length}件の投稿</div></div>
-      <div class="panel-body">${cluster.posts.map(postCardHTML).join("")}</div>
+      <div class="panel-head"><h2>${post.name}</h2></div>
+      <div class="panel-body">${postCardHTML(post)}</div>
     `;
     panel.classList.add("open");
     panelInner.querySelectorAll(".like-btn").forEach(btn => {
