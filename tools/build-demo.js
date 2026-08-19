@@ -67,6 +67,9 @@ const JS_FILES = [
   'js/onboard.js',
   'js/journal.js',
   'js/popularity.js',
+  // 絶景掲示板へ写真を送る口（ADR-0004）。本体は ensureScript で読むが、
+  // 1 枚デモには js/ を取りに行く先が無いので、ここで畳んでおく
+  'js/photo-post.js',
   'js/ambient.js',
   ...(USE_GPS && !SWITCHABLE ? [] : ['js/simulate.js']),
   'js/main.js',
@@ -226,7 +229,15 @@ const index = read('index.html');
  */
 const body = /<body>([\s\S]*)<\/body>/.exec(index)[1]
   .replace(/\s*<script\b[^>]*\bsrc="[^"]+"[^>]*><\/script>/g, '')
-  .replace(/\s*<link[^>]*>/g, '');
+  .replace(/\s*<link[^>]*>/g, '')
+  /*
+   * 絶景掲示板への行き先は、公開先の URL に付け替える。
+   *
+   * 1 枚デモは単体で配るもので、隣に board.html がある保証がない
+   * （file:// で開くこともあれば、公開先では demo/ の下に置かれている）。
+   * 相対のままだと、いちばん見てほしい人の手元で 404 になる。
+   */
+  .replace('href="board.html"', 'href="https://hexran-123.github.io/2026Expo/board.html"');
 
 const css = read('css', 'style.css');
 const scripts = Object.fromEntries(JS_FILES.map((f) => [f, read(...f.split('/'))]));

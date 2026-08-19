@@ -16,10 +16,16 @@
  *   写真                   → IndexedDB（localStorage は 5MB ほどしかなく、写真 1 枚で埋まる）
  * 写真に添えた一言だけは、その写真と離れないよう IndexedDB 側に置く。
  *
- * **写真は端末の中にとどまる。** 作品はサーバーを持つようになったが
- * （ADR-0004）、外へ出るのは利用者が投稿を押したときだけで、そのときも
- * 送るのは**書いた文字だけ**である（submit を参照）。IndexedDB の blob を
- * 読み出して送る処理は、このファイルのどこにも無い。この境界を崩さないこと。
+ * **写真は端末の中にとどまる。** 外へ出るのは、利用者が「絶景掲示板に出す」
+ * を押し、同意の 4 点にすべて印を付けて送ったときだけである（ADR-0004）。
+ * 自動で送る先はどこにもなく、押さなければ IndexedDB に留まりつづける。
+ * 送る処理そのものは js/photo-post.js にまとめてあり（掲示板の投稿窓と共通）、
+ * このファイルからはそこを呼ぶだけにしてある。この境界を崩さないこと。
+ *
+ * **書いた文字は、もう送らない**（2026-08-19 の決定）。掲示板に出るのは
+ * 写真だけで、ひとことも結びの一文もこの端末とこの画面の中だけに残る。
+ * 文字を送る仕組み（writtenNotes・send・supabase/schema/002_notes.sql）は
+ * 消さずに残してあるので、戻すときは画面につなぎ直せばよい。
  */
 
 (function (global) {
@@ -132,6 +138,30 @@
       });
     } catch {
       // 書けなくても、写真は残っている。画面の側はもう書き換わっている。
+      return null;
+    }
+  }
+
+  /**
+   * 絶景掲示板へ送った印を写真に付ける（ADR-0004）。
+   *
+   * 写真と同じ行に置くのは、写真を消したときに印だけが残らないようにするため。
+   * 読み込み直しても消えないので、同じ写真を二度送ってしまうことがない。
+   */
+  async function setPhotoPosted(id) {
+    try {
+      return await withStore('readwrite', (store) => {
+        const request = store.get(id);
+        request.onsuccess = () => {
+          const record = request.result;
+          if (!record) return;
+          record.posted = true;
+          store.put(record);
+        };
+        return request;
+      });
+    } catch {
+      // 印が残らなくても送れてはいる。画面の側はもう書き換わっている
       return null;
     }
   }
@@ -554,12 +584,16 @@
       return { endpoint: Popularity.ENDPOINT, key: Popularity.ANON_KEY };
     }
 
-    /**
-     * 送る中身を集める。
+    /*
+     * 送る中身を集める（**いまは画面につながっていない**）。
      *
-     * 写真に添えた一言も送るが、写真そのものは送らない。どの絶景のあたりで
-     * 撮ったかは名前で覚えてあるので、id に直して結びつける（名前は
-     * spots.json 側で変わりうるので、送るのは id のほう）。
+     * 2026-08-19 に「掲示板に出るのは写真だけ。文字は一切送らない」と決めたため、
+     * 旅の記録から文字を送る口は畳んだ。仕組みそのもの（この関数・下の send・
+     * supabase/schema/002_notes.sql）は消していないので、戻すときは
+     * ここを投稿の画面につなぎ直せばよい。
+     *
+     * 写真に添えた一言も、どの絶景のあたりで撮ったかを id に直して結びつける
+     * 形のまま残してある（名前は spots.json 側で変わりうるので id のほうを送る）。
      */
     function writtenNotes() {
       const notes = [];
@@ -586,54 +620,176 @@
         .slice(0, POST_COUNT_LIMIT);
     }
 
-    /*
-     * 投稿の口は、送るものがあるときだけ出す。
-     *
-     * 中身が作り物の路線では出さない。累積人気を数えないのと同じ理由で、
-     * 作り物の絶景に寄せられた言葉を本物と混ぜないため（CLAUDE.md）。
-     */
-    function updatePostButton() {
-      const ready = server() !== null
-        && ends.dataSource === 'real'
-        && current !== null
-        && current.posted !== true
-        && writtenNotes().length > 0;
-      postButton.hidden = !ready;
-    }
+    // ----------------------------------------------------------------
+    // 絶景掲示板に出す（ADR-0004、docs/絶景掲示板_設計メモ.md）
+    //
+    // 入口はここだけにする。成因カードにも、撮った直後にも出さない
+    // （2026-08-19 の決定）。旅の終わりに一度だけ聞く（設計書 7.2）。
+    // ----------------------------------------------------------------
 
     const postScreen = document.getElementById('post');
     const postLead = document.getElementById('post-lead');
+    const postPhotos = document.getElementById('post-photos');
+    const postAside = document.getElementById('post-aside');
     const postState = document.getElementById('post-state');
     const postSend = document.getElementById('post-send');
+    const consentBoxes = Array.from(document.querySelectorAll('.post-consent-box'));
+
+    /** 掲示板に出すことにした写真の id */
+    const chosen = new Set();
+
+    /** 画面に出している選択用の絵の一時 URL（放っておくと溜まる） */
+    const chooseUrls = [];
+
+    /**
+     * 出せる写真。
+     *
+     * 掲示先は「撮ったときに直近だった絶景スポット」で決まる（設計書 7.1）。
+     * その記録が無い写真＝最初の絶景を通過する前に撮ったものは、掲示先が
+     * 決まらないので出さない。あとでパソコンの絶景掲示板から、地図に置いて
+     * 投稿できる（設計メモ3章の投稿の窓）。
+     */
+    function postablePhotos() {
+      return photos.filter((photo) =>
+        !photo.posted && photo.near && spotIdByName.get(photo.near));
+    }
+
+    /** 掲示先の分からない写真（案内の一行を出すため） */
+    function placelessPhotos() {
+      return photos.filter((photo) =>
+        !photo.posted && !(photo.near && spotIdByName.get(photo.near)));
+    }
+
+    /*
+     * 出す口は、出せるものがあるときだけ出す。
+     *
+     * 中身が作り物の路線では出さない。作り物の絶景に寄せられたものを本物と
+     * 混ぜないため、累積人気を数えないのと同じ条件にそろえてある（CLAUDE.md）。
+     * 銚子電鉄だけに絞るのは、絶景掲示板が銚子エリアの地図だからである
+     * （有楽町線で撮った写真には、載る場所がない）。
+     */
+    function updatePostButton() {
+      const ready = server() !== null
+        && typeof PhotoPost !== 'undefined'
+        && ends.dataSource === 'real'
+        && ends.lineId === 'choshi'
+        && postablePhotos().length > 0;
+      postButton.hidden = !ready;
+    }
 
     function closePost() {
       postScreen.hidden = true;
+      for (const url of chooseUrls) URL.revokeObjectURL(url);
+      chooseUrls.length = 0;
+    }
+
+    function updateSendButton() {
+      const agreed = consentBoxes.length > 0 && consentBoxes.every((box) => box.checked);
+      postSend.disabled = !(chosen.size > 0 && agreed);
+    }
+
+    /** 出す写真を選ぶ。**はじめは一枚も選ばれていない**（外し忘れを起こさない） */
+    function renderChoices() {
+      for (const url of chooseUrls) URL.revokeObjectURL(url);
+      chooseUrls.length = 0;
+      postPhotos.replaceChildren();
+
+      for (const photo of postablePhotos()) {
+        const label = document.createElement('label');
+        label.className = 'post-choice';
+
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.className = 'post-choice-box';
+        box.checked = chosen.has(photo.id);
+        box.addEventListener('change', () => {
+          if (box.checked && chosen.size >= PhotoPost.TRIP_LIMIT) {
+            box.checked = false;
+            postState.textContent = `一度に出せるのは ${PhotoPost.TRIP_LIMIT} 枚までです。`;
+            return;
+          }
+          if (box.checked) chosen.add(photo.id);
+          else chosen.delete(photo.id);
+          postState.textContent = '';
+          updateSendButton();
+        });
+
+        const image = document.createElement('img');
+        image.className = 'post-choice-shot';
+        image.src = URL.createObjectURL(photo.blob);
+        chooseUrls.push(image.src);
+        image.alt = `${photo.near}のあたりで撮った写真`;
+
+        const where = document.createElement('span');
+        where.className = 'post-choice-where';
+        where.textContent = `${photo.near}に出します`;
+
+        label.append(box, image, where);
+        postPhotos.appendChild(label);
+      }
     }
 
     postButton.addEventListener('click', () => {
-      const count = writtenNotes().length;
-      postLead.textContent = `この旅で書いた ${count} 件の文を送ります。`;
+      chosen.clear();
+      for (const box of consentBoxes) box.checked = false;
       postState.textContent = '';
-      postSend.disabled = false;
-      postSend.textContent = '送る';
+      postSend.hidden = false;
+      postSend.textContent = '審査に送る';
+      renderChoices();
+      updateSendButton();
+
+      const left = placelessPhotos().length;
+      postLead.textContent = '出す写真を選んでください。撮った場所の地図に掲示されます。';
+      postAside.hidden = left === 0;
+      postAside.textContent = left === 0 ? '' :
+        `場所の記録が無い写真が ${left} 枚あります（最初の絶景を通り過ぎる前に撮ったもの）。`
+        + 'パソコンの絶景掲示板から、地図に置いて投稿できます。';
+
       postScreen.hidden = false;
     });
 
     document.getElementById('post-cancel').addEventListener('click', closePost);
     document.getElementById('post-veil').addEventListener('click', closePost);
+    for (const box of consentBoxes) box.addEventListener('change', updateSendButton);
 
     postSend.addEventListener('click', async () => {
-      const notes = writtenNotes();
-      const where = server();
-      if (where === null || notes.length === 0) return;
+      if (postSend.disabled) return;
+      const targets = photos.filter((photo) => chosen.has(photo.id));
+      if (targets.length === 0) return;
 
       postSend.disabled = true;
-      postSend.textContent = '送っています…';
-      postState.textContent = '';
+      let sent = 0;
 
-      const saved = await send(where, notes);
+      for (let i = 0; i < targets.length; i++) {
+        const photo = targets[i];
+        postState.textContent = `${i + 1} / ${targets.length} 枚目を送っています…`;
 
-      if (saved === null) {
+        let ready;
+        try {
+          // ここで EXIF が落ちる。撮影地点も端末の名前も、この先には行かない
+          ready = await PhotoPost.toUploadable(photo.blob);
+        } catch {
+          continue;
+        }
+
+        const id = await PhotoPost.send({
+          source: 'navi',
+          lineId: ends.lineId,
+          spotId: spotIdByName.get(photo.near),
+          blob: ready.blob,
+          mime: ready.mime,
+        });
+        if (id === null) continue;
+
+        sent += 1;
+        photo.posted = true;
+        chosen.delete(photo.id);
+        await setPhotoPosted(photo.id);
+      }
+
+      updatePostButton();
+
+      if (sent === 0) {
         postSend.disabled = false;
         postSend.textContent = 'もう一度送る';
         // 何が起きたかは分からない。直せる形でだけ伝える
@@ -641,19 +797,15 @@
         return;
       }
 
-      /*
-       * 送れた。二度押しても増えないようにする（サーバー側でも同じ文は
-       * 弾いているが、押せるままにしておくと送れたかどうかが伝わらない）。
-       */
-      if (current !== null) current.posted = true;
-      persist();
-      updatePostButton();
-      postState.textContent = 'ありがとうございます。送りました。';
+      postState.textContent = sent === targets.length
+        ? 'ありがとうございます。審査のうえ掲示します。'
+        : `${sent} 枚を送りました。残りは電波の良いところで、もう一度ためしてください。`;
       postSend.hidden = true;
+      renderChoices();
       setTimeout(() => {
         closePost();
         postSend.hidden = false;
-      }, 1800);
+      }, 2400);
     });
 
     /**

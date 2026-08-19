@@ -84,6 +84,30 @@
       "lat": 35.7426489,
       "lon": 140.7940512,
       "elevationM": 7.13
+    },
+    {
+      "id": "yamasa",
+      "lat": 35.729108,
+      "lon": 140.832566,
+      "elevationM": 3.78
+    },
+    {
+      "id": "farsea",
+      "lat": 35.730046,
+      "lon": 140.846914,
+      "elevationM": 28.62
+    },
+    {
+      "id": "foresttunnel",
+      "lat": 35.731069,
+      "lon": 140.847837,
+      "elevationM": 27.52
+    },
+    {
+      "id": "sunflower",
+      "lat": 35.709794,
+      "lon": 140.861045,
+      "elevationM": 22.73
     }
   ]
 }

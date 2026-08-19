@@ -67,3 +67,7 @@ planing/
 
 # Playwright で見た目を確かめたときの残り
 verify_last.png
+
+# tools/check-board-fresh.js が board.html と突き合わせるために一瞬だけ作るもの。
+# board.html と同じ深さに置かないと写真への相対パスが変わるので、直下に作る。
+.board-fresh-*.html

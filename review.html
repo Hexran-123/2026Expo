@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  検索に載せない。誰でも開けてよい頁ではあるが（合言葉が無ければ何も返らない）、
+  わざわざ見つけてもらう理由もない。
+-->
+<meta name="robots" content="noindex,nofollow">
+<title>投稿の審査 — 絶景掲示板</title>
+<!--
+  投稿された写真を、制作者が目で見て通すための画面（ADR-0004）。
+
+  ■ この頁は公開の URL に置かれる。守っているのは合言葉である。
+  合言葉は service_role の鍵ではない。サーバー側の関数（review_ok、
+  supabase/schema/003_photos.sql）がその一致だけを確かめ、**できるのは
+  未審査の写真を見て、通すか落とすかだけ**である。行を消すことも、他の表を
+  読むことも、投稿者の IP のハッシュを読むこともできない。漏れたと思ったら
+  set_review_secret() で入れ替える。
+
+  ■ 合言葉はこの頁に保存しない。
+  localStorage にも Cookie にも書かない。開くたびに手で貼る。共用の端末に
+  置き忘れないためで、当番は週に一度なので手間として釣り合う。
+
+  ■ 通したあとの手順（掲示されるまで）
+    1. この頁で通す
+    2. node tools/publish-posts.js   ← 写真を assets/ へ置き、board.html を作り直す
+    3. git add / commit / push
+  2 を忘れると、通っただけで掲示板には出ない。
+-->
+<script src="js/popularity.js"></script>
+<style>
+  :root {
+    --paper: #F3EBD8;
+    --ink: #2B2A28;
+    --ink-soft: #6B6862;
+    --accent: #2A6E8F;
+    --bad: #8F3A2A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 18px 60px;
+    background: var(--paper); color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", Meiryo, sans-serif;
+    line-height: 1.7;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .lead { margin: 0 0 20px; font-size: 13px; color: var(--ink-soft); }
+  .gate { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  input[type="password"] {
+    flex: 1 1 260px; min-height: 44px; padding: 0 12px;
+    border: 1px solid rgba(0,0,0,.2); border-radius: 10px; background: #fff;
+    font-family: inherit; font-size: 15px;
+  }
+  button {
+    min-height: 44px; padding: 0 16px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff; font-family: inherit; font-size: 14px; cursor: pointer;
+  }
+  button.ghost { background: none; color: var(--ink); border: 1px solid rgba(0,0,0,.2); }
+  button.bad { background: var(--bad); }
+  button[disabled] { opacity: .5; cursor: default; }
+  .state { min-height: 1.4em; font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; }
+  .card {
+    background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+    padding: 14px; margin-bottom: 16px;
+  }
+  .card img { width: 100%; max-height: 60vh; object-fit: contain; background: #EEE; border-radius: 8px; }
+  .meta { font-size: 12.5px; color: var(--ink-soft); margin: 10px 0; word-break: break-all; }
+  .row { display: flex; gap: 10px; }
+  .row button { flex: 1; }
+  .checklist { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 18px; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>投稿の審査</h1>
+  <p class="lead">
+    未審査の写真を、ここで一枚ずつ見て通します。通したものは
+    <code>node tools/publish-posts.js</code> を走らせてはじめて掲示板に出ます。
+  </p>
+
+  <ul class="checklist">
+    <li>他の人の顔がはっきり写っていないか</li>
+    <li>他人の写真・画面の撮影などではないか（自分で撮ったものか）</li>
+    <li>銚子の風景として掲示できるものか</li>
+    <li>迷ったら落とす。落としたものはその場で消える</li>
+  </ul>
+
+  <div class="gate">
+    <input type="password" id="pass" placeholder="合言葉" autocomplete="off">
+    <button type="button" id="open">開く</button>
+  </div>
+
+  <p class="state" id="state"></p>
+  <div id="list"></div>
+</main>
+
+<script>
+  'use strict';
+
+  const passInput = document.getElementById('pass');
+  const stateElement = document.getElementById('state');
+  const listElement = document.getElementById('list');
+
+  /** 合言葉はこの変数の中だけに置く。保存しない（上のコメント参照） */
+  let pass = '';
+
+  function server() {
+    if (typeof Popularity === 'undefined' || !Popularity.ENDPOINT) return null;
+    return { endpoint: Popularity.ENDPOINT, key: Popularity.ANON_KEY };
+  }
+
+  /** サーバーの関数を呼ぶ。失敗したら null（理由は画面に出す側で決める） */
+  async function call(name, body) {
+    const to = server();
+    if (to === null) return null;
+    try {
+      const response = await fetch(`${to.endpoint}/rpc/${name}`, {
+        method: 'POST',
+        headers: {
+          'apikey': to.key,
+          'Authorization': `Bearer ${to.key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function escape(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function place(row) {
+    if (row.source === 'navi') return `車窓絶景ナビから（${escape(row.spot_id)} のあたりで撮影）`;
+    return `掲示板の地図から（北緯 ${Number(row.lat).toFixed(5)} 東経 ${Number(row.lon).toFixed(5)}）`;
+  }
+
+  async function load() {
+    listElement.replaceChildren();
+    stateElement.textContent = '読み込んでいます…';
+
+    const rows = await call('review_pending', { p_pass: pass });
+    if (rows === null) {
+      stateElement.textContent = '開けませんでした。合言葉が違うか、宛先が止まっています。';
+      return;
+    }
+    if (rows.length === 0) {
+      stateElement.textContent = '未審査の投稿はありません。';
+      return;
+    }
+    stateElement.textContent = `未審査 ${rows.length} 件。`;
+
+    for (const row of rows) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img alt="審査する写真" data-photo="${escape(row.id)}">
+        <p class="meta">
+          ${place(row)}<br>
+          送られた時刻: ${escape(new Date(row.submitted_at).toLocaleString('ja-JP'))}<br>
+          ${escape(row.mime)} / ${Math.round(row.bytes / 1024)} KB<br>
+          id: ${escape(row.id)}
+        </p>
+        <div class="row">
+          <button type="button" class="ghost" data-reject="${escape(row.id)}">落とす</button>
+          <button type="button" data-approve="${escape(row.id)}">通す</button>
+        </div>
+      `;
+      listElement.appendChild(card);
+
+      // 写真は一枚ずつ取りに行く（一覧が重くならないように）
+      call('review_photo', { p_pass: pass, p_id: row.id }).then((base64) => {
+        if (!base64) return;
+        card.querySelector('img').src = `data:${row.mime};base64,${base64}`;
+      });
+
+      card.querySelector('[data-approve]').addEventListener('click', () => decide(card, row.id, true));
+      card.querySelector('[data-reject]').addEventListener('click', () => decide(card, row.id, false));
+    }
+  }
+
+  async function decide(card, id, approve) {
+    for (const button of card.querySelectorAll('button')) button.disabled = true;
+    const done = await call('review_decide', { p_pass: pass, p_id: id, p_approve: approve });
+    if (done !== true) {
+      for (const button of card.querySelectorAll('button')) button.disabled = false;
+      stateElement.textContent = '変えられませんでした。もう一度おためしください。';
+      return;
+    }
+    card.remove();
+    stateElement.textContent = approve
+      ? '通しました。掲示するには node tools/publish-posts.js を走らせてください。'
+      : '落としました。写真は消えました。';
+  }
+
+  document.getElementById('open').addEventListener('click', () => {
+    pass = passInput.value;
+    if (!pass) {
+      stateElement.textContent = '合言葉を入れてください。';
+      return;
+    }
+    load();
+  });
+
+  passInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') document.getElementById('open').click();
+  });
+
+  if (server() === null) {
+    stateElement.textContent = '宛先が設定されていません（js/popularity.js）。';
+  }
+</script>
+</body>
+</html>

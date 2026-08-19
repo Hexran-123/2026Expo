@@ -23,13 +23,20 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 過去に実際に起きている。`node tools/check-demo-fresh.js` で古いものがないか
 確かめられる（pre-commit フックと GitHub Actions からも自動で走る）。
 
-**人が手で書く `data/` のファイルは次の3つだけ。** それ以外の `data/` 配下は自動生成なので直接編集しない。
+**`board.html` も生成物。** `tools/board-template.html`・`data/choshi/board-spots.json`・
+`data/choshi/board-posts.json`・`data/board/` を直したら `node tools/build-board.js` で作り直す
+（README「絶景掲示板を作り直す」）。`node tools/check-board-fresh.js` が作り直し忘れを拾う
+（pre-commit フックと GitHub Actions からも走る）。
+
+**人が手で書く `data/` のファイルは次の4つだけ。** それ以外の `data/` 配下は自動生成なので直接編集しない。
 
 - `data/choshi/spots.json` — 車窓絶景ナビの絶景スポット（S01〜S06）
 - `data/lines.json` — 路線の一覧
-- `data/choshi/board-spots.json` — 絶景掲示板の12スポット（座標・出典・確からしさ）。
+- `data/choshi/board-spots.json` — 絶景掲示板の掲示スポット16件（座標・出典・確からしさ・`naviSpotId`）。
   同じフォルダにあるが `spots.json` とは別のファイルで、用途も別。
   キャベツ畑など同じ場所を指す項目があるので、片方を直したらもう片方も確かめること（ADR-0005）。
+- `data/choshi/board-posts.json` — 掲示している「乗客から届いた写真」の一覧。
+  ふだんは審査当番の道具（`tools/publish-posts.js`）が書き足す。
 
 `data/` は路線ごとにフォルダを分けてある。`data/choshi/` が作品そのもの。`data/yurakucho/` は**多路線対応の実演用**（`role: "demo"`）。
 
@@ -44,17 +51,29 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 ### 応募作品は 2 画面ある（車窓絶景ナビ／絶景掲示板）
 
 `index.html` の**車窓絶景ナビ**（乗車中・スマートフォン・銚子電鉄の沿線）のほかに、
-**絶景掲示板**（旅行前・パソコン専用・銚子エリア全体の12件）がある。設計書 1.1 の表を参照。
+**絶景掲示板**（旅行前・パソコン専用・銚子エリア全体の掲示スポット16件）がある。設計書 1.1 の表を参照。
 
 - 仕様は [docs/絶景掲示板_設計メモ.md](docs/絶景掲示板_設計メモ.md)。立体地図にした理由は
   [ADR-0005](docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md)。
-- **本体（`board.html`）は未着手。** いまあるのは地図画面のプロトタイプだけで、
-  `ai/artifacts/絶景掲示板/mockups/board-map-variant-v4.html` にある。
-- **このプロトタイプは生成物。直すのは同じフォルダの `...-v4-template.html` のほうで、
-  直したら `node tools/build-board-mockup.js` で作り直す**（README「絶景掲示板のプロトタイプを
-  作り直す」）。作り直し忘れは `node tools/check-board-fresh.js` が拾う（pre-commit と CI からも走る）。
-- 一般の人による**写真**投稿は v1 では開けない（ADR-0004 の「文字が先」の順序を守るため）。
-  地図に置いてあるのは「投稿例（見本）」の 2 件で、実データではない。
+- **本体は `board.html`（2026-08-19 実装）。生成物なので直接編集しない。**
+  直すのは `tools/board-template.html` で、`node tools/build-board.js` で作り直す。
+- 車窓絶景ナビとは**地形データ・配色・累積人気の仕組み・`js/photo-post.js` を共有し、
+  それ以外のコードは共有しない**（board.html は自前の JS を持つ）。
+
+### 乗客が撮った写真は、掲示板へ出せる（2026-08-19）
+
+**写真の投稿を開けた。** ADR-0004 の追記（2026-08-19）が決定で、入口・約束・当番はそこにある。
+
+- 入口は 2 つだけ。**旅の記録の「絶景掲示板に出す」**（スマホ）と、**掲示板の投稿の窓**（パソコン）。
+  **成因カード・撮影の直後には出さないこと。** 入口を増やす提案を自分から入れない。
+- **掲示板に出るのは写真だけ。文字は送らない。** 文字投稿（`submit_notes`）は画面から畳んだが
+  仕組みは残してある。消さないこと。
+- 写真は `js/photo-post.js` を通ってだけ外へ出る。**EXIF を落として長辺1600pxに縮めてから送る。**
+  IndexedDB の blob を他の場所から送る処理を書かないこと（設計書 7.1 の境界）。
+- **審査を通るまで掲示されない。** `review.html` を合言葉で開いて通し、
+  `node tools/publish-posts.js` を走らせ、commit して push するまでが 1 回の当番。
+- 2027年4月30日の削除は**サーバーとリポジトリの二か所**で行う。リポジトリ側は履歴ごと
+  書き換える（手順は [docs/投稿写真の手放し方.md](docs/投稿写真の手放し方.md)）。
 
 ### 環境音は 4 本で確定（凍結解除ずみ）
 
@@ -77,6 +96,9 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 書類応募（2026年9月9日）から審査結果の通知（2026年10月上旬めやす）までのあいだも、乗客の投稿を
 受け付けたままにする。理由と、これが課す運用（確認当番・pg_cron・件数の記録）は ADR-0004 の追記に
 書いてある。**投稿の口を塞ぐ変更を自分から入れないこと。**
+
+受け付ける中身は 2026-08-19 に**文字から写真へ入れ替えた**（上の節と ADR-0004 の追記）。
+口が開いていること自体は変わっていない。
 
 未決のものは [docs/未解決.md](docs/未解決.md) を参照。
 

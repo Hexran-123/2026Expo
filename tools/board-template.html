@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>絶景掲示板 試作 v4</title>
+<title>絶景掲示板 — 銚子の絶景をあつめる</title>
 <style>
   :root {
     --land-0:  #E2EACB;
@@ -35,6 +35,12 @@
   }
 
   * { box-sizing: border-box; }
+  /*
+   * hidden を付けたのに display の指定に負けて出てしまう、を防ぐ。
+   * いいねのボタン（数が取れなかったときは出さない）と写真の下見で
+   * 実際に起きた——`.like-btn { display: flex }` が hidden より強かった。
+   */
+  [hidden] { display: none !important; }
   html, body {
     margin: 0; height: 100%;
     background: #24262B; color: var(--ink);
@@ -377,14 +383,68 @@
   .modal .btn-cancel { background: transparent; color: var(--ink-soft); }
   .modal .btn-submit { background: var(--theme-sea); color: #fff; }
 
+  /*
+   * 投稿の窓は背後を塞がない（上のマークアップのコメント参照）。
+   * 幕は暗くせず、クリックも通す。窓そのものだけが受け取る。
+   */
+  .modal-backdrop { pointer-events: none; background: transparent; justify-content: flex-start; padding-left: 22px; }
+  .modal { pointer-events: auto; border: 1px solid rgba(0,0,0,.10); }
+  .modal input[type="file"] { display: block; margin-top: 8px; font-size: 12px; max-width: 100%; }
+  .post-preview { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+  .post-preview[hidden] { display: none; }
+  .post-state { min-height: 1.3em; margin: 0 0 10px; font-size: 12px; color: var(--ink-soft); }
+  .modal .btn-submit[disabled] { background: #C3C0B8; cursor: not-allowed; }
+
+  /*
+   * 下書きのピン。掲示されているピンと同じ形で、まだ決まっていないことが
+   * 分かるよう縁を破線にしてある。矢印キーでも動かせる（上のコメント参照）。
+   */
+  .pin--draft .pin-photo { border-style: dashed; border-color: var(--theme-sea); background-color: rgba(42,110,143,.25); }
+  .pin--draft .pin-tail { border-top-color: var(--theme-sea); }
+  .pin--draft .pin-label { opacity: 1; transform: translateY(0); }
+
+  /* ---------- 画面が狭いときの案内（設計メモ5章） ----------
+   *
+   * 絶景掲示板はパソコン専用。斜め視点の地図はドラッグ・ホイール・Ctrl+ドラッグを
+   * 前提にしていて、指では動かせない。無理に出すより、いま乗っている人には
+   * 車窓絶景ナビ（スマートフォン向け）へ案内するほうが役に立つ。
+   */
+  .mobile-guide { display: none; }
+
+  @media (max-width: 760px) {
+    html, body { overflow: auto; background: var(--paper); }
+    .app, .modal-backdrop { display: none !important; }
+    .mobile-guide {
+      display: block; max-width: 34rem; margin: 0 auto; padding: 40px 22px 60px;
+      color: var(--ink); line-height: 1.85;
+    }
+    .mobile-guide h1 { font-family: var(--font-map); font-size: 20px; line-height: 1.5; margin: 0 0 18px; }
+    .mobile-guide p { margin: 0 0 16px; font-size: 15px; }
+    .mobile-guide a {
+      display: inline-block; margin-top: 6px; padding: 11px 20px; border-radius: 999px;
+      background: var(--theme-sea); color: #fff; text-decoration: none; font-family: var(--font-map);
+    }
+  }
+
   @media (max-width: 900px) { .panel { width: 320px; } }
 </style>
 </head>
 <body>
 
+<!--
+  画面が狭いときは、地図のかわりにこの案内だけを出す（設計メモ5章の文面）。
+  地図そのものは .app ごと隠れるので、指で動かせないものを見せずに済む。
+-->
+<div class="mobile-guide">
+  <h1>絶景掲示板は、パソコンでの表示に対応しています</h1>
+  <p>この画面は、銚子の絶景スポットをゆっくり眺めていただくための、斜めから見る地図です。スマートフォンでは表示できません。パソコンからアクセスしてご覧ください。</p>
+  <p>今、電車に乗っていて車窓の絶景を知りたい方は、車窓絶景ナビをお使いください。スマートフォンでもそのままご利用いただけます。</p>
+  <p><a href="index.html">車窓絶景ナビをひらく</a></p>
+</div>
+
 <div class="app">
   <div class="topbar">
-    <div class="topbar-title">絶景掲示板 <small>試作 v4 — 地図画面</small></div>
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
     <div class="controls-hint">
       <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
     </div>
@@ -423,55 +483,77 @@
   </div>
 </div>
 
+<!--
+  投稿の窓（設計メモ3章）。
+
+  **これは背後を塞がない dialog である。** 写真の場所は地図をクリックして決めるので、
+  開いているあいだも地図を触れなければならない。したがって aria-modal は付けず、
+  Tab を中に閉じ込めることもしない（設計メモ6章の投稿モーダルの記述は、この形に
+  合わせて書き直した）。開いたときに中へフォーカスを移すこと、Esc で閉じて FAB へ
+  戻すことは変わらない。
+
+  クリックで地図を触れない人のために、下書きのピンは矢印キーでも動かせる。
+  「現在地を使う」を押せば、そこから始められる。
+
+  同意欄のチェックボックスは <label> で包んであるので、文字を押しても切り替わる。
+-->
 <div class="modal-backdrop" id="modalBackdrop">
-  <!--
-    role="dialog" + aria-modal で、開いているあいだ背後は読み上げの対象から外れる。
-    Tab が背後へ抜けないようにするのは JS 側（trapFocus）。
-    同意欄のチェックボックスは <label> で包んであるので、文字を押しても切り替わる。
-  -->
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalSub">
+  <div class="modal" role="dialog" aria-labelledby="modalTitle" aria-describedby="modalSub">
     <h3 id="modalTitle">絶景スポットを投稿する</h3>
-    <p class="sub" id="modalSub">見た目の確認用の試作です。実際には送信できません。</p>
+    <p class="sub" id="modalSub">お預かりするのは写真だけです。制作者が目で見て確かめたあと、この地図に掲示します。</p>
+
     <div class="field">
       <span class="field-label">写真</span>
-      <div class="dropzone">ここに写真をドラッグ、またはクリックして選択<br>（送信前に端末側でEXIFを自動的に削除します）</div>
+      <label class="dropzone" for="postFile">
+        ここをクリックして写真を選ぶ<br>
+        （送信前に端末側で EXIF＝撮影地点や端末の情報を消してから送ります）
+      </label>
+      <input type="file" id="postFile" accept="image/*">
+      <img id="postPreview" class="post-preview" alt="選んだ写真" hidden>
     </div>
+
     <div class="field">
       <span class="field-label">場所</span>
-      <div class="gps-row">地図上のピンをドラッグして調整できます<button type="button">現在地を使う</button></div>
+      <div class="gps-row">
+        <span id="postPlace">地図をクリックしてピンを置いてください</span>
+        <button type="button" id="postHere">現在地を使う</button>
+      </div>
     </div>
-    <div class="field">
-      <label for="postNote">ひとこと（任意）</label>
-      <textarea id="postNote" placeholder="例：夕方の逆光がきれいでした"></textarea>
-    </div>
+
     <ul class="consent">
-      <li><label><input type="checkbox">自分で撮影した写真であること</label></li>
-      <li><label><input type="checkbox">他の人の顔がはっきり写っていないこと</label></li>
-      <li><label><input type="checkbox">16歳未満の場合は保護者の同意を得ていること</label></li>
-      <li><label><input type="checkbox">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</label></li>
+      <li><label><input type="checkbox" class="consent-box">自分で撮影した写真であること</label></li>
+      <li><label><input type="checkbox" class="consent-box">他の人の顔がはっきり写っていないこと</label></li>
+      <li><label><input type="checkbox" class="consent-box">16歳未満の場合は保護者の同意を得ていること</label></li>
+      <li><label><input type="checkbox" class="consent-box">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</label></li>
     </ul>
+
+    <p class="post-state" id="postState" role="status"></p>
+
     <div class="actions">
       <button type="button" class="btn-cancel" id="modalCancel">閉じる</button>
-      <button type="button" class="btn-submit">審査に送る</button>
+      <button type="button" class="btn-submit" id="modalSend" disabled>審査に送る</button>
     </div>
   </div>
 </div>
 
+</div>
+
+<!--
+  宛先と匿名キーは js/popularity.js が持っている（車窓絶景ナビと同じもの）。
+  二か所に書き写さない——書き写すと、片方だけ残って通信が続く。
+  読めなければ、いいねも投稿も出さない（設計書9.3「無いなら出さない」）。
+-->
+<script src="js/popularity.js"></script>
+<script src="js/photo-post.js"></script>
 <script>
-  const PHOTOS = {
-    inubosaki: "data:image/jpeg;base64,__B64_inubosaki__",
-    kimigahama: "data:image/jpeg;base64,__B64_kimigahama__",
-    chikyu: "data:image/jpeg;base64,__B64_chikyu__",
-    byobugaura: "data:image/jpeg;base64,__B64_byobugaura__",
-    togawako: "data:image/jpeg;base64,__B64_togawako__",
-    kinmedai: "data:image/jpeg;base64,__B64_kinmedai__",
-    togawaeki: "data:image/jpeg;base64,__B64_togawaeki__",
-    sengaiwa: "data:image/jpeg;base64,__B64_sengaiwa__",
-    inuiwa: "data:image/jpeg;base64,__B64_inuiwa__",
-    cabbage: "data:image/jpeg;base64,__B64_cabbage__",
-    traincabbage: "data:image/jpeg;base64,__B64_traincabbage__",
-    chijimi: "data:image/jpeg;base64,__B64_chijimi__",
-  };
+  /*
+   * 写真の置き場。id → ローカルの画像への相対パス（tools/build-board.js が埋め込む）。
+   *
+   * 観光協会フォトダウンロードの写真は直リンク禁止・ローカル保存必須なので
+   * （利用規約、CLAUDE.md）、assets/choshi/board/ 配下のファイルだけを指す。
+   * 乗客から届いた写真も同じ形で assets/choshi/board/posts/ に置いてある。
+   */
+  const PHOTOS = __PHOTOS_JS__;
 
   /*
    * innerHTML に流し込む文字は必ずこれを通す。
@@ -490,81 +572,69 @@
   }
 
   const WORLD_W = 1000, WORLD_H = 1268;
-  const POSTS = __SPOTS_JS__;
-  // likes は data/choshi/board-spots.json の sampleLikes（見本の固定値）が入っている。
-  // 読み込むたび乱数で出していたのをやめた（2026-08-19）。集計の仕組み（ADR-0004 の
-  // IP ハッシュ）につないだら、この見本の数は消すこと。
-  POSTS.forEach(p => { p.official = true; p.credit = "写真提供：一般社団法人銚子市観光協会"; });
 
   /*
-   * 投稿例（ダミー）。設計メモ1章の「サンプルとして1〜2件だけ『投稿するとこう見える』
-   * という見本の投稿カードを置く」に対応する。実データではない。
+   * 掲示スポット（data/choshi/board-spots.json）。
    *
-   * 地図に別のピンとしては置かず、既にあるスポットのパネルに並べている。投稿は
-   * 「その場所について書かれるもの」なので、公式写真の下に並ぶ形が本番に近い。
-   * 作り話の座標を新しく作らずに済むという利点もある。
-   *
-   * 写真つきの1件には、下でコードから描いたサンプル画像を使う。観光協会から提供された
-   * 12枚を利用者の投稿に見せかけると「著作権を偽って利用」（利用規約の禁止事項）に
-   * あたるため、本物の写真は使えない。
+   * 観光協会から提供された公式写真を持つ 12 件と、車窓絶景ナビの絶景スポットと
+   * 同じ場所を指す 4 件（公式写真は無く、乗客から届いた写真の掲示先）からなる。
+   * 写真も投稿も無いものは、tools/build-board.js が既に外してある。
    */
-  const SAMPLE_PHOTO = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">' +
-    '<rect width="400" height="300" fill="#DFDBD2"/>' +
-    '<g fill="none" stroke="#C9C3B7" stroke-width="2">' +
-    '<rect x="150" y="112" width="100" height="72" rx="8"/>' +
-    '<circle cx="200" cy="148" r="20"/>' +
-    '<path d="M168 112l10-14h44l10 14"/></g>' +
-    '<text x="200" y="212" text-anchor="middle" fill="#7C766B" ' +
-    'font-family="sans-serif" font-size="19" font-weight="600">投稿例</text>' +
-    '<text x="200" y="234" text-anchor="middle" fill="#989286" ' +
-    'font-family="sans-serif" font-size="13">サンプル画像</text></svg>'
-  );
+  const SPOTS = __SPOTS_JS__;
 
-  const SAMPLE_POSTS = [
-    {
-      attachTo: "inubosaki",
-      name: "犬吠埼灯台",
-      sample: true,
-      official: false,
-      photo: SAMPLE_PHOTO,
-      caption: "朝いちばんの電車で来ました。灯台の白と海のあおの差がすごい。99段の階段をのぼると風がつよいので、帽子は手に持ったほうがよさそうです。",
-      likes: 7,
-    },
-    {
-      attachTo: "togawaeki",
-      name: "外川駅",
-      sample: true,
-      official: false,
-      photo: null,
-      caption: "木の改札がそのまま残っていて、時間が止まったみたいでした。写真は撮りそびれましたが、ホームのベンチでぬれ煎餅を食べる時間がいちばんよかったです。",
-      likes: 4,
-    },
-  ];
+  /*
+   * 乗客から届いた写真（ADR-0004）。**審査を通ったものだけ**がここに入る。
+   * 未審査のものはサーバーの中にあり、この頁からは読めない。
+   *
+   * spotId を持つものは、その掲示スポットのパネルに公式写真の下へ並ぶ。
+   * 持たないものは（掲示板の地図をタップして置いた写真）、自分の座標で
+   * 1 本のピンになる。
+   */
+  const USER_POSTS = __USER_POSTS_JS__;
+  const POSTS_BY_ID = new Map(USER_POSTS.map(p => [p.id, p]));
+
+  /*
+   * 地図に立てるものの一覧。掲示スポットと、掲示スポットに紐づかない乗客の写真。
+   * 掲示スポットの写真が無い場合（公式写真なしの4件）は、いちばん新しい投稿の
+   * 写真をピンの絵に使う。
+   */
+  const PIN_SOURCES = SPOTS.map(spot => ({
+    kind: "spot",
+    id: spot.id, name: spot.name, u: spot.u, v: spot.v, z: spot.z,
+    photoId: spot.photo || spot.posts[spot.posts.length - 1] || null,
+    spot,
+  })).concat(
+    USER_POSTS.filter(post => !post.spotId).map(post => ({
+      kind: "post",
+      id: post.id, name: "乗客から届いた写真", u: post.u, v: post.v, z: post.z,
+      photoId: post.id,
+      post,
+    }))
+  );
 
   // ほぼ同じ場所（実質同じ座標）のスポットは1本のピンにまとめる。
   // 件数バッジは出さない——地図上は普通の1本のピンに見え、開くと複数枚が出てくる
   // （2026-08-19、FBを受けて。バッジ表示だけをやめ、まとめる仕組み自体は元に戻した）。
-  function buildClusters(posts, threshold = 0.02) {
-    const used = new Array(posts.length).fill(false);
+  function buildClusters(items, threshold = 0.02) {
+    const used = new Array(items.length).fill(false);
     const clusters = [];
-    for (let i = 0; i < posts.length; i++) {
+    for (let i = 0; i < items.length; i++) {
       if (used[i]) continue;
-      const group = [posts[i]];
+      const group = [items[i]];
       used[i] = true;
-      for (let j = i + 1; j < posts.length; j++) {
+      for (let j = i + 1; j < items.length; j++) {
         if (used[j]) continue;
-        const du = posts[i].u - posts[j].u, dv = posts[i].v - posts[j].v;
-        if (Math.sqrt(du * du + dv * dv) < threshold) { group.push(posts[j]); used[j] = true; }
+        const du = items[i].u - items[j].u, dv = items[i].v - items[j].v;
+        if (Math.sqrt(du * du + dv * dv) < threshold) { group.push(items[j]); used[j] = true; }
       }
       const cu = group.reduce((s, p) => s + p.u, 0) / group.length;
       const cv = group.reduce((s, p) => s + p.v, 0) / group.length;
       const cz = group.reduce((s, p) => s + p.z, 0) / group.length;
-      clusters.push({ u: cu, v: cv, z: cz, posts: group });
+      clusters.push({ u: cu, v: cv, z: cz, items: group });
     }
     return clusters;
   }
-  const CLUSTERS = buildClusters(POSTS);
+  const CLUSTERS = buildClusters(PIN_SOURCES);
   const RAIL = __RAIL_DATA__;
 
   // ---------------- カメラの状態 ----------------
@@ -735,11 +805,12 @@
       // 名前をラベルに頼らないのは、.pin-label が普段 opacity:0 で隠れているため。
       el.setAttribute("role", "button");
       el.setAttribute("aria-label",
-        cluster.posts.map(p => p.name).join("・") + " の写真を開く");
+        cluster.items.map(p => p.name).join("・") + " の写真を開く");
 
       const photoDiv = document.createElement("div");
       photoDiv.className = "pin-photo";
-      photoDiv.style.backgroundImage = `url(${PHOTOS[cluster.posts[0].photo]})`;
+      // 公式写真が無い掲示スポットは、そこに届いた写真がピンの絵になる
+      photoDiv.style.backgroundImage = `url(${PHOTOS[cluster.items[0].photoId]})`;
       el.appendChild(photoDiv);
 
       const tail = document.createElement("div");
@@ -749,7 +820,7 @@
       // 件数バッジは出さない。同じ場所に複数枚あることは、開くまでは見せない。
       const label = document.createElement("div");
       label.className = "pin-label";
-      label.textContent = cluster.posts[0].name;
+      label.textContent = cluster.items[0].name;
       el.appendChild(label);
 
       const open = () => openSpot(cluster, el);
@@ -846,25 +917,33 @@
     lastOpenedPin = el;
     // 地図上のピンでは分からなくても、開けば同じ場所の写真が全部並ぶ
     // （外川漁港・きんめだいのように、実質同じ座標のスポットがある）。
-    const headTitle = cluster.posts.length > 1 ? cluster.posts.map(p => p.name).join(" ・ ") : cluster.posts[0].name;
-    // 公式写真のうしろに、そのスポットに紐づけた投稿例（ダミー）を並べる
-    const ids = new Set(cluster.posts.map(p => p.id));
-    const cards = cluster.posts.concat(SAMPLE_POSTS.filter(sp => ids.has(sp.attachTo)));
+    const headTitle = cluster.items.length > 1
+      ? cluster.items.map(p => p.name).join(" ・ ")
+      : cluster.items[0].name;
+
+    /*
+     * 1 本のピンを開くと、そこにあるカードが順に並ぶ。
+     *   掲示スポット … 公式写真（あれば）→ そこに届いた乗客の写真
+     *   乗客の写真   … その 1 枚だけ
+     * 乗客の写真を公式写真の下に置くのは、投稿が「その場所について寄せられるもの」
+     * だからで、作り話の座標を新しく作らずに済むという利点もある（設計メモ1章）。
+     */
+    const cards = [];
+    for (const item of cluster.items) {
+      if (item.kind === "spot") {
+        if (item.spot.photo) cards.push(officialCard(item.spot));
+        for (const id of item.spot.posts) cards.push(userCard(POSTS_BY_ID.get(id)));
+      } else {
+        cards.push(userCard(item.post));
+      }
+    }
+
     panelInner.innerHTML = `
       <div class="panel-head"><h2>${esc(headTitle)}</h2></div>
-      <div class="panel-body">${cards.map(postCardHTML).join("")}</div>
+      <div class="panel-body">${cards.map(cardHTML).join("")}</div>
     `;
     panel.classList.add("open");
-    panelInner.querySelectorAll(".like-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const liked = btn.classList.toggle("liked");
-        btn.setAttribute("aria-pressed", String(liked));
-        const countEl = btn.querySelector(".count-num");
-        let n = parseInt(countEl.textContent, 10);
-        countEl.textContent = liked ? n + 1 : n - 1;
-      });
-    });
+    wireLikes(panelInner);
   }
   function closePanel() {
     if (!panel.classList.contains("open")) return;
@@ -881,29 +960,56 @@
     if (e.propertyName !== "width" || e.target !== panel) return;
     if (!panel.classList.contains("open")) panelInner.innerHTML = "";
   });
-  function postCardHTML(p) {
-    // 公式の12枚は PHOTOS から id で引く。投稿例は自前の画像（または写真なし）を持っている
-    const src = p.sample ? p.photo : PHOTOS[p.photo];
-    const badge = p.official
-      ? '<span class="badge badge-official">公式・観光協会提供</span>'
-      : (p.sample
-          ? '<span class="badge badge-sample">投稿例（見本）</span>'
-          : '<span class="badge badge-user">投稿</span>');
+  /** 観光協会から提供された公式写真のカード */
+  function officialCard(spot) {
+    return {
+      likeId: spot.id,
+      name: spot.name,
+      src: PHOTOS[spot.photo],
+      alt: spot.name,
+      badge: '<span class="badge badge-official">公式・観光協会提供</span>',
+      caption: spot.caption,
+      approximate: spot.approximate,
+      credit: "写真提供：一般社団法人銚子市観光協会",
+    };
+  }
+
+  /*
+   * 乗客から届いた写真のカード。
+   *
+   * 文字は載らない。掲示板へ送るのは写真だけで、乗客が書いた言葉は端末と
+   * 旅の記録の中だけに残る（2026-08-19 の決定）。
+   * バッジを無彩色にしているのは、4 つのテーマ色が地理的な意味を表す色であり、
+   * 成因カードを持たない投稿にその色を与えると意味があるように見えるため（ADR-0004）。
+   */
+  function userCard(post) {
+    return {
+      likeId: post.id,
+      name: null,
+      src: PHOTOS[post.id],
+      alt: "乗客から届いた写真",
+      badge: '<span class="badge badge-user">乗客から届いた写真</span>',
+      caption: null,
+      approximate: false,
+      credit: null,
+    };
+  }
+
+  function cardHTML(c) {
     return `
-      <div class="post-card${src ? "" : " post-card--nophoto"}">
-        ${src
-          ? `<span class="post-card-name">${esc(p.name)}</span>
-        <img src="${esc(src)}" alt="${esc(p.sample ? "投稿例のサンプル画像" : p.name)}">`
+      <div class="post-card${c.src ? "" : " post-card--nophoto"}">
+        ${c.src
+          ? `${c.name ? `<span class="post-card-name">${esc(c.name)}</span>` : ""}
+        <img src="${esc(c.src)}" alt="${esc(c.alt)}" loading="lazy">`
           : ""}
         <div class="post-card-body">
-          ${src ? "" : `<span class="post-card-name post-card-name--inline">${esc(p.name)}</span>`}
-          <div class="post-badges">${badge}</div>
-          ${p.sample ? `<p class="post-sample-note">これは「投稿するとこう見えます」の見本です。実際に寄せられた投稿ではありません。</p>` : ""}
-          <p class="post-caption">${esc(p.caption)}</p>
-          ${p.approximate ? `<p class="post-approx">この場所の位置はおおよそです（現地で確かめる予定）</p>` : ""}
-          ${p.credit ? `<p class="post-credit">${esc(p.credit)}</p>` : ""}
+          ${!c.src && c.name ? `<span class="post-card-name post-card-name--inline">${esc(c.name)}</span>` : ""}
+          <div class="post-badges">${c.badge}</div>
+          ${c.caption ? `<p class="post-caption">${esc(c.caption)}</p>` : ""}
+          ${c.approximate ? `<p class="post-approx">この場所の位置はおおよそです（現地で確かめる予定）</p>` : ""}
+          ${c.credit ? `<p class="post-credit">${esc(c.credit)}</p>` : ""}
           <div class="post-foot">
-            <button type="button" class="like-btn" aria-pressed="false"><span class="diamond"></span>いいね　<span class="count-num">${esc(p.likes)}</span></button>
+            <button type="button" class="like-btn" data-like-id="${esc(c.likeId)}" aria-pressed="false" hidden><span class="diamond"></span>いいね　<span class="count-num">0</span></button>
           </div>
         </div>
       </div>
@@ -916,41 +1022,359 @@
   refreshBillboards();
   fitScale();
 
+  // ---------------- いいね（ADR-0004。集計の仕組みは 003_photos.sql） ----------------
+  //
+  // 数は読み込みのときに一度だけ取りに行く。届かなければ、いいねの
+  // ボタンごと出さない（設計書9.3の「無いなら出さない」）。見本の数字を
+  // 出していた 2026-08-19 以前とは違い、ここに出るのは本物の数だけである。
+  const LIKES = new Map();
+  const LIKED = new Set();
+  let likesReady = false;
+
+  function server() {
+    if (typeof Popularity === "undefined" || !Popularity.ENDPOINT) return null;
+    return { endpoint: Popularity.ENDPOINT, key: Popularity.ANON_KEY };
+  }
+
+  async function loadLikes() {
+    const to = server();
+    if (to === null) return;
+    const giveUp = new AbortController();
+    const timer = setTimeout(() => giveUp.abort(), 3000);
+    try {
+      const response = await fetch(`${to.endpoint}/board_like_count?select=target_id,likes`, {
+        signal: giveUp.signal,
+        headers: { "apikey": to.key, "Authorization": `Bearer ${to.key}` },
+      });
+      if (!response.ok) return;
+      for (const row of await response.json()) LIKES.set(row.target_id, row.likes);
+      likesReady = true;
+      // 開いたままのパネルにも、届いた数をその場で映す
+      wireLikes(panelInner);
+    } catch (error) {
+      // 時間切れ・宛先が止まっている。数字が出ないだけ
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function sendLike(targetId, on) {
+    const to = server();
+    if (to === null) return null;
+    try {
+      const response = await fetch(`${to.endpoint}/rpc/record_board_like`, {
+        method: "POST",
+        headers: {
+          "apikey": to.key, "Authorization": `Bearer ${to.key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ p_target_id: targetId, p_on: on }),
+      });
+      if (!response.ok) return null;
+      const likes = await response.json();
+      return typeof likes === "number" ? likes : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function wireLikes(root) {
+    root.querySelectorAll(".like-btn").forEach(btn => {
+      const id = btn.dataset.likeId;
+      if (!likesReady) return;          // 数が無いあいだは出さない
+      btn.hidden = false;
+      btn.querySelector(".count-num").textContent = LIKES.get(id) || 0;
+      btn.classList.toggle("liked", LIKED.has(id));
+      btn.setAttribute("aria-pressed", String(LIKED.has(id)));
+      if (btn.dataset.wired) return;
+      btn.dataset.wired = "1";
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const on = !LIKED.has(id);
+        // 先に見た目を変える。押した手ごたえを通信の往復ぶん待たせない
+        if (on) LIKED.add(id); else LIKED.delete(id);
+        btn.classList.toggle("liked", on);
+        btn.setAttribute("aria-pressed", String(on));
+        const likes = await sendLike(id, on);
+        if (likes === null) {
+          // 届かなかった。押していないことにして戻す
+          if (on) LIKED.delete(id); else LIKED.add(id);
+          btn.classList.toggle("liked", !on);
+          btn.setAttribute("aria-pressed", String(!on));
+          return;
+        }
+        LIKES.set(id, likes);
+        btn.querySelector(".count-num").textContent = likes;
+      });
+    });
+  }
+
+  loadLikes();
+
+  // ---------------- 投稿（ADR-0004、docs/絶景掲示板_設計メモ.md 1章） ----------------
+  //
+  // 送るのは**写真だけ**。文字は送らない（2026-08-19 の決定）。
+  // 場所は地図に置いた下書きのピンで決める。旅の記録から送るぶんは
+  // 撮ったときの絶景スポットから自動で決まるので、こちらは「場所の分から
+  // ない写真」のための口である。
+  //
+  // 送り口そのもの（EXIF を落とす・縮める・送る）は js/photo-post.js。
+  // 旅の記録と二か所に書き写さないため。
+
   const modalBackdrop = document.getElementById("modalBackdrop");
   const postFab = document.getElementById("postFab");
+  const postFile = document.getElementById("postFile");
+  const postPreview = document.getElementById("postPreview");
+  const postPlace = document.getElementById("postPlace");
+  const postState = document.getElementById("postState");
+  const modalSend = document.getElementById("modalSend");
+
+  /* tools/build-board.js と同じ投影範囲。地図上の位置から緯度経度に戻すのに要る */
+  const PROJ = __PROJ_JS__;
+
+  /** 選んだ写真（EXIF を落として縮めたもの）と、置いた場所 */
+  let draft = { photo: null, lat: null, lon: null };
+  let draftPin = null;
+
+  // 送り口が無い端末・宛先が止まっているときは、投稿のボタンごと出さない
+  if (server() === null || typeof PhotoPost === "undefined") postFab.hidden = true;
+
+  /*
+   * 画面の点（地図の中心からのずれ）から、世界座標に戻す。
+   * projectToScreen の逆をたどるだけ。高さ z は与える（下の placeAtScreen では、
+   * まず 0 で解いてから、その地点の地形の高さでもう一度解く）。
+   */
+  function screenToWorld(dx, dy, z) {
+    const h = state.heading * Math.PI / 180;
+    const t = state.tilt * Math.PI / 180;
+    const s = baseFitScale * state.zoom;
+    const P = PERSPECTIVE;
+
+    const denom = s * (P * Math.cos(t) + dy * Math.sin(t));
+    if (Math.abs(denom) < 1e-6) return null;
+    const y1 = (dy * P - dy * s * z * Math.cos(t) + P * s * z * Math.sin(t) - P * state.panY) / denom;
+
+    const qz = s * (y1 * Math.sin(t) + z * Math.cos(t));
+    const f = P / (P - qz);
+    if (!isFinite(f) || f <= 0) return null;
+    const x1 = (dx / f - state.panX) / s;
+
+    return { x: x1 * Math.cos(h) + y1 * Math.sin(h), y: -x1 * Math.sin(h) + y1 * Math.cos(h) };
+  }
+
+  /*
+   * その地点の地形の高さ（世界座標の z）。段彩の板そのものを当たり判定に使う。
+   * 標高の格子（40MB）を画面に持ってこなくても、描いてある地面の高さは分かる。
+   */
+  const bandShapes = Array.from(document.querySelectorAll(".band-layer")).map(layer => {
+    const path = layer.querySelector("path");
+    const found = layer.style.transform.match(/translateZ\(([-\d.]+)px\)/);
+    return { shape: new Path2D(path.getAttribute("d")), z: found ? parseFloat(found[1]) : 0 };
+  });
+  const hitCanvas = document.createElement("canvas").getContext("2d");
+
+  function groundZ(x, y) {
+    const px = x + WORLD_W / 2, py = y + WORLD_H / 2;
+    let z = 0;
+    for (const band of bandShapes) {
+      if (hitCanvas.isPointInPath(band.shape, px, py)) z = Math.max(z, band.z);
+    }
+    return z;
+  }
+
+  function toLatLon(x, y) {
+    const u = (x + WORLD_W / 2) / WORLD_W, v = (y + WORLD_H / 2) / WORLD_H;
+    return {
+      lat: PROJ.maxLat - v * (PROJ.maxLat - PROJ.minLat),
+      lon: PROJ.minLon + u * (PROJ.maxLon - PROJ.minLon),
+      inside: u >= 0 && u <= 1 && v >= 0 && v <= 1,
+    };
+  }
+
+  function fromLatLon(lat, lon) {
+    const u = (lon - PROJ.minLon) / (PROJ.maxLon - PROJ.minLon);
+    const v = (PROJ.maxLat - lat) / (PROJ.maxLat - PROJ.minLat);
+    return { x: u * WORLD_W - WORLD_W / 2, y: v * WORLD_H - WORLD_H / 2 };
+  }
+
+  /** 下書きのピンを、その場所の地面の高さに置く */
+  function showDraftPin(x, y) {
+    if (draftPin === null) {
+      draftPin = document.createElement("div");
+      draftPin.className = "pin pin--draft";
+      draftPin.tabIndex = 0;
+      draftPin.setAttribute("role", "button");
+      draftPin.setAttribute("aria-label", "投稿する場所。矢印キーで動かせます");
+      draftPin.innerHTML = '<div class="pin-photo"></div><div class="pin-tail"></div><div class="pin-label">ここに投稿</div>';
+      draftPin.addEventListener("click", (e) => e.stopPropagation());
+      // クリックで地図を触れない人のために、矢印キーでも動かす
+      draftPin.addEventListener("keydown", (e) => {
+        const step = e.shiftKey ? 20 : 5;
+        const move = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0] }[e.key];
+        if (!move) return;
+        e.preventDefault();
+        const item = pinItems.find(it => it.el === draftPin);
+        if (item) placeAtWorld(item.x + move[0], item.y + move[1]);
+        draftPin.focus();
+      });
+      pinsOverlay.appendChild(draftPin);
+    }
+    const item = pinItems.find(it => it.el === draftPin);
+    const z = groundZ(x, y);
+    if (item) { item.x = x; item.y = y; item.z = z; }
+    else pinItems.push({ el: draftPin, x, y, z });
+    positionPins();
+  }
+
+  function placeAtWorld(x, y) {
+    const place = toLatLon(x, y);
+    if (!place.inside) {
+      postState.textContent = "この地図の範囲の外です。銚子のあたりに置いてください。";
+      return;
+    }
+    draft.lat = place.lat;
+    draft.lon = place.lon;
+    showDraftPin(x, y);
+    postPlace.textContent = `北緯 ${place.lat.toFixed(5)} 東経 ${place.lon.toFixed(5)}`;
+    postState.textContent = "";
+    updateSendButton();
+  }
+
+  /** 画面のクリック位置から置く。地面の高さを見込んで二度解く */
+  function placeAtScreen(clientX, clientY) {
+    const box = mapWrap.getBoundingClientRect();
+    const dx = clientX - (box.left + box.width / 2);
+    const dy = clientY - (box.top + box.height / 2);
+
+    let point = screenToWorld(dx, dy, 0);
+    if (point === null) return;
+    const z = groundZ(point.x, point.y);
+    if (z > 0) {
+      const lifted = screenToWorld(dx, dy, z);
+      if (lifted !== null) point = lifted;
+    }
+    placeAtWorld(point.x, point.y);
+  }
+
+  // 窓が開いているあいだだけ、地図のクリックが「場所を置く」になる。
+  // 閉じているときは今までどおり、パネルを閉じる操作のまま。
+  mapWrap.addEventListener("click", (e) => {
+    if (!modalBackdrop.classList.contains("open")) return;
+    if (dragDistance >= 4) return;      // 地図を動かしただけ
+    placeAtScreen(e.clientX, e.clientY);
+  }, true);
+
+  document.getElementById("postHere").addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      postState.textContent = "この端末では現在地を取れません。地図をクリックして置いてください。";
+      return;
+    }
+    postState.textContent = "現在地を調べています…";
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = fromLatLon(position.coords.latitude, position.coords.longitude);
+        placeAtWorld(point.x, point.y);
+        postState.textContent = "現在地に置きました。ずらして調整できます。";
+      },
+      () => {
+        postState.textContent = "現在地を取れませんでした。地図をクリックして置いてください。";
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+
+  postFile.addEventListener("change", async () => {
+    const file = postFile.files && postFile.files[0];
+    draft.photo = null;
+    postPreview.hidden = true;
+    updateSendButton();
+    if (!file) return;
+
+    postState.textContent = "写真を用意しています…";
+    try {
+      draft.photo = await PhotoPost.toUploadable(file);
+    } catch (error) {
+      postState.textContent = "この写真は送れませんでした。別の写真でおためしください。";
+      return;
+    }
+    postPreview.src = URL.createObjectURL(draft.photo.blob);
+    postPreview.hidden = false;
+    postState.textContent = "";
+    updateSendButton();
+  });
+
+  function consentDone() {
+    const boxes = Array.from(modalBackdrop.querySelectorAll(".consent-box"));
+    return boxes.length > 0 && boxes.every(box => box.checked);
+  }
+
+  modalBackdrop.querySelectorAll(".consent-box").forEach(box => {
+    box.addEventListener("change", updateSendButton);
+  });
+
+  function updateSendButton() {
+    modalSend.disabled = !(draft.photo && draft.lat !== null && consentDone());
+  }
+
+  modalSend.addEventListener("click", async () => {
+    if (modalSend.disabled) return;
+    modalSend.disabled = true;
+    postState.textContent = "送っています…";
+
+    const id = await PhotoPost.send({
+      source: "board",
+      lineId: "choshi",
+      spotId: null,
+      lat: draft.lat,
+      lon: draft.lon,
+      blob: draft.photo.blob,
+      mime: draft.photo.mime,
+    });
+
+    if (id === null) {
+      updateSendButton();
+      postState.textContent = "送れませんでした。しばらくしてから、もう一度おためしください。";
+      return;
+    }
+
+    postState.textContent = "ありがとうございます。審査のうえ掲示します。";
+    modalSend.hidden = true;
+    setTimeout(() => { closeModal(); modalSend.hidden = false; }, 2200);
+  });
+
   postFab.addEventListener("click", (e) => { e.stopPropagation(); openModal(); });
   document.getElementById("modalCancel").addEventListener("click", () => closeModal());
-  modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModal(); });
-
-  const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
   function openModal() {
     modalBackdrop.classList.add("open");
-    // 開いたら中へフォーカスを移す。移さないと、Esc は効くのに Tab が背後の
-    // 地図を辿ってしまい、キーボードだけの人はモーダルに入れない。
-    const first = modalBackdrop.querySelector(FOCUSABLE);
+    postState.textContent = "";
+    // 開いたら中へフォーカスを移す。移さないと、キーボードだけの人は
+    // 窓が開いたことに気づけない（背後は塞がないので、Tab は外へも出られる）
+    const first = modalBackdrop.querySelector("input, button");
     if (first) first.focus();
   }
 
   function closeModal() {
     if (!modalBackdrop.classList.contains("open")) return;
     modalBackdrop.classList.remove("open");
+    // 送り終えた・やめた。下書きのピンは地図に残さない
+    if (draftPin !== null) {
+      const at = pinItems.findIndex(it => it.el === draftPin);
+      if (at >= 0) pinItems.splice(at, 1);
+      draftPin.remove();
+      draftPin = null;
+    }
+    draft = { photo: null, lat: null, lon: null };
+    postFile.value = "";
+    postPreview.hidden = true;
+    modalBackdrop.querySelectorAll(".consent-box").forEach(box => { box.checked = false; });
+    postPlace.textContent = "地図をクリックしてピンを置いてください";
+    updateSendButton();
     postFab.focus();
   }
 
-  // 開いているあいだ、Tab をモーダルの中で回す（背後の地図へ抜けさせない）
-  modalBackdrop.addEventListener("keydown", (e) => {
-    if (e.key !== "Tab") return;
-    const items = Array.from(modalBackdrop.querySelectorAll(FOCUSABLE))
-      .filter(el => el.offsetParent !== null);
-    if (items.length === 0) return;
-    const first = items[0], last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  });
-
-  // Esc で写真パネル・投稿モーダルを閉じる（設計メモ6章）。
-  // 重なっているときは、手前にあるモーダルから閉じる。
+  // Esc で写真パネル・投稿の窓を閉じる（設計メモ6章）。
+  // 重なっているときは、手前にある窓から閉じる。
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     if (modalBackdrop.classList.contains("open")) { closeModal(); return; }

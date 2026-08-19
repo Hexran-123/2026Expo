@@ -5,7 +5,7 @@ name: 生成物が最新か確かめる
 # セッションの取りこぼしを、ここで拾う。
 #
 #   demo/*.html                 css・js・data から作る1枚デモ
-#   絶景掲示板のプロトタイプ     テンプレート・data/board・board-spots.json から作る
+#   board.html                  テンプレート・data/board・board-spots.json・board-posts.json から作る
 #
 # どちらも 14.8MB の標高格子（.gitignore 済み）を必要としない作りにしてあるので、
 # clone したままの CI で走る。
@@ -25,6 +25,6 @@ jobs:
           node-version: '20'
       - name: 1枚デモ（demo/*.html）
         run: node tools/check-demo-fresh.js
-      - name: 絶景掲示板のプロトタイプ
+      - name: 絶景掲示板（board.html）
         if: always()
         run: node tools/check-board-fresh.js

@@ -1,8 +1,8 @@
 {
   "_comment": [
-    "絶景掲示板（docs/絶景掲示板_設計メモ.md）の12スポットの情報。人が手で書くファイル。",
+    "絶景掲示板（docs/絶景掲示板_設計メモ.md）の掲示スポットの情報。人が手で書くファイル。",
     "地図画面に出す u,v（画面上の位置）はこのファイルからは持たない。",
-    "board-prototype 側の投影処理（PROJ定数、data/choshi/route.jsonと同じ範囲）で",
+    "tools/build-board.js 側の投影処理（PROJ定数、data/choshi/route.jsonと同じ範囲）で",
     "lat/lonから毎回計算し直す。",
     "",
     "lat/lon の出どころは source を見ること。2026-08-19 に、プロトタイプで",
@@ -21,10 +21,16 @@
     "ものかを追えるように残してある記録で、コードは読んでいない（表示に使うのは id から",
     "決まる assets/choshi/board/<id>.webp のほう）。消さないこと。",
     "",
-    "sampleLikes は、プロトタイプの画面に出す『いいね』の見本の数。実際に集まった",
-    "数ではない。集計の仕組み（ADR-0004 の IP ハッシュ）はまだ画面につながっていない。",
-    "読み込むたび乱数で出していたのを、数が勝手に変わるのは不自然なので固定値にした",
-    "（2026-08-19）。本物の集計につないだ時点で、この項目は消すこと。"
+    "photo が null のスポットは、観光協会の公式写真を持たない（2026-08-19 追加の4件）。",
+    "車窓絶景ナビの絶景スポットと同じ場所で、乗客が撮った写真の掲示先として置いてある。",
+    "**投稿が1件も無いあいだは地図にピンが出ない**（tools/build-board.js が外す）。",
+    "",
+    "naviSpotId は、車窓絶景ナビの絶景スポット（data/choshi/spots.json）の id。",
+    "旅の記録から送られた写真は、撮ったときの直近の絶景スポットの id を持っているので、",
+    "この対応をたどって掲示先を決める。片方の座標を直したら、もう片方も確かめること（ADR-0005）。",
+    "",
+    "sampleLikes（見本の固定値）は 2026-08-19 に廃止した。いいねは 0 から本物を数える",
+    "（supabase/schema/003_photos.sql の record_board_like）。"
   ],
   "_note_2026-08-19": [
     "プロトタイプの元の座標と比べると、次の4件で無視できない差があった",
@@ -45,8 +51,7 @@
       "photo": "犬吠埼灯台.jpg",
       "caption": "太平洋を望む白亜の灯台。初日の出の名所としても知られる。",
       "source": "OpenStreetMap node/1582440591（man_made=lighthouse）",
-      "confidence": "exact",
-      "sampleLikes": 41
+      "confidence": "exact"
     },
     {
       "id": "kimigahama",
@@ -56,8 +61,7 @@
       "photo": "君ケ浜.jpg",
       "caption": "遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。",
       "source": "OpenStreetMap way/679437656（君ヶ浜しおさい公園、砂浜への入口）",
-      "confidence": "exact",
-      "sampleLikes": 18
+      "confidence": "exact"
     },
     {
       "id": "chikyu",
@@ -67,8 +71,7 @@
       "photo": "地球の丸く見える丘展望館.jpg",
       "caption": "愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。",
       "source": "OpenStreetMap way/265726472（建物）",
-      "confidence": "exact",
-      "sampleLikes": 27
+      "confidence": "exact"
     },
     {
       "id": "byobugaura",
@@ -79,8 +82,7 @@
       "caption": "約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。",
       "source": "OpenStreetMap node/7157718178（tourism=attraction、Wikidata Q5004737）",
       "note": "崖は約10km続くため、この座標は代表点。写真の実際の撮影地点とは数百m〜1km程度ずれている可能性がある。",
-      "confidence": "exact",
-      "sampleLikes": 33
+      "confidence": "exact"
     },
     {
       "id": "togawako",
@@ -91,8 +93,7 @@
       "caption": "銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。",
       "source": "OpenStreetMap の海岸線データ（natural=coastline、data/source/features_raw.json）のうち外川駅に最も近い点",
       "note": "「外川漁港」という名前の地物としては登録されていなかったため、外川駅そばの実際の海岸線上の点で代用している。現地確認が望ましい。",
-      "confidence": "approximate",
-      "sampleLikes": 12
+      "confidence": "approximate"
     },
     {
       "id": "kinmedai",
@@ -102,8 +103,7 @@
       "photo": "きんめだい.jpg",
       "caption": "外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。",
       "source": "togawako（外川漁港）と同じ座標。きんめだいは場所ではなく特産品なので、水揚げされる外川漁港の位置をそのまま使う。地図上は1本のピンにまとまり（クラスター化）、開くと外川漁港と並んで表示される",
-      "confidence": "approximate",
-      "sampleLikes": 21
+      "confidence": "approximate"
     },
     {
       "id": "togawaeki",
@@ -114,7 +114,7 @@
       "caption": "銚子電鉄の終点。昔ながらの木造駅舎が今も残る。",
       "source": "data/choshi/route.json（この作品が既に持っている実測データ。国土地理院の地名検索でも同じ位置と確認済み）",
       "confidence": "exact",
-      "sampleLikes": 36
+      "naviSpotId": "S06"
     },
     {
       "id": "sengaiwa",
@@ -124,8 +124,7 @@
       "photo": "千騎ケ岩.jpg",
       "caption": "外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。",
       "source": "OpenStreetMap node/10180768055（place=islet）",
-      "confidence": "exact",
-      "sampleLikes": 9
+      "confidence": "exact"
     },
     {
       "id": "inuiwa",
@@ -135,8 +134,7 @@
       "photo": "犬岩.jpg",
       "caption": "両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。",
       "source": "OpenStreetMap node/6383324421（tourism=attraction）",
-      "confidence": "exact",
-      "sampleLikes": 14
+      "confidence": "exact"
     },
     {
       "id": "cabbage",
@@ -147,19 +145,18 @@
       "caption": "風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。",
       "source": "data/choshi/spots.json の S04 と同じ座標（tools/build-spot-geometry.js が国土地理院データとOSMの畑ポリゴンから既に計算済み）",
       "confidence": "exact",
-      "sampleLikes": 24
+      "naviSpotId": "S04"
     },
     {
       "id": "traincabbage",
       "name": "銚子電鉄とキャベツ畑",
-      "lat": 35.720000,
-      "lon": 140.860000,
+      "lat": 35.72,
+      "lon": 140.86,
       "photo": "銚子電鉄とキャベツ畑.jpg",
       "caption": "沿線随一の撮影名所。キャベツ畑を電車が横切る。",
       "source": "route.json の海鹿島〜君ヶ浜間の線路上に仮置き",
       "note": "撮影名所としての正確な立ち位置は特定できていない。この区間の線路沿いに畑はあるが、写真と同じアングルで撮れる正確な地点は現地または撮影者への確認が必要。",
-      "confidence": "approximate",
-      "sampleLikes": 31
+      "confidence": "approximate"
     },
     {
       "id": "chijimi",
@@ -170,8 +167,51 @@
       "caption": "江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。",
       "source": "国土地理院 地名検索（msearch.gsi.go.jp）の「松岸町」の町丁目中心点",
       "note": "施設そのものの座標ではなく、松岸町という地区の中心点。建物の正確な位置は現地または地図サービスでの個別確認が必要。",
-      "confidence": "approximate",
-      "sampleLikes": 6
+      "confidence": "approximate"
+    },
+    {
+      "id": "yamasa",
+      "name": "ヤマサ醤油工場",
+      "lat": 35.729108,
+      "lon": 140.832566,
+      "photo": null,
+      "caption": "利根川の水運が原料を運んだ、醤油の街の工場。仲ノ町駅のすぐ横にある。",
+      "source": "data/choshi/spots.json の S01 と同じ座標（tools/build-spot-geometry.js が工業用地の重心から計算。certainty「高」）",
+      "confidence": "exact",
+      "naviSpotId": "S01"
+    },
+    {
+      "id": "farsea",
+      "name": "遠くに見える海",
+      "lat": 35.730046,
+      "lon": 140.846914,
+      "photo": null,
+      "caption": "台地へ上がるほど、屋根の向こうに海が広がる。観音駅〜本銚子駅の車窓から。",
+      "source": "data/choshi/spots.json の S02 と同じ座標（tools/build-spot-geometry.js がいちばん近い海岸線の向きから計算。certainty「高」）",
+      "confidence": "exact",
+      "naviSpotId": "S02"
+    },
+    {
+      "id": "foresttunnel",
+      "name": "森のトンネル",
+      "lat": 35.731069,
+      "lon": 140.847837,
+      "photo": null,
+      "caption": "低地から台地へ上がるために、土を切り開いた跡。本銚子駅の前後だけ緑が覆いかぶさる。",
+      "source": "data/choshi/spots.json の S03 と同じ座標（tools/build-spot-geometry.js。切通しのため左右の区別なし。certainty「高」）",
+      "confidence": "exact",
+      "naviSpotId": "S03"
+    },
+    {
+      "id": "sunflower",
+      "name": "ひまわり畑",
+      "lat": 35.709794,
+      "lon": 140.861045,
+      "photo": null,
+      "caption": "キャベツの休みの季節に、畑をやすませるための花。君ヶ浜〜犬吠のあたりに広がる。",
+      "source": "data/choshi/spots.json の S05 と同じ座標（tools/build-spot-geometry.js）",
+      "confidence": "exact",
+      "naviSpotId": "S05"
     }
   ]
 }

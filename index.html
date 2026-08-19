@@ -185,6 +185,17 @@
           近づいたら環境音を流す（イヤホン推奨）
         </label>
         <button type="button" class="plan-submit" id="plan-submit">決定</button>
+        <!--
+          絶景掲示板への導線（docs/絶景掲示板_設計メモ.md 1章）。
+
+          あちらは旅行**前**にパソコンでじっくり眺める画面なので、乗る前の
+          この画面から渡す。スマートフォンで開くと案内だけが出る作りなので
+          （設計メモ5章）、そのことをここでも一行で断っておく。
+        -->
+        <p class="plan-board-link">
+          <a href="board.html">銚子の絶景を地図で眺める（絶景掲示板）</a>
+          <span>パソコン向けの画面です</span>
+        </p>
       </div>
     </section>
 
@@ -620,12 +631,17 @@
           </svg>
         </button>
       </div>
-      <button type="button" class="journal-save" id="journal-save">画像として保存</button>
       <!--
-        書いた文字をサーバーへ送る（ADR-0004 の投稿）。
-        押しても、すぐには送らない。同意の画面（#post）を必ず挟む。
+        撮った写真を絶景掲示板へ送る（ADR-0004 の投稿）。
+
+        **入口はここだけである。** 成因カードにも、撮った直後にも出さない
+        （2026-08-19 の決定）。SNS へ渡す並びの隣に置いてあるのは、
+        「この旅のものを外へ出す」操作をひとところに集めるため。
+
+        押しても、すぐには送らない。選ぶ画面と同意（#post）を必ず挟む。
       -->
-      <button type="button" class="journal-post" id="journal-post" hidden>書いた文字をみんなに送る</button>
+      <button type="button" class="journal-post" id="journal-post" hidden>絶景掲示板に出す</button>
+      <button type="button" class="journal-save" id="journal-save">画像として保存</button>
     </footer>
   </section>
 
@@ -651,32 +667,44 @@
   </section>
 
   <!--
-    投稿の同意（ADR-0004）。
+    投稿の画面（ADR-0004、docs/絶景掲示板_設計メモ.md）。
 
-    送るのは**利用者が書いた文字だけ**で、写真は送らない。
-    ここを通らないかぎり、書いたものは端末から出ない。
-    この画面の文言は ADR-0004「どこまでを持つか」の約束そのものなので、
-    条件を変えるときは、あちらの記述も一緒に直すこと。
+    送るのは**撮った写真だけ**で、書いた文字は送らない（2026-08-19 の決定）。
+    ここを通らないかぎり、写真は端末から出ない。
+
+    同意の 4 点は ADR-0004「どこまでを持つか」の約束そのもので、
+    絶景掲示板の投稿の窓（board.html）と同じ文言にそろえてある。
+    条件を変えるときは、ADR とあちらの画面も一緒に直すこと。
   -->
   <section class="post" id="post" hidden aria-labelledby="post-title">
     <div class="memo-veil" id="post-veil"></div>
     <div class="post-sheet" role="dialog" aria-modal="true" aria-labelledby="post-title">
-      <h2 class="post-title" id="post-title">書いた文字を、みんなに送りますか</h2>
+      <h2 class="post-title" id="post-title">この旅の写真を、絶景掲示板に出しますか</h2>
 
       <p class="post-lead" id="post-lead"></p>
 
+      <!-- 出す写真（js/journal.js が入れる）。はじめは一枚も選ばれていない -->
+      <div class="post-photos" id="post-photos"></div>
+
+      <p class="post-aside" id="post-aside" hidden></p>
+
       <ul class="post-terms">
-        <li><b>送るのは、あなたが書いた文字だけです。</b>写真は端末から出ません。</li>
-        <li>名前は受け取りません。誰が書いたかは分かりません。</li>
-        <li>すぐには公開されません。制作者が目で見て通したものだけが表に出ます。</li>
-        <li><b>2027年4月30日に、預かったものはすべて消します。</b></li>
-        <li>自分で書いたものだけを送ってください。人が特定できることは書かないでください。</li>
-        <li>16歳未満のかたは、保護者のかたに聞いてから送ってください。</li>
+        <li>すぐには掲示されません。制作者が目で見て通したものだけが表に出ます。</li>
+        <li>名前は受け取りません。誰が撮ったかは分かりません。</li>
+        <li>撮影地点や端末の情報（EXIF）は、送る前に端末側で消します。</li>
+        <li>掲示される場所は、その写真を撮ったときの絶景スポットです。</li>
+      </ul>
+
+      <ul class="post-consent">
+        <li><label><input type="checkbox" class="post-consent-box">自分で撮影した写真であること</label></li>
+        <li><label><input type="checkbox" class="post-consent-box">他の人の顔がはっきり写っていないこと</label></li>
+        <li><label><input type="checkbox" class="post-consent-box">16歳未満の場合は保護者の同意を得ていること</label></li>
+        <li><label><input type="checkbox" class="post-consent-box">投稿は審査のうえ公開され、2027年4月30日にすべて削除されることを理解した</label></li>
       </ul>
 
       <div class="post-buttons">
         <button type="button" class="post-cancel" id="post-cancel">やめる</button>
-        <button type="button" class="post-send" id="post-send">送る</button>
+        <button type="button" class="post-send" id="post-send" disabled>審査に送る</button>
       </div>
 
       <p class="post-state" id="post-state" role="status"></p>

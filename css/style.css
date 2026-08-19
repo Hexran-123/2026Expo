@@ -2365,6 +2365,87 @@ button.origin-badge:disabled {
   line-height: 1.85;
 }
 
+/*
+   出す写真を選ぶところ（ADR-0004）。
+
+   はじめは一枚も選ばれていない。揺れる車内ではなく降りたあとに開く画面だが、
+   顔が写っていないかを一枚ずつ確かめてもらう場所なので、既定で全部入りには
+   しない（外し忘れのほうが取り返しがつかない）。
+*/
+.post-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.post-choice {
+  display: grid;
+  grid-template-columns: auto 64px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.post-choice-box {
+  width: 22px;
+  height: 22px;
+}
+
+.post-choice-shot {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.post-choice-where {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* 掲示先の分からない写真があることを伝える一行 */
+.post-aside {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--ink-soft);
+}
+
+/*
+   同意の 4 点（ADR-0004）。文字を押しても切り替わるよう <label> で包んである。
+   絶景掲示板の投稿の窓（board.html）と同じ文言・同じ 4 点。
+*/
+.post-consent {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-consent label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  cursor: pointer;
+}
+
+.post-consent input {
+  margin-top: 3px;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
 .post-buttons {
   display: flex;
   gap: 10px;
@@ -2858,4 +2939,27 @@ button.origin-badge:disabled {
 .plan-submit:disabled {
   background: rgba(0, 0, 0, 0.18);
   cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+   絶景掲示板への導線（乗車区間の画面の下）
+   ------------------------------------------------------------------ */
+
+.plan-board-link {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.10);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.plan-board-link a {
+  color: var(--theme-industry);
+  font-weight: 600;
+}
+
+.plan-board-link span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
 }

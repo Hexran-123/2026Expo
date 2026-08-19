@@ -81,16 +81,20 @@ data/
     preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
-    board-spots.json 絶景掲示板の12スポット        ← 手で書く（下記）
+    board-spots.json 掲示スポット16件              ← 手で書く（下記）
+    board-posts.json 掲示している乗客の写真の一覧  ← 審査当番の道具が書き足す
   yurakucho/        有楽町線（多路線対応の実演用。中身も実データ）
   board/            絶景掲示板の地図のもと         ← 自動生成
   source/           もとになった生データと計算結果 ← 自動生成
 
 assets/choshi/board/  絶景掲示板に出す12枚の写真（観光協会提供。WebP）
+  posts/              乗客から届いた写真（審査を通ったものだけ。tools/publish-posts.js が置く）
 
-ai/artifacts/絶景掲示板/    絶景掲示板のプロトタイプと、選定の記録
-  mockups/board-map-variant-v4-template.html  ← 直すのはこちら
-  mockups/board-map-variant-v4.html           ← 自動生成（開くのはこちら）
+board.html          絶景掲示板の本体             ← 自動生成（開くのはこちら）
+review.html         投稿の審査（合言葉で開く）
+tools/board-template.html  board.html のもと     ← 直すのはこちら
+
+ai/artifacts/絶景掲示板/    決定の経緯（mockup-decision）
 
 tools/              データを作り直すための道具（サイトの一部ではない）
 docs/               設計書・将来構想・ADR
@@ -167,22 +171,21 @@ node tools/build-preview.js        路線選択画面に出す小さな地図を
                                    （terrain.json か route.json を作り直したら、これも作り直す）
 ```
 
-### 絶景掲示板のプロトタイプを作り直す
+### 絶景掲示板を作り直す
 
 絶景掲示板（[設計メモ](docs/絶景掲示板_設計メモ.md)、[ADR-0005](docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md)）
-は、車窓絶景ナビとは別の画面。本体（`board.html`）はまだ無く、地図画面のプロトタイプだけがある。
+は、車窓絶景ナビとは別の画面。本体は `board.html`。
 
-`ai/artifacts/絶景掲示板/mockups/board-map-variant-v4.html` は**生成物なので直接編集しない**。
-直すのは同じフォルダの `board-map-variant-v4-template.html` のほう。
+`board.html` は**生成物なので直接編集しない**。直すのは `tools/board-template.html` のほう。
 
 ```
-node tools/build-board-elevations.js   12スポットの地面の高さを焼き込む
+node tools/build-board-elevations.js   掲示スポットの地面の高さを焼き込む
                                        （data/board/spot-elevations.json）
-                                       座標を直したときだけ。14.8MBの標高格子が要る
+                                       座標を直したときだけ。40MBの標高格子が要る
 
 node tools/build-board-rail.js         線路の高さ表現を作る（data/board/rail-variants.json）
 
-node tools/build-board-mockup.js       テンプレートにデータを流し込んでプロトタイプを作る
+node tools/build-board.js              テンプレートにデータを流し込んで board.html を作る
 ```
 
 ふだん要るのはいちばん下の1行だけ。テンプレートか `data/choshi/board-spots.json` の
@@ -193,15 +196,45 @@ node tools/check-board-fresh.js        作り直し忘れていないか確か�
 ```
 
 **なぜ標高を焼き込んであるのか**: もとの格子 `data/source/board-elevation-grid.json` は
-14.8MB で `.gitignore` してある。必要なのは12点ぶんの数値だけなので、それだけを
+40MB で `.gitignore` してある。必要なのは掲示スポットぶんの数値だけなので、それだけを
 `data/board/spot-elevations.json`（小さい）に落として commit してある。おかげで
-clone したばかりの手元でも GitHub Actions でも、格子なしでプロトタイプを作り直せる。
+clone したばかりの手元でも GitHub Actions でも、格子なしで作り直せる。
 `board-spots.json` の座標を直したのにこの表を作り直し忘れると、
-`build-board-mockup.js` が座標の食い違いに気づいて止まる。
+`build-board.js` が座標の食い違いに気づいて止まる。
 
 **写真について**: `assets/choshi/board/<id>.webp` をローカルパスで参照している。
 `https://www.choshikanko.com/...` への直リンクは
 [利用規約](docs/銚子市観光協会フォトダウンロード利用規約.md)の禁止事項なので絶対に書かないこと。
+
+### 届いた写真を審査して掲示する（当番の手順）
+
+乗客から届いた写真は、**制作者が目で見て通すまで掲示されない**（[ADR-0004](docs/adr/0004-投稿と集計のためにサーバーを持ち、ログインは持たない.md)）。
+週に 1 度、次の 3 つを続けて行う。
+
+```
+1. review.html をブラウザで開き、合言葉を貼って、1 枚ずつ「通す」「落とす」
+   （落としたものはその場で消える。迷ったら落とす）
+
+2. REVIEW_PASS='（合言葉）' node tools/publish-posts.js
+   通したものを assets/choshi/board/posts/ に置き、
+   data/choshi/board-posts.json に足して、board.html を作り直す
+
+3. git add assets/choshi/board/posts data/choshi/board-posts.json board.html
+   git commit -m "乗客から届いた写真を掲示する" && git push
+```
+
+**2 と 3 をやらないと、通しただけで掲示板には出ない。** 公開されているのは
+リポジトリのファイルのほうで、サーバーではないため。
+
+合言葉は Supabase の SQL Editor で一度だけ決める（24文字以上）。
+
+```sql
+select set_review_secret('（長い乱数）');
+```
+
+**手放すとき**: 預かった写真は 2027年4月30日にすべて消す。サーバー側は pg_cron が
+消すが、掲示した写真はリポジトリに残り、ファイルを消しても git の履歴に残る。
+手順は [docs/投稿写真の手放し方.md](docs/投稿写真の手放し方.md)。
 
 ### サーバーなしで見せる 1 枚を作る
 
@@ -322,14 +355,14 @@ node tools/check-demo-fresh.js
 commit に 1 枚デモの作り直しが乗らないことが起きる。エラーにならないので
 気づきにくく、配る側だけ静かに古いまま残る。二重に機械へ任せてある。
 
-守っている生成物は 2 種類ある。**1 枚デモ**（`demo/*.html`）と、
-**絶景掲示板のプロトタイプ**（`ai/artifacts/絶景掲示板/mockups/board-map-variant-v4.html`）。
+守っている生成物は 2 種類ある。**1 枚デモ**（`demo/*.html`）と、**絶景掲示板**（`board.html`）。
 
 - **手元**: 一度だけ `git config core.hooksPath .githooks` を通しておくと、
   commit のたびに関係するものだけ確かめる（[.githooks/pre-commit](.githooks/pre-commit)）。
   css・js・data・`tools/build-demo.js` が動いていれば `tools/check-demo-fresh.js`、
-  掲示板のテンプレート・`data/board/`・`board-spots.json`・掲示板の道具が動いていれば
-  `tools/check-board-fresh.js` が走り、古ければ commit を止める。
+  `tools/board-template.html`・`data/board/`・`board-spots.json`・`board-posts.json`・
+  `assets/choshi/board/`・掲示板の道具が動いていれば `tools/check-board-fresh.js` が走り、
+  古ければ commit を止める。
 - **GitHub 側**: push のたびに Actions が同じ確認を両方する
   （[.github/workflows/check-demo.yml](.github/workflows/check-demo.yml)）。
   上のフックを入れ忘れていても、ここで拾える。

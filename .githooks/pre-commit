@@ -2,7 +2,7 @@
 #
 # 生成物の作り直し忘れを機械的に防ぐ。
 #   css/・js/・data/ を直したら demo/*.html も作り直す
-#   テンプレート・データを直したら絶景掲示板のプロトタイプも作り直す
+#   テンプレート・データを直したら絶景掲示板（board.html）も作り直す
 # README「作り直し忘れ」参照。
 #
 # 有効にするには（最初に一度だけ）:
@@ -22,10 +22,10 @@ fi
 
 # --- 絶景掲示板のプロトタイプ ---
 # テンプレート・掲示板のデータ・作る道具のどれかが動いたら確かめる
-relevant_board=$(printf '%s\n' "$changed" | grep -E '^(ai/artifacts/絶景掲示板/mockups/|data/board/|data/choshi/board-spots\.json|tools/build-board-mockup\.js|tools/build-board-elevations\.js)')
+relevant_board=$(printf '%s\n' "$changed" | grep -E '^(tools/board-template\.html|data/board/|data/choshi/board-spots\.json|data/choshi/board-posts\.json|assets/choshi/board/|tools/build-board\.js|tools/build-board-elevations\.js)')
 
 if [ -n "$relevant_board" ]; then
-  echo "絶景掲示板のテンプレート・データに手が入っているので、プロトタイプが最新か確かめる..."
+  echo "絶景掲示板のテンプレート・データに手が入っているので、board.html が最新か確かめる..."
   node tools/check-board-fresh.js || status=1
 fi
 

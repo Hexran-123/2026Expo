@@ -6,7 +6,7 @@
 --
 --   psql -U postgres -f supabase/local/setup_and_verify.sql
 --
--- 期待する出力は OK が 21 行。FAIL が 1 行でも出たら、そのまま公開しない。
+-- 期待する出力は OK が 31 行。FAIL が 1 行でも出たら、そのまま公開しない。
 --
 -- 日本語版 Windows では、この一手も要る（コマンドプロンプトの表示を UTF-8 にする）:
 --
@@ -46,11 +46,19 @@ set app.visitor_salt = 'local-test-salt';
 \ir ../schema/001_spot_opens.sql
 -- 投稿（ADR-0004）。visitor_key() を使うので 001 のあとに流すこと
 \ir ../schema/002_notes.sql
+-- 写真の投稿（ADR-0004）。こちらも visitor_key() を使う
+\ir ../schema/003_photos.sql
 
 -- 前回の試行を消しておく
 delete from spot_open_log;
 delete from spot_open_count;
 delete from note_submission;
+delete from photo_submission;
+delete from board_like;
+delete from board_like_count;
+
+-- 審査の合言葉。本番では別の値を入れること（set_review_secret）
+select set_review_secret('local-test-pass-for-review-only');
 
 \echo ''
 \echo '--- ここから検査 ---'
@@ -430,3 +438,172 @@ select spot_id, opens, updated_at from spot_open_count order by spot_id;
 \echo '--- 預かった投稿（visitor は本番では 90 日で外れる） ---'
 select id, line_id, spot_id, kind, body, approved_at is not null as approved
   from note_submission order by id;
+
+\echo ''
+\echo '--- 写真の投稿（003_photos.sql、ADR-0004） ---'
+
+-- 22. 匿名でも写真を送れる（送り口は開いている）
+do $$
+declare v_id uuid;
+begin
+  set role anon;
+  -- 小さな中身で足りる。ここで見たいのは権限であって画像ではない
+  v_id := submit_photo('choshi', 'navi', 'S04', null, null, 'image/webp',
+                       encode('fake-photo-bytes'::bytea, 'base64'));
+  reset role;
+  if v_id is null then
+    raise warning 'FAIL: 写真を送れなかった';
+  else
+    raise notice 'OK  : 匿名でも写真を送れる';
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: submit_photo が通らなかった（%）', sqlerrm;
+end $$;
+
+-- 23. 匿名は投稿の一覧を読めない（未審査も、通ったものも）
+do $$
+declare n integer;
+begin
+  set role anon;
+  select count(*) into n from photo_submission;
+  reset role;
+  raise warning 'FAIL: 匿名が photo_submission を読めてしまう（% 件）', n;
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は photo_submission を読めない';
+end $$;
+
+-- 24. 匿名は写真の中身を読めない
+do $$
+declare n integer;
+begin
+  set role anon;
+  select count(*) into n from photo_pending;
+  reset role;
+  raise warning 'FAIL: 匿名が写真の中身を読めてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は photo_pending を読めない';
+end $$;
+
+-- 25. 合言葉が違えば、審査の口は開かない
+do $$
+declare n integer;
+begin
+  set role anon;
+  select count(*) into n from review_pending('wrong-pass');
+  reset role;
+  raise warning 'FAIL: 合言葉が違うのに未審査を読めてしまう';
+exception when others then
+  reset role;
+  raise notice 'OK  : 合言葉が違えば審査できない';
+end $$;
+
+-- 26. 合言葉が合えば、未審査が読める
+do $$
+declare n integer;
+begin
+  set role anon;
+  select count(*) into n from review_pending('local-test-pass-for-review-only');
+  reset role;
+  if n >= 1 then
+    raise notice 'OK  : 合言葉が合えば未審査を読める（% 件）', n;
+  else
+    raise warning 'FAIL: 合言葉が合っているのに未審査が出てこない';
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 26 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 27. 匿名は合言葉のハッシュを読めない
+do $$
+declare h text;
+begin
+  set role anon;
+  select hash into h from review_secret;
+  reset role;
+  raise warning 'FAIL: 匿名が合言葉のハッシュを読めてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は review_secret を読めない';
+end $$;
+
+-- 28. 落とすと、写真の中身がその場で消える
+do $$
+declare v_id uuid; n integer;
+begin
+  select id into v_id from photo_submission
+   where approved_at is null and rejected_at is null limit 1;
+  set role anon;
+  perform review_decide('local-test-pass-for-review-only', v_id, false);
+  reset role;
+  select count(*) into n from photo_pending where id = v_id;
+  if n = 0 then
+    raise notice 'OK  : 落とした写真の中身は残らない';
+  else
+    raise warning 'FAIL: 落としたのに写真の中身が残っている';
+  end if;
+end $$;
+
+-- 29. 掲示すると、サーバー側の中身は消える（実体はリポジトリへ移る）
+do $$
+declare v_id uuid; n integer;
+begin
+  set role anon;
+  v_id := submit_photo('choshi', 'board', null, 35.71, 140.86, 'image/webp',
+                       encode('fake-photo-bytes'::bytea, 'base64'));
+  perform review_decide('local-test-pass-for-review-only', v_id, true);
+  perform review_mark_published('local-test-pass-for-review-only', v_id, null);
+  reset role;
+  select count(*) into n from photo_pending where id = v_id;
+  if n = 0 then
+    raise notice 'OK  : 掲示したら中身を持たない';
+  else
+    raise warning 'FAIL: 掲示したのに中身が残っている';
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 29 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 30. いいねは数えられ、同じ相手からは二重に増えない
+do $$
+declare a integer; b integer;
+begin
+  set role anon;
+  a := record_board_like('inubosaki', true);
+  b := record_board_like('inubosaki', true);
+  reset role;
+  if a = 1 and b = 1 then
+    raise notice 'OK  : いいねは同じ相手から二重に増えない';
+  else
+    raise warning 'FAIL: いいねが二重に増える（% → %）', a, b;
+  end if;
+exception when others then
+  reset role;
+  raise warning 'FAIL: 30 番が流れなかった（%）', sqlerrm;
+end $$;
+
+-- 31. 匿名は「誰が押したか」を読めない（数だけが読める）
+do $$
+declare n integer;
+begin
+  set role anon;
+  select count(*) into n from board_like;
+  reset role;
+  raise warning 'FAIL: 匿名が board_like（誰が押したか）を読めてしまう';
+exception when insufficient_privilege or others then
+  reset role;
+  raise notice 'OK  : 匿名は board_like を読めない';
+end $$;
+
+\echo ''
+\echo '--- 預かった写真（中身は掲示・却下で消える） ---'
+select id, source, spot_id, bytes,
+       approved_at is not null as approved,
+       rejected_at is not null as rejected,
+       published_at is not null as published,
+       exists(select 1 from photo_pending p where p.id = photo_submission.id) as has_content
+  from photo_submission order by submitted_at;

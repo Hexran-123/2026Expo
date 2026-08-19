@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "絶景掲示板に掲示している、乗客から届いた写真の一覧。",
+    "",
+    "**このファイルは審査当番が書き足す。** 手で直してもよいが、ふだんは",
+    "tools/publish-posts.js が Supabase から審査を通ったものを取ってきて、",
+    "写真を assets/choshi/board/posts/ に置き、この表に1行足す。足したら",
+    "node tools/build-board.js で board.html を作り直すこと（publish-posts.js が続けて行う）。",
+    "",
+    "ここに載っているものは、すべて制作者が目で見て通したものである（ADR-0004）。",
+    "未審査のものは Supabase の中にあり、この表にも board.html にも出てこない。",
+    "",
+    "各項目:",
+    "  id          … 投稿の id（Supabase の photo_submission.id）。写真ファイル名と揃える",
+    "  file        … assets/choshi/board/posts/ からの相対ファイル名（<id>.webp など）",
+    "  spotId      … 掲示先の掲示スポット（data/choshi/board-spots.json の id）。",
+    "                旅の記録から送られたものは、撮ったときの絶景スポットから決まる",
+    "  lat/lon     … spotId を持たない写真（掲示板の地図をタップして置いたもの）の座標",
+    "  elevationM  … 同上。ピンを地面の高さに置くために要る（publish-posts.js が計算する）",
+    "  publishedAt … 掲示した日（審査を通した日）",
+    "",
+    "保存期限: 2027年4月30日にすべて削除する（ADR-0004）。写真ファイルを消すだけでは",
+    "git の履歴に残るので、そのときは履歴ごと書き換えること。手順は",
+    "docs/投稿写真の手放し方.md に書いてある。"
+  ],
+  "posts": []
+}
