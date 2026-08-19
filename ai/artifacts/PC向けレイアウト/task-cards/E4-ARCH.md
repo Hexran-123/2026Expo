@@ -3,7 +3,7 @@
 ## Metadata
 
 - 任務：広い画面の使い方を2-3案比較して決定し、PC向けの基礎ブレークポイント・スキャフォールドを実装する
-- 上層規格：[docs/設計書.md](../../../docs/設計書.md) 4章、`ai/context/design-system.md` S5
+- 上層規格：[docs/設計書.md](../../../../docs/設計書.md) 4章、`ai/context/design-system.md` S5
 - 上層 Epic：PC向けレイアウト（E4）
 - 上層 User Story：E4-S1 レイアウト方針の決定
 - 分軌：不適用
