@@ -353,7 +353,7 @@
       </div>
       <button class="post-fab" type="button" id="postFab"><span class="plus">＋</span>投稿する</button>
       <div class="compass">
-        <div class="needle-wrap" id="compassReset" title="北を上に戻す"><span class="needle" id="needle">北</span></div>
+        <div class="needle-wrap" id="compassReset" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></div>
         <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
       </div>
       <div class="legend-note">◆丸数字＝近くにある投稿をまとめた件数（写真をタップすると内訳が見られます）<br>◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
@@ -437,7 +437,10 @@
   const RAIL = __RAIL_DATA__;
 
   // ---------------- カメラの状態 ----------------
-  const state = { panX: 0, panY: 0, zoom: 1, tilt: 52, heading: 0 };
+  // 画面を開いたときの角度・拡大度・位置。12枚の写真がなるべく重ならない角度を
+  // 実際に試して決めた（ai/artifacts/絶景掲示板/mockup-decision-初期角度.md 参照）。
+  const HOME_STATE = { panX: 0, panY: 0, zoom: 1, tilt: 35, heading: 0 };
+  const state = { ...HOME_STATE };
   let baseFitScale = 0.5;
 
   const mapWrap = document.getElementById("mapWrap");
@@ -499,7 +502,7 @@
 
   document.getElementById("zoomIn").addEventListener("click", (e) => { e.stopPropagation(); state.zoom = Math.min(4, state.zoom * 1.2); render(); });
   document.getElementById("zoomOut").addEventListener("click", (e) => { e.stopPropagation(); state.zoom = Math.max(0.5, state.zoom / 1.2); render(); });
-  document.getElementById("compassReset").addEventListener("click", (e) => { e.stopPropagation(); state.heading = 0; state.tilt = 52; render(); });
+  document.getElementById("compassReset").addEventListener("click", (e) => { e.stopPropagation(); Object.assign(state, HOME_STATE); render(); });
 
   // ---------------- ピンの生成 ----------------
   const pinsLayer = document.getElementById("pinsLayer");
