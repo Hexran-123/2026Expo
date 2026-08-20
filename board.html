@@ -588,7 +588,7 @@
    * （利用規約、CLAUDE.md）、assets/choshi/board/ 配下のファイルだけを指す。
    * 乗客から届いた写真も同じ形で assets/choshi/board/posts/ に置いてある。
    */
-  const PHOTOS = {"inubosaki":"assets/choshi/board/inubosaki.webp","kimigahama":"assets/choshi/board/kimigahama.webp","chikyu":"assets/choshi/board/chikyu.webp","byobugaura":"assets/choshi/board/byobugaura.webp","togawako":"assets/choshi/board/togawako.webp","kinmedai":"assets/choshi/board/kinmedai.webp","togawaeki":"assets/choshi/board/togawaeki.webp","sengaiwa":"assets/choshi/board/sengaiwa.webp","inuiwa":"assets/choshi/board/inuiwa.webp","cabbage":"assets/choshi/board/cabbage.webp","traincabbage":"assets/choshi/board/traincabbage.webp","chijimi":"assets/choshi/board/chijimi.webp","b1214ed8-5161-411d-a93a-6cf8c445f772":"assets/choshi/board/posts/b1214ed8-5161-411d-a93a-6cf8c445f772.webp","8cc2e396-90e0-4b47-8c56-cbf19c3f8ec8":"assets/choshi/board/posts/8cc2e396-90e0-4b47-8c56-cbf19c3f8ec8.webp","d4e7d9f4-0227-4f27-98df-c792f6b236ef":"assets/choshi/board/posts/d4e7d9f4-0227-4f27-98df-c792f6b236ef.webp"};
+  const PHOTOS = {"inubosaki":"assets/choshi/board/inubosaki.webp","kimigahama":"assets/choshi/board/kimigahama.webp","chikyu":"assets/choshi/board/chikyu.webp","byobugaura":"assets/choshi/board/byobugaura.webp","togawako":"assets/choshi/board/togawako.webp","kinmedai":"assets/choshi/board/kinmedai.webp","togawaeki":"assets/choshi/board/togawaeki.webp","sengaiwa":"assets/choshi/board/sengaiwa.webp","inuiwa":"assets/choshi/board/inuiwa.webp","cabbage":"assets/choshi/board/cabbage.webp","traincabbage":"assets/choshi/board/traincabbage.webp","chijimi":"assets/choshi/board/chijimi.webp"};
 
   /*
    * innerHTML に流し込む文字は必ずこれを通す。
@@ -625,7 +625,7 @@
    * 持たないものは（掲示板の地図をタップして置いた写真）、自分の座標で
    * 1 本のピンになる。
    */
-  const USER_POSTS = [{"id":"b1214ed8-5161-411d-a93a-6cf8c445f772","spotId":null,"publishedAt":"2026-08-20","u":0.3970030495334246,"v":0.5058648889829663,"z":51.1},{"id":"8cc2e396-90e0-4b47-8c56-cbf19c3f8ec8","spotId":null,"publishedAt":"2026-08-20","u":0.3852370635412785,"v":0.49383472812591317,"z":51},{"id":"d4e7d9f4-0227-4f27-98df-c792f6b236ef","spotId":null,"publishedAt":"2026-08-20","u":0.3798350409739816,"v":0.4957827672751526,"z":52.7}];
+  const USER_POSTS = [];
   const POSTS_BY_ID = new Map(USER_POSTS.map(p => [p.id, p]));
 
   /*
