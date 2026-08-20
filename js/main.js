@@ -3930,7 +3930,6 @@ function createSpotCard(screenElement, view, getWeather, terminus) {
   const themeElement = document.getElementById('spot-card-theme');
   const nameElement = document.getElementById('spot-card-name');
   const placeElement = document.getElementById('spot-card-place');
-  const summaryElement = document.getElementById('spot-card-summary');
   const factsElement = document.getElementById('spot-card-facts');
 
   let openedId = null;
@@ -3957,7 +3956,6 @@ function createSpotCard(screenElement, view, getWeather, terminus) {
     themeElement.style.setProperty('--card-color', THEMES[spot.theme].color);
     nameElement.textContent = spot.name;
     placeElement.textContent = spot.location;
-    summaryElement.textContent = spot.summary;
 
     factsElement.replaceChildren();
     /*

@@ -1556,12 +1556,6 @@ button.line-name:active {
   color: var(--ink-soft);
 }
 
-.card-summary {
-  margin: 12px 0 0;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
 /* 「どちら側の窓か」など。乗る向きが決まっていないので両方書く */
 .card-facts {
   margin: 14px 0 0;

@@ -1564,12 +1564,6 @@ button.line-name:active {
   color: var(--ink-soft);
 }
 
-.card-summary {
-  margin: 12px 0 0;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
 /* 「どちら側の窓か」など。乗る向きが決まっていないので両方書く */
 .card-facts {
   margin: 14px 0 0;
@@ -3516,7 +3510,6 @@ button.origin-badge:disabled {
       <p class="card-theme" id="spot-card-theme"></p>
       <h2 class="card-name" id="spot-card-name"></h2>
       <p class="card-place" id="spot-card-place"></p>
-      <p class="card-summary" id="spot-card-summary"></p>
       <dl class="card-facts" id="spot-card-facts"></dl>
     </section>
 
@@ -10780,7 +10773,6 @@ function createSpotCard(screenElement, view, getWeather, terminus) {
   const themeElement = document.getElementById('spot-card-theme');
   const nameElement = document.getElementById('spot-card-name');
   const placeElement = document.getElementById('spot-card-place');
-  const summaryElement = document.getElementById('spot-card-summary');
   const factsElement = document.getElementById('spot-card-facts');
 
   let openedId = null;
@@ -10807,7 +10799,6 @@ function createSpotCard(screenElement, view, getWeather, terminus) {
     themeElement.style.setProperty('--card-color', THEMES[spot.theme].color);
     nameElement.textContent = spot.name;
     placeElement.textContent = spot.location;
-    summaryElement.textContent = spot.summary;
 
     factsElement.replaceChildren();
     /*
