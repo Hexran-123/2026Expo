@@ -28,15 +28,20 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 （README「絶景掲示板を作り直す」）。`node tools/check-board-fresh.js` が作り直し忘れを拾う
 （pre-commit フックと GitHub Actions からも走る）。
 
-**人が手で書く `data/` のファイルは次の4つだけ。** それ以外の `data/` 配下は自動生成なので直接編集しない。
+**人が手で書く `data/` のファイルは次の5つ。** それ以外の `data/choshi/` 配下は自動生成なので直接編集しない。
 
 - `data/choshi/spots.json` — 車窓絶景ナビの絶景スポット（S01〜S06）
+- `data/choshi/schedule.json` — 銚子電鉄の時刻表。**生成物ではない**（`tools/check-schedule.js` は
+  検査するだけで書かない）。ダイヤ改正のたびに手で直す。
 - `data/lines.json` — 路線の一覧
 - `data/choshi/board-spots.json` — 絶景掲示板の掲示スポット16件（座標・出典・確からしさ・`naviSpotId`）。
   同じフォルダにあるが `spots.json` とは別のファイルで、用途も別。
   キャベツ畑など同じ場所を指す項目があるので、片方を直したらもう片方も確かめること（ADR-0005）。
 - `data/choshi/board-posts.json` — 掲示している「乗客から届いた写真」の一覧。
   ふだんは審査当番の道具（`tools/publish-posts.js`）が書き足す。
+
+有楽町線の `data/yurakucho/spots.json` と `data/yurakucho/schedule.json` も、実データに
+差し替えたあとは同じく人が保守するファイルである（下の「実データに差し替え済み」を参照）。
 
 `data/` は路線ごとにフォルダを分けてある。`data/choshi/` が作品そのもの。`data/yurakucho/` は**多路線対応の実演用**（`role: "demo"`）。
 
