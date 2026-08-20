@@ -148,6 +148,34 @@ for (const post of boardPosts.posts) {
   }
 }
 
+/*
+ * 逆に、表から外したのにファイルだけ残っていないか。
+ *
+ * 上の検査は「表にあるのにファイルが無い」側だけを見ている。取り下げのときに
+ * 起きるのは、その裏返しのほうである——JSON から行を消して board.html を
+ * 作り直せば、地図からピンは消える。それで消したつもりになる。
+ *
+ * だが GitHub Pages はリポジトリの中身をそのまま配るので、ファイルが残っていれば
+ * assets/choshi/board/posts/<id> という URL では**まだ誰でも取り出せる**。
+ * 取り下げたはずの他人の写真が公開されつづける状態は、ADR-0004 が投稿画面で
+ * 約束した「2027年4月30日にすべて消します」とも、その前の取り下げとも食い違う。
+ * 画面から見えないぶん、誰も気づけない。だからここで止める。
+ */
+const POSTS_DIR = path.join(ROOT, "assets/choshi/board/posts");
+if (fs.existsSync(POSTS_DIR)) {
+  const listed = new Set(boardPosts.posts.map(p => p.file));
+  const orphans = fs.readdirSync(POSTS_DIR)
+    .filter(name => !name.startsWith(".") && !listed.has(name));
+  if (orphans.length > 0) {
+    console.error("data/choshi/board-posts.json に無い写真が assets/choshi/board/posts/ に残っている:");
+    for (const name of orphans) console.error(`  - ${name}`);
+    console.error("");
+    console.error("表から外したなら、ファイルも消すこと（残すと URL では取り出せてしまう）:");
+    console.error(`  git rm ${orphans.map(n => `assets/choshi/board/posts/${n}`).join(" ")}`);
+    process.exit(1);
+  }
+}
+
 // 表に載っている掲示先が実在するか。id を打ち間違えると、写真が黙って消える
 const spotIds = new Set(boardSpots.spots.map(s => s.id));
 for (const spotId of postsBySpot.keys()) {
