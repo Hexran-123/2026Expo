@@ -23,5 +23,24 @@
     "git の履歴に残るので、そのときは履歴ごと書き換えること。手順は",
     "docs/投稿写真の手放し方.md に書いてある。"
   ],
-  "posts": []
+  "posts": [
+    {
+      "id": "8c2b2a7c-f9b2-4e77-a717-896d9f9d97cd",
+      "file": "8c2b2a7c-f9b2-4e77-a717-896d9f9d97cd.jpg",
+      "publishedAt": "2026-08-20",
+      "spotId": "yamasa"
+    },
+    {
+      "id": "7440c422-eee0-4029-b189-64c36c6227f6",
+      "file": "7440c422-eee0-4029-b189-64c36c6227f6.jpg",
+      "publishedAt": "2026-08-20",
+      "spotId": "yamasa"
+    },
+    {
+      "id": "85d2425b-8cfd-4b1f-8f05-12cb9521d77e",
+      "file": "85d2425b-8cfd-4b1f-8f05-12cb9521d77e.jpg",
+      "publishedAt": "2026-08-20",
+      "spotId": "cabbage"
+    }
+  ]
 }
