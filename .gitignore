@@ -71,3 +71,8 @@ verify_last.png
 # tools/check-board-fresh.js が board.html と突き合わせるために一瞬だけ作るもの。
 # board.html と同じ深さに置かないと写真への相対パスが変わるので、直下に作る。
 .board-fresh-*.html
+
+# 応募書類。国土地理院の応募用紙・記入例（他者の著作物）と、氏名・連絡先を
+# 書き込んだ提出用ファイルが入る。募集要項の PDF を置かないのと同じ理由で
+# （CLAUDE.md）、リポジトリには入れない。git add -A で巻き込まないための守り。
+応募書類類/
