@@ -158,10 +158,25 @@
   .rail-ramp-bar { position: absolute; left: 0; top: 0; transform-origin: 0 0; border-radius: 3px; }
   .rail-ramp-bar.core { background: var(--rail); }
 
-  /* ---------------- 駅（3Dアンカー＋ビルボード・ラベル） ---------------- */
+  /* ---------------- 駅（3Dの外に出し、投影して置くラベル） ---------------- */
 
-  .station-anchor { position: absolute; left: 0; top: 0; transform-style: preserve-3d; pointer-events: none; }
-  .station-billboard { position: absolute; left: 0; top: 0; transform-style: flat; transform-origin: 0 0; pointer-events: none; }
+  /*
+   * 駅名も、ピンと同じく3Dの世界（.camera-rig）の外に置く（2026-08-20）。
+   *
+   * 3Dの中に置いていたころは、CSSの3D変形に本物のZバッファが無いために、
+   * 地形の板（.band-layer、0〜45mの6枚）と駅名の前後が角度によって入れ替わり、
+   * 台地の縁にかかる駅名（松岸・観音・本銚子）が板の裏へ回って半分欠けた。
+   * 平らな層へ移すと前後の取り違えそのものが無くなるので、**どの画角に回しても
+   * 駅名は地形と線路の上に出る**。
+   *
+   * 見え方は3Dの中にあったころと変えていない。位置も大きさも projectToScreen が
+   * 返す値をそのまま使うので、書体・字の大きさ・拡大に応じた伸縮は元のままである。
+   *
+   * z-index 3 は .pins-overlay（4）の下。写真のピンのほうが駅名より手前という
+   * 元の重なり順を保つため。
+   */
+  .stations-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+  .station-item { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; pointer-events: none; }
   .station-mark { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
   .station-mark .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--station); border: 2px solid var(--rail); box-shadow: 0 1px 4px rgba(0,0,0,.4); flex: none; }
   .station-mark.offline .dot { width: 9px; height: 9px; background: #D8D4C6; }
@@ -458,11 +473,11 @@
           <div class="sea-plate"></div>
           __BAND_LAYERS__
           <div class="pins-layer" id="railLayer"></div>
-          <div class="pins-layer" id="stationsLayer"></div>
         </div>
       </div>
 
-      <!-- ピンは3Dの外。位置は JS が投影して決める（.pins-overlay のコメント参照） -->
+      <!-- 駅名とピンは3Dの外。位置は JS が投影して決める（.stations-overlay・.pins-overlay のコメント参照） -->
+      <div class="stations-overlay" id="stationsOverlay"></div>
       <div class="pins-overlay" id="pinsOverlay"></div>
 
       <div class="zoom-controls">
@@ -668,17 +683,6 @@
   new ResizeObserver(() => fitScale()).observe(mapWrap);
 
   /*
-   * ビルボード（回転しても正面を向く板）の一覧。render() はドラッグのあいだ
-   * 1フレームごとに呼ばれるので、そのたび querySelectorAll で探し直さない。
-   * 駅を作り直したら refreshBillboards() で取り直すこと。
-   */
-  let billboards = [];
-  function refreshBillboards() {
-    // ピンは3Dの外に出したので、向きを直すのは駅名だけになった
-    billboards = Array.from(document.querySelectorAll(".station-billboard"));
-  }
-
-  /*
    * .map-wrap の perspective と同じ値。CSSを変えたらここも変えること。
    * （投影を JS 側でもう一度解くので、二か所に同じ数字が要る）
    */
@@ -720,9 +724,9 @@
     const s = baseFitScale * state.zoom;
     cameraRig.style.transform =
       `translate3d(${state.panX}px, ${state.panY}px, 0) scale3d(${s}, ${s}, ${s}) rotateX(${state.tilt}deg) rotateZ(${state.heading}deg)`;
-    const billboard = `rotateZ(${-state.heading}deg) rotateX(${-state.tilt}deg)`;
-    for (const el of billboards) el.style.transform = billboard;
     needle.style.transform = `rotate(${-state.heading}deg)`;
+    // 駅名もピンも3Dの外にあるので、位置はここで毎回投影して置き直す
+    positionStations();
     positionPins();
   }
 
@@ -886,24 +890,38 @@
     }
   }
 
-  // ---------------- 駅名（3Dアンカー＋ビルボード） ----------------
-  const stationsLayer = document.getElementById("stationsLayer");
+  // ---------------- 駅名（3Dの外・投影して置く） ----------------
+  //
+  // ピンと同じ作り（.stations-overlay のコメント参照）。駅の位置は線路の高さ
+  // （smooth3）にわずかな浮かせ +3 を足したところで、これは3Dの中にいたころと
+  // 同じ値である。変わったのは置き場所だけで、見え方は変えていない。
+  const stationsOverlay = document.getElementById("stationsOverlay");
+  const stationItems = [];
+
+  function positionStations() {
+    for (const it of stationItems) {
+      const { dx, dy, scale } = projectToScreen(it.x, it.y, it.z);
+      // 起点は CSS の left/top: 50%（地図の中心）。ピンと違い、駅名は点そのものを
+      // まんなかに置く（印と名前の並びを .station-mark が translate(-50%,-50%) で寄せる）。
+      it.el.style.transform =
+        `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
+    }
+  }
+
   function renderStations() {
-    stationsLayer.innerHTML = "";
+    stationsOverlay.innerHTML = "";
+    stationItems.length = 0;
     RAIL.stationAnchors.forEach(s => {
-      const wx = s.x - WORLD_W / 2, wy = s.y - WORLD_H / 2, wz = s.z.smooth3 + 3;
-      const anchor = document.createElement("div");
-      anchor.className = "station-anchor";
-      anchor.style.transform = `translate3d(${wx}px, ${wy}px, ${wz}px)`;
-      const billboard = document.createElement("div");
-      billboard.className = "station-billboard";
+      const item = document.createElement("div");
+      item.className = "station-item";
       const mark = document.createElement("div");
       mark.className = "station-mark" + (s.offLine ? " offline" : "");
       mark.innerHTML = `<span class="dot"></span><span class="name">${esc(s.name)}${s.offLine ? "（JR）" : ""}</span>`;
-      billboard.appendChild(mark);
-      anchor.appendChild(billboard);
-      stationsLayer.appendChild(anchor);
+      item.appendChild(mark);
+      stationsOverlay.appendChild(item);
+      stationItems.push({ el: item, x: s.x - WORLD_W / 2, y: s.y - WORLD_H / 2, z: s.z.smooth3 + 3 });
     });
+    positionStations();
   }
 
   const panel = document.getElementById("panel");
@@ -1019,7 +1037,6 @@
   renderPins();
   renderRail();
   renderStations();
-  refreshBillboards();
   fitScale();
 
   // ---------------- いいね（ADR-0004。集計の仕組みは 003_photos.sql） ----------------
