@@ -1747,6 +1747,13 @@ button.line-name:active {
   touch-action: pan-y;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  /*
+   * spots.json の panel.text に書いた \n を、同じコマの中の改行として見せる。
+   * textContent のままなので HTML は入らない（安全）。空白の連続はふつうに
+   * 詰める（pre ではなく pre-line）ので、既存の全角スペースの字下げなど、
+   * \n を使っていないコマの見た目は変わらない。
+   */
+  white-space: pre-line;
 }
 
 /*
