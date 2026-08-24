@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!--
-  検索に載せない。誰でも開けてよい頁ではあるが（合言葉が無ければ何も返らない）、
+  検索に載せない。誰でも開けてよい頁ではあるが（パスポートが無ければ何も返らない）、
   わざわざ見つけてもらう理由もない。
 -->
 <meta name="robots" content="noindex,nofollow">
@@ -12,14 +12,14 @@
 <!--
   投稿された写真を、制作者が目で見て通すための画面（ADR-0004）。
 
-  ■ この頁は公開の URL に置かれる。守っているのは合言葉である。
-  合言葉は service_role の鍵ではない。サーバー側の関数（review_ok、
+  ■ この頁は公開の URL に置かれる。守っているのはパスポートである。
+  パスポートは service_role の鍵ではない。サーバー側の関数（review_ok、
   supabase/schema/003_photos.sql）がその一致だけを確かめ、**できるのは
   未審査の写真を見て、通すか落とすかだけ**である。行を消すことも、他の表を
   読むことも、投稿者の IP のハッシュを読むこともできない。漏れたと思ったら
   set_review_secret() で入れ替える。
 
-  ■ 合言葉はこの頁に保存しない。
+  ■ パスポートはこの頁に保存しない。
   localStorage にも Cookie にも書かない。開くたびに手で貼る。共用の端末に
   置き忘れないためで、当番は週に一度なので手間として釣り合う。
 
@@ -88,7 +88,7 @@
   </ul>
 
   <div class="gate">
-    <input type="password" id="pass" placeholder="合言葉" autocomplete="off">
+    <input type="password" id="pass" placeholder="パスポート" autocomplete="off">
     <button type="button" id="open">開く</button>
   </div>
 
@@ -103,7 +103,7 @@
   const stateElement = document.getElementById('state');
   const listElement = document.getElementById('list');
 
-  /** 合言葉はこの変数の中だけに置く。保存しない（上のコメント参照） */
+  /** パスポートはこの変数の中だけに置く。保存しない（上のコメント参照） */
   let pass = '';
 
   function server() {
@@ -149,7 +149,7 @@
 
     const rows = await call('review_pending', { p_pass: pass });
     if (rows === null) {
-      stateElement.textContent = '開けませんでした。合言葉が違うか、宛先が止まっています。';
+      stateElement.textContent = '開けませんでした。パスポートが違うか、宛先が止まっています。';
       return;
     }
     if (rows.length === 0) {
@@ -204,7 +204,7 @@
   document.getElementById('open').addEventListener('click', () => {
     pass = passInput.value;
     if (!pass) {
-      stateElement.textContent = '合言葉を入れてください。';
+      stateElement.textContent = 'パスポートを入れてください。';
       return;
     }
     load();

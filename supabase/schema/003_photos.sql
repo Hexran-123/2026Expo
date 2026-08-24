@@ -14,10 +14,10 @@
 -- ■ なぜ写真の中身をこの表に持つのか（Storage を使わない理由）
 --
 -- 当初は Supabase Storage の非公開バケットに置く形で決めていた。しかし審査を
--- 「合言葉で開く頁」で行うと決めたため（2026-08-19）、その形では審査ができない。
+-- 「パスポートで開く頁」で行うと決めたため（2026-08-19）、その形では審査ができない。
 -- Storage の非公開バケットを読むには service_role の鍵かログイン済みの利用者が要り、
 -- どちらも「service_role を前端に置かない」「ログインは持たない」という ADR-0004 の
--- 決定と衝突する。合言葉は PostgREST の関数の中でしか確かめられないので、
+-- 決定と衝突する。パスポートは PostgREST の関数の中でしか確かめられないので、
 -- **写真の中身も関数から返せる場所**、すなわちデータベースの中に置く。
 --
 -- 代わりに、重さの問題は次の二つで抑える。
@@ -182,10 +182,10 @@ end;
 $$;
 
 -- ---------------------------------------------------------------
--- 審査（合言葉）
+-- 審査（パスポート）
 --
--- 審査の頁（review.html）は公開の URL に置かれるが、合言葉が無ければ何も返さない。
--- 合言葉は service_role の鍵ではないので、万一漏れても**できるのは審査だけ**である。
+-- 審査の頁（review.html）は公開の URL に置かれるが、パスポートが無ければ何も返さない。
+-- パスポートは service_role の鍵ではないので、万一漏れても**できるのは審査だけ**である。
 -- 行を消すことも、他の表を読むことも、投稿者の IP のハッシュを読むこともできない。
 -- 漏れたと思ったら set_review_secret() で入れ替える。
 -- ---------------------------------------------------------------
@@ -197,9 +197,9 @@ create table if not exists review_secret (
 );
 
 comment on table review_secret is
-  '審査の合言葉のハッシュ。匿名からは読めない。set_review_secret() で入れ替える。';
+  '審査のパスポートのハッシュ。匿名からは読めない。set_review_secret() で入れ替える。';
 
--- 合言葉を決める／入れ替える。運用側が SQL Editor から呼ぶ。
+-- パスポートを決める／入れ替える。運用側が SQL Editor から呼ぶ。
 create or replace function set_review_secret(p_pass text)
 returns void
 language plpgsql
@@ -207,7 +207,7 @@ security definer
 set search_path = public
 as $$
 begin
-  -- 短い合言葉は総当たりで破れる。この関数の中でしか確かめられない以上、
+  -- 短いパスポートは総当たりで破れる。この関数の中でしか確かめられない以上、
   -- 長さだけは機械が保証する。
   if p_pass is null or length(p_pass) < 24 then
     raise exception 'review secret must be at least 24 characters';
@@ -220,7 +220,7 @@ begin
 end;
 $$;
 
--- 合言葉が合っているか。合っていなければ必ず例外で止める。
+-- パスポートが合っているか。合っていなければ必ず例外で止める。
 create or replace function review_ok(p_pass text)
 returns void
 language plpgsql
@@ -233,7 +233,7 @@ declare
 begin
   select hash into v_hash from review_secret where only_one;
 
-  -- 合言葉がまだ決まっていないなら、審査は誰にもできない（開いた状態にしない）
+  -- パスポートがまだ決まっていないなら、審査は誰にもできない（開いた状態にしない）
   if v_hash is null or p_pass is null
      or encode(sha256(convert_to(p_pass, 'utf8')), 'hex') <> v_hash then
     raise exception 'review: wrong pass';
@@ -509,7 +509,7 @@ drop policy if exists board_like_count_select on board_like_count;
 create policy board_like_count_select on board_like_count for select using (true);
 
 -- 匿名に開けるのは、送る関数といいねの関数、そして審査の関数だけ。
--- 審査の関数は合言葉を知らないかぎり必ず例外で止まる（review_ok）。
+-- 審査の関数はパスポートを知らないかぎり必ず例外で止まる（review_ok）。
 revoke all on function submit_photo(text, text, text, double precision, double precision, text, text) from public, anon, authenticated;
 revoke all on function record_board_like(text, boolean)   from public, anon, authenticated;
 revoke all on function review_ok(text)                    from public, anon, authenticated;
@@ -534,5 +534,5 @@ grant execute on function review_mark_published(text, uuid, text) to anon, authe
 --   select cron.schedule('purge-photo-visitor',  '30 4 * * *', 'select purge_photo_visitor()');
 --   select cron.schedule('purge-expired-photos', '40 4 * * *', 'select purge_expired_photos()');
 --
--- 合言葉は SQL Editor から一度だけ決める（24文字以上。控えは手元に）：
+-- パスポートは SQL Editor から一度だけ決める（24文字以上。控えは手元に）：
 --   select set_review_secret('（長い乱数）');

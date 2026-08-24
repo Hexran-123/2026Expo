@@ -57,7 +57,7 @@ delete from photo_submission;
 delete from board_like;
 delete from board_like_count;
 
--- 審査の合言葉。本番では別の値を入れること（set_review_secret）
+-- 審査のパスポート。本番では別の値を入れること（set_review_secret）
 select set_review_secret('local-test-pass-for-review-only');
 
 \echo ''
@@ -487,20 +487,20 @@ exception when insufficient_privilege or others then
   raise notice 'OK  : 匿名は photo_pending を読めない';
 end $$;
 
--- 25. 合言葉が違えば、審査の口は開かない
+-- 25. パスポートが違えば、審査の口は開かない
 do $$
 declare n integer;
 begin
   set role anon;
   select count(*) into n from review_pending('wrong-pass');
   reset role;
-  raise warning 'FAIL: 合言葉が違うのに未審査を読めてしまう';
+  raise warning 'FAIL: パスポートが違うのに未審査を読めてしまう';
 exception when others then
   reset role;
-  raise notice 'OK  : 合言葉が違えば審査できない';
+  raise notice 'OK  : パスポートが違えば審査できない';
 end $$;
 
--- 26. 合言葉が合えば、未審査が読める
+-- 26. パスポートが合えば、未審査が読める
 do $$
 declare n integer;
 begin
@@ -508,23 +508,23 @@ begin
   select count(*) into n from review_pending('local-test-pass-for-review-only');
   reset role;
   if n >= 1 then
-    raise notice 'OK  : 合言葉が合えば未審査を読める（% 件）', n;
+    raise notice 'OK  : パスポートが合えば未審査を読める（% 件）', n;
   else
-    raise warning 'FAIL: 合言葉が合っているのに未審査が出てこない';
+    raise warning 'FAIL: パスポートが合っているのに未審査が出てこない';
   end if;
 exception when others then
   reset role;
   raise warning 'FAIL: 26 番が流れなかった（%）', sqlerrm;
 end $$;
 
--- 27. 匿名は合言葉のハッシュを読めない
+-- 27. 匿名はパスポートのハッシュを読めない
 do $$
 declare h text;
 begin
   set role anon;
   select hash into h from review_secret;
   reset role;
-  raise warning 'FAIL: 匿名が合言葉のハッシュを読めてしまう';
+  raise warning 'FAIL: 匿名がパスポートのハッシュを読めてしまう';
 exception when insufficient_privilege or others then
   reset role;
   raise notice 'OK  : 匿名は review_secret を読めない';

@@ -14,10 +14,10 @@
  * サーバーは受け口と審査のためだけに使い、掲示が済んだら中身を持たない。
  *
  * 使い方:
- *   REVIEW_PASS='（合言葉）' node tools/publish-posts.js
- *   node tools/publish-posts.js '（合言葉）'      ← 手元だけで使うとき
+ *   REVIEW_PASS='（パスポート）' node tools/publish-posts.js
+ *   node tools/publish-posts.js '（パスポート）'      ← 手元だけで使うとき
  *
- * 合言葉は審査の頁（review.html）と同じもの。履歴に残したくなければ環境変数で渡す。
+ * パスポートは審査の頁（review.html）と同じもの。履歴に残したくなければ環境変数で渡す。
  *
  * 保存期限: 掲示した写真は 2027年4月30日にすべて消す。ファイルを消すだけでは
  * git の履歴に残るので、そのときは履歴ごと書き換える。手順は
@@ -35,7 +35,7 @@ const OUT_DIR = path.join(ROOT, "assets/choshi/board/posts");
 
 const pass = process.env.REVIEW_PASS || process.argv[2];
 if (!pass) {
-  console.error("合言葉が要る。");
+  console.error("パスポートが要る。");
   console.error("  REVIEW_PASS='...' node tools/publish-posts.js");
   process.exit(1);
 }
@@ -174,7 +174,7 @@ function elevationAt(lat, lon) {
    * fetch（undici）がまだ握っている接続がある状態で強制終了すると、
    * Windows では "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)"
    * という Node 側の内部クラッシュ表示が出ることがある。実害は無いが、
-   * 「合言葉を直しただけなのに新しいエラーが出た」と誤解させてしまう。
+   * 「パスポートを直しただけなのに新しいエラーが出た」と誤解させてしまう。
    * exitCode だけ立てて自然に終わらせれば、この表示は出ない。
    */
   process.exitCode = 1;

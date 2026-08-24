@@ -91,7 +91,7 @@ assets/choshi/board/  絶景掲示板に出す12枚の写真（観光協会提�
   posts/              乗客から届いた写真（審査を通ったものだけ。tools/publish-posts.js が置く）
 
 board.html          絶景掲示板の本体             ← 自動生成（開くのはこちら）
-review.html         投稿の審査（合言葉で開く）
+review.html         投稿の審査（パスポートで開く）
 tools/board-template.html  board.html のもと     ← 直すのはこちら
 
 ai/artifacts/絶景掲示板/    決定の経緯（mockup-decision）
@@ -212,10 +212,10 @@ clone したばかりの手元でも GitHub Actions でも、格子なしで作�
 週に 1 度、次の 3 つを続けて行う。
 
 ```
-1. review.html をブラウザで開き、合言葉を貼って、1 枚ずつ「通す」「落とす」
+1. review.html をブラウザで開き、パスポートを貼って、1 枚ずつ「通す」「落とす」
    （落としたものはその場で消える。迷ったら落とす）
 
-2. REVIEW_PASS='（合言葉）' node tools/publish-posts.js
+2. REVIEW_PASS='（パスポート）' node tools/publish-posts.js
    通したものを assets/choshi/board/posts/ に置き、
    data/choshi/board-posts.json に足して、board.html を作り直す
 
@@ -226,7 +226,7 @@ clone したばかりの手元でも GitHub Actions でも、格子なしで作�
 **2 と 3 をやらないと、通しただけで掲示板には出ない。** 公開されているのは
 リポジトリのファイルのほうで、サーバーではないため。
 
-合言葉は Supabase の SQL Editor で一度だけ決める（24文字以上）。
+パスポートは Supabase の SQL Editor で一度だけ決める（24文字以上）。
 
 ```sql
 select set_review_secret('（長い乱数）');
