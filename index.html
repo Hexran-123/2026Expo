@@ -455,6 +455,20 @@
         </div>
       </section>
 
+      <!--
+        車上モードで、GPSが線路から離れた地点を、降りる予定ではない駅の
+        近くで検出したときの確認（設計書 3.2「途中下車の確認」）。
+        線路外の判定だけでは、GPSのぶれと本当の途中下車を区別できないため、
+        駅の近くにいるときだけ利用者に聞く。
+      -->
+      <section class="bar bar--alight" id="alight-bar" hidden aria-live="assertive">
+        <p class="alight-text" id="alight-text"></p>
+        <div class="alight-actions">
+          <button type="button" id="alight-yes">降りた</button>
+          <button type="button" id="alight-no">まだ乗っている</button>
+        </div>
+      </section>
+
     </div>
 
     <!-- 下の帯: 天候のひとこと（または発車待ちの見どころ）と、テーマの絞り込み -->

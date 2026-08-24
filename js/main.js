@@ -2572,6 +2572,8 @@ function createTrip(route, spots, schedule, parts) {
 
   const mismatchBar = document.getElementById('mismatch-bar');
   const mismatchText = document.getElementById('mismatch-text');
+  const alightBar = document.getElementById('alight-bar');
+  const alightText = document.getElementById('alight-text');
 
   /** 乗車前 / 発車待ち / 車上 / 降車後 */
   let mode = '乗車前';
@@ -2632,8 +2634,15 @@ function createTrip(route, spots, schedule, parts) {
   let finished = false;
   /** 乗車区間の食い違いを、このトリップですでに確認したか（1トリップにつき最大1回） */
   let mismatchChecked = false;
-  /** 路線から外れはじめた時刻。15 秒続いたら降りたとみなす */
-  let offRouteSince = null;
+  /**
+   * 途中下車の確認で「まだ乗っている」と答えた駅の名前。
+   *
+   * 線路上に戻るまでは、同じ駅について聞き直さない。GPSが線路外と線路上を
+   * 行き来しながらぶれても、そのたびに確認を出しては煩わしいだけになる。
+   */
+  let declinedAlightStation = null;
+  /** いま確認バーで聞いている駅（押されたときにこれを見る） */
+  let pendingAlightStation = null;
   /** いま通知を出しているスポット。通過するまで次に移らない */
   let noticedId = null;
   /*
@@ -3101,6 +3110,33 @@ function createTrip(route, spots, schedule, parts) {
     pendingMismatch = null;
   });
 
+  /**
+   * 途中下車の確認バーを出す（設計書 3.2）。
+   *
+   * GPSが線路から離れた地点を検出しても、それだけでは本当に降りたのか
+   * GPSがぶれただけなのか区別できない。駅の近くにいるときだけ、
+   * 利用者に聞いて確かめる。
+   */
+  function showAlightConfirm(station) {
+    pendingAlightStation = station;
+    alightText.textContent = `${station.name}で降りましたか？`;
+    alightBar.hidden = false;
+  }
+
+  document.getElementById('alight-yes').addEventListener('click', () => {
+    if (!pendingAlightStation) return;
+    const station = pendingAlightStation;
+    alightBar.hidden = true;
+    pendingAlightStation = null;
+    arrive(station);
+  });
+
+  document.getElementById('alight-no').addEventListener('click', () => {
+    if (pendingAlightStation) declinedAlightStation = pendingAlightStation.name;
+    alightBar.hidden = true;
+    pendingAlightStation = null;
+  });
+
   function showRiding() {
     ridingTowards.textContent =
       direction === null ? '' : `${Schedule.terminusOf(schedule, direction)}方面（${direction}）`;
@@ -3137,7 +3173,6 @@ function createTrip(route, spots, schedule, parts) {
     wakeLock.on();
     setFollowing(true);
     // 前の乗車の名残りを持ちこさない
-    offRouteSince = null;
     delayShown = null;
     delayCheckedAt = null;
     nextStopShown = null;
@@ -3145,6 +3180,9 @@ function createTrip(route, spots, schedule, parts) {
     boardedAlong = null;
     mismatchChecked = false;
     mismatchBar.hidden = true;
+    declinedAlightStation = null;
+    pendingAlightStation = null;
+    alightBar.hidden = true;
     /*
      * 向きは、乗ってからの動きで決め直す。
      *
@@ -3356,19 +3394,39 @@ function createTrip(route, spots, schedule, parts) {
     }
 
     if (mode === '車上') {
-      // 停車では抜けない。抜けるのは路線から離れたときだけ（設計書 3.2）
+      // その駅の 80m 以内で、かつ停まっているか（降りる駅の判定にも、下の確認にも使う）
+      const station = stationAt(route, coords);
+
+      /*
+       * 停車では抜けない。線路から離れても、それだけでは抜けない（設計書 3.2）。
+       *
+       * 以前は「30m の外に 15 秒」で自動的に降りたとみなしていたが、カーブや
+       * トンネルの出口でGPSがしばらく大きくぶれることがあり、まだ乗っている
+       * のに旅の記録が閉じてしまうことがあった（乗客からのFB、2026-08-24）。
+       * 線路の上へ戻ってきたかどうかは見た目のぶれでしかないので、
+       * 「旅の途中」という判定そのものは崩さない。
+       *
+       * 本当に降りたかどうかは、駅の近くにいるかどうかで見分ける。電車を
+       * 降りられるのは走っている途中ではなく駅に停まっているときだけなので、
+       * 降りる予定ではない駅の近くで線路から離れているなら、利用者に聞いて
+       * 確かめる（showAlightConfirm）。「まだ乗っている」と答えるまでは
+       * 何度も聞き直さない。線路上に戻れば、その答えも聞きかけの確認も忘れる。
+       */
       if (onRoute) {
-        offRouteSince = null;
-      } else {
-        if (offRouteSince === null) offRouteSince = timestamp;
-        if (timestamp - offRouteSince >= Onboard.OFF_ROUTE_LIMIT_MS) {
-          leaveRiding('乗車前');
-          return;
+        declinedAlightStation = null;
+        if (pendingAlightStation) {
+          alightBar.hidden = true;
+          pendingAlightStation = null;
         }
+      } else if (
+        station
+        && station.name !== destinationName()
+        && declinedAlightStation !== station.name
+      ) {
+        showAlightConfirm(station);
       }
 
-      // 降りる駅に着いたか。その駅の 80m 以内で、かつ停まっている
-      const station = stationAt(route, coords);
+      // 降りる駅に着いたか
       if (station && isJourneyEnd(station)) {
         arrive(station);
         return;

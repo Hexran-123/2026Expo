@@ -49,9 +49,6 @@
   /** 位置情報が途切れてから、推定を続ける上限（ミリ秒） */
   const DEAD_RECKON_LIMIT_MS = 60000;
 
-  /** 路線から外れた状態がこれだけ続いたら、降りたとみなす（ミリ秒） */
-  const OFF_ROUTE_LIMIT_MS = 15000;
-
   /** 遅れを出しはじめる大きさ（分）。これ未満は「予定どおり」 */
   const DELAY_MINUTES_FLOOR = 1;
 
@@ -440,7 +437,6 @@ function trackDirection(anchorAlong, currentAlong, previousDirection) {
     NOTICE_SECONDS,
     LOOK_NOW_METERS,
     DEAD_RECKON_LIMIT_MS,
-    OFF_ROUTE_LIMIT_MS,
 
     distanceMeters,
     prepareTrack,
