@@ -184,6 +184,29 @@ for (const spotId of postsBySpot.keys()) {
   process.exit(1);
 }
 
+/*
+ * 上バーの絞り込み（駅／絶景）でどちらに出るか。board-spots.json の categories。
+ *
+ * 省略を許さないのは、書き忘れたスポットが黙って片方の絞り込みから消えるため。
+ * 地図から1本ピンが減っても、画面を見ているだけでは気づけない。ここで止めれば、
+ * 作り直したその場で分かる（このファイルの他の検査と同じ考え方）。
+ */
+const VALID_CATEGORIES = new Set(["station", "scenery"]);
+function categoriesOf(spot) {
+  const list = spot.categories;
+  const bad = !Array.isArray(list) || list.length === 0
+    || list.some(c => !VALID_CATEGORIES.has(c));
+  if (bad) {
+    console.error(`data/choshi/board-spots.json の ${spot.id} に categories が無いか、値が正しくない。`);
+    console.error("");
+    console.error('  "categories": ["station"] … 駅そのもの');
+    console.error('  "categories": ["scenery"] … 駅ではないもの');
+    console.error('  "categories": ["station", "scenery"] … 両方に出る（外川駅）');
+    process.exit(1);
+  }
+  return list;
+}
+
 const spotsJs = boardSpots.spots
   // 公式写真も乗客の写真も無いスポットは、地図に出さない
   .filter(s => s.photo || postsBySpot.has(s.id))
@@ -195,6 +218,7 @@ const spotsJs = boardSpots.spots
       photo: s.photo ? s.id : null,
       caption: s.caption,
       approximate: s.confidence === "approximate",
+      categories: categoriesOf(s),
       posts: postsBySpot.get(s.id) || [],
     };
   });
@@ -230,4 +254,9 @@ fill("__RAIL_DATA__", JSON.stringify(rail));
 fs.writeFileSync(OUT_PATH, tpl);
 console.log("saved:", path.relative(ROOT, OUT_PATH), `(${fs.statSync(OUT_PATH).size} bytes)`);
 console.log("posts:", postsJs.length, "/ spots on map:", spotsJs.length);
+console.log(
+  "  うち 駅:", spotsJs.filter(s => s.categories.includes("station")).length,
+  "/ 絶景:", spotsJs.filter(s => s.categories.includes("scenery")).length,
+  "（外川駅は両方に入るので、足すと総数を1件超える）"
+);
 console.log("approximate confidence spots:", boardSpots.spots.filter(s => s.confidence === "approximate").map(s => s.id).join(", "));

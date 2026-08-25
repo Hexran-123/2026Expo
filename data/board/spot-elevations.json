@@ -1,14 +1,14 @@
 {
   "_comment": [
-    "絶景掲示板の12スポットの地面の高さ（メートル）。自動生成なので直接編集しない。",
+    "絶景掲示板の掲示スポットの地面の高さ（メートル）。自動生成なので直接編集しない。",
     "作り直すとき: node tools/build-board-elevations.js",
     "",
     "lat/lon も一緒に持っているのは、data/choshi/board-spots.json の座標を直したのに",
-    "この表を作り直し忘れたことを tools/build-board-mockup.js が気づけるようにするため。",
+    "この表を作り直し忘れたことを tools/build-board.js が気づけるようにするため。",
     "座標が食い違っていると、あちらが止まって作り直しを促す。",
     "",
     "地図に描く高さ（ピンのZ）はここでは決めない。段彩の頭打ち（45m）と誇張度（×1.2）と",
-    "見やすさのための底上げ（+80）は build-board-mockup.js 側で足している。"
+    "見やすさのための底上げ（+80）は build-board.js 側で足している。"
   ],
   "source": "国土地理院 標高タイル DEM5A（穴はDEM10Bで補完）",
   "gridGeneratedAt": "2026-08-18",
@@ -108,6 +108,60 @@
       "lat": 35.709794,
       "lon": 140.861045,
       "elevationM": 22.73
+    },
+    {
+      "id": "manganji",
+      "lat": 35.7058699,
+      "lon": 140.8570759,
+      "elevationM": 31
+    },
+    {
+      "id": "choshieki",
+      "lat": 35.7294122,
+      "lon": 140.8273135,
+      "elevationM": 5.76
+    },
+    {
+      "id": "nakanochoeki",
+      "lat": 35.7288796,
+      "lon": 140.8335069,
+      "elevationM": 4.34
+    },
+    {
+      "id": "kannoneki",
+      "lat": 35.7290391,
+      "lon": 140.8402233,
+      "elevationM": 11.44
+    },
+    {
+      "id": "motochoshieki",
+      "lat": 35.7310562,
+      "lon": 140.8478146,
+      "elevationM": 26.17
+    },
+    {
+      "id": "kasagami",
+      "lat": 35.7284288,
+      "lon": 140.8570855,
+      "elevationM": 27.28
+    },
+    {
+      "id": "kimigahamaeki",
+      "lat": 35.7135504,
+      "lon": 140.8605022,
+      "elevationM": 13.57
+    },
+    {
+      "id": "ashikajima",
+      "lat": 35.7217916,
+      "lon": 140.8635436,
+      "elevationM": 26.24
+    },
+    {
+      "id": "inuboeki",
+      "lat": 35.706245,
+      "lon": 140.861175,
+      "elevationM": 24.06
     }
   ]
 }

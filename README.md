@@ -81,7 +81,7 @@ data/
     preview.json    路線選択画面の小さな地図      ← 自動生成
     spots.json      絶景スポットの情報            ← 手で書く
     schedule.json   時刻表                        ← 手で書く
-    board-spots.json 掲示スポット16件              ← 手で書く（下記）
+    board-spots.json 掲示スポット25件              ← 手で書く（下記）
     board-posts.json 掲示している乗客の写真の一覧  ← 審査当番の道具が書き足す
   yurakucho/        有楽町線（多路線対応の実演用。中身も実データ）
   board/            絶景掲示板の地図のもと         ← 自動生成

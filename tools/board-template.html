@@ -87,6 +87,38 @@
   .topbar-title { font-family: var(--font-map); color: var(--station); font-size: 15px; letter-spacing: .02em; display: flex; align-items: baseline; gap: 10px; }
   .topbar-title small { color: #8B8E96; font-weight: 400; font-size: 12px; }
 
+  /*
+   * 駅と絶景の絞り込み（2026-08-24）。
+   *
+   * **地図の上ではなく上バーに置く。** 2026-08-19 に操作説明を上バーへ移したとき、
+   * 「地図の上には地図そのものと最小限の操作UIだけを載せる」と決めたため（設計メモ3章）。
+   * 押せるものが一つ増えても、地図の見え方はこれまでどおりになる。
+   *
+   * margin-right: auto で、作品名のすぐ右に寄せる（上バーは space-between なので、
+   * これが無いと帯のまんなかに浮いて、操作説明との区別がつきにくくなる）。
+   */
+  .filter-tabs {
+    margin-right: auto;
+    display: flex; gap: 2px; padding: 2px;
+    background: #24262B; border: 1px solid #35383F; border-radius: 8px;
+  }
+  .filter-tabs button {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 5px 13px; border-radius: 6px;
+    background: transparent; color: #8B8E96;
+    font-family: var(--font-map); font-size: 12.5px; line-height: 1.4;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .filter-tabs button:hover { color: #C7C9CE; background: rgba(255,255,255,.05); }
+  /*
+   * 選んでいるものは塗る。薄い・濃いの差だけにしないのは、車窓絶景ナビの
+   * テーマの絞り込みと同じ理由（設計書4.1）——小さな的では、濃さの違いだけでは
+   * 「選んである」のか「押せない」のかが読み取れない。
+   */
+  .filter-tabs button[aria-pressed="true"] { background: var(--theme-sea); color: #FFF; }
+  .filter-tabs button[aria-pressed="true"]:hover { background: #235d79; }
+  .filter-tabs .count { font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
+
   .stage { position: relative; flex: 1; display: flex; min-height: 0; }
 
   /* ---------------- 3D 地図ステージ ---------------- */
@@ -460,6 +492,19 @@
 <div class="app">
   <div class="topbar">
     <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <!--
+      駅と絶景の絞り込み。開いたときは「すべて」で、覚えない（次に開くとまた
+      すべてに戻る）。審査員や来場者が最初に見るものを、いつも同じにしておくため。
+
+      role="radiogroup" ではなく、aria-pressed を持つ普通のボタンを3つ並べてある。
+      radiogroup にすると矢印キーでの移動を自前で書くことになり、Tab で順に辿れる
+      いまの単純さを手放すことになる。3つしかないので、その複雑さに見合わない。
+    -->
+    <div class="filter-tabs" role="group" aria-label="写真の種類でしぼりこむ">
+      <button type="button" data-filter="all" aria-pressed="true">すべて <span class="count"></span></button>
+      <button type="button" data-filter="station" aria-pressed="false">駅 <span class="count"></span></button>
+      <button type="button" data-filter="scenery" aria-pressed="false">絶景 <span class="count"></span></button>
+    </div>
     <div class="controls-hint">
       <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
     </div>
@@ -617,12 +662,21 @@
     kind: "spot",
     id: spot.id, name: spot.name, u: spot.u, v: spot.v, z: spot.z,
     photoId: spot.photo || spot.posts[spot.posts.length - 1] || null,
+    categories: spot.categories,
     spot,
   })).concat(
     USER_POSTS.filter(post => !post.spotId).map(post => ({
       kind: "post",
       id: post.id, name: "乗客から届いた写真", u: post.u, v: post.v, z: post.z,
       photoId: post.id,
+      /*
+       * 掲示板の投稿の窓から、地図をクリックして置かれた写真。掲示スポットに
+       * 紐づかないので、どちらの区分に入るかを名乗るものが無い。
+       * **「絶景」に入れる。** 投稿の窓は「絶景スポットを投稿する」と題してあり、
+       * 駅を撮ってもらうために置いた口ではないため。駅として出したい写真が
+       * 届くようになったら、投稿の窓に区分の選択を足すこと。
+       */
+      categories: ["scenery"],
       post,
     }))
   );
@@ -649,7 +703,23 @@
     }
     return clusters;
   }
-  const CLUSTERS = buildClusters(PIN_SOURCES);
+  /*
+   * 絞り込みの状態。"all" / "station" / "scenery" の3つから1つを選ぶ。
+   *
+   * **クラスターは絞り込むたびに作り直す。** 読み込み時に一度だけ作って、
+   * あとは表示・非表示を切り替えるだけにもできるが、それだと片方が隠れた
+   * クラスターが「見えているものは1件なのに、開くと2件出る」ピンになる。
+   * 本銚子駅と森のトンネル、仲ノ町駅とヤマサ醤油工場は実際に同じ場所にあり、
+   * 「すべて」のときだけ1本にまとまる（設計メモ2章）。作り直しは
+   * 25件ぶんの計算なので安い。
+   */
+  let filter = "all";
+  function sourcesFor(which) {
+    if (which === "all") return PIN_SOURCES;
+    return PIN_SOURCES.filter(it => it.categories.includes(which));
+  }
+  function visibleSources() { return sourcesFor(filter); }
+  let CLUSTERS = buildClusters(visibleSources());
   const RAIL = __RAIL_DATA__;
 
   // ---------------- カメラの状態 ----------------
@@ -1033,6 +1103,47 @@
       </div>
     `;
   }
+
+  // ---------------- 駅と絶景の絞り込み（上バー） ----------------
+  //
+  // 駅名ラベル（.stations-overlay の11駅）は、どちらを選んでも消さない。
+  // あれは写真ではなく地図の骨格——どこを見ているかを読み取るためのもので、
+  // 方位針や縮尺と同じ側に属する。消えるのは写真のピンだけ。
+  const filterTabs = document.querySelectorAll(".filter-tabs button");
+
+  function setFilter(next) {
+    if (filter === next) return;
+    filter = next;
+
+    /*
+     * 隠れる側のパネルが開いたままだと、地図に無いものの写真が右に居座る。
+     * 単純に閉じる。lastOpenedPin を先に捨てるのは、closePanel がそこへ
+     * フォーカスを戻そうとするため——このあと renderPins がそのピンごと
+     * 作り直すので、戻す先が消える。押した人の指はいま絞り込みのボタンの
+     * 上にあるので、そのままそこに置いておけばよい。
+     */
+    lastOpenedPin = null;
+    closePanel();
+
+    CLUSTERS = buildClusters(visibleSources());
+    renderPins();
+    updateFilterTabs();
+  }
+
+  function updateFilterTabs() {
+    for (const button of filterTabs) {
+      const which = button.dataset.filter;
+      button.setAttribute("aria-pressed", String(which === filter));
+      // 件数は「掲示スポットが何件か」。外川駅は駅と絶景の両方に入るので、
+      // 駅と絶景を足すと「すべて」を1件超える（board-spots.json の _comment 参照）。
+      button.querySelector(".count").textContent = sourcesFor(which).length;
+    }
+  }
+
+  for (const button of filterTabs) {
+    button.addEventListener("click", () => setFilter(button.dataset.filter));
+  }
+  updateFilterTabs();
 
   renderPins();
   renderRail();

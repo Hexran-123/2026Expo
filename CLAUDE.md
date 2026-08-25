@@ -34,7 +34,7 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 - `data/choshi/schedule.json` — 銚子電鉄の時刻表。**生成物ではない**（`tools/check-schedule.js` は
   検査するだけで書かない）。ダイヤ改正のたびに手で直す。
 - `data/lines.json` — 路線の一覧
-- `data/choshi/board-spots.json` — 絶景掲示板の掲示スポット16件（座標・出典・確からしさ・`naviSpotId`）。
+- `data/choshi/board-spots.json` — 絶景掲示板の掲示スポット25件（座標・出典・確からしさ・`naviSpotId`・`categories`）。
   同じフォルダにあるが `spots.json` とは別のファイルで、用途も別。
   キャベツ畑など同じ場所を指す項目があるので、片方を直したらもう片方も確かめること（ADR-0005）。
 - `data/choshi/board-posts.json` — 掲示している「乗客から届いた写真」の一覧。
@@ -56,7 +56,7 @@ python -m http.server 8080     # http://localhost:8080/ を開く
 ### 応募作品は 2 画面ある（車窓絶景ナビ／絶景掲示板）
 
 `index.html` の**車窓絶景ナビ**（乗車中・スマートフォン・銚子電鉄の沿線）のほかに、
-**絶景掲示板**（旅行前・パソコン専用・銚子エリア全体の掲示スポット16件）がある。設計書 1.1 の表を参照。
+**絶景掲示板**（旅行前・パソコン専用・銚子エリア全体の掲示スポット25件）がある。設計書 1.1 の表を参照。
 
 - 仕様は [docs/絶景掲示板_設計メモ.md](docs/絶景掲示板_設計メモ.md)。立体地図にした理由は
   [ADR-0005](docs/adr/0005-絶景掲示板だけは斜め視点の立体地図にする.md)。
