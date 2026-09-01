@@ -83,6 +83,8 @@ data/
     schedule.json   時刻表                        ← 手で書く
     board-spots.json 掲示スポット25件              ← 手で書く（下記）
     board-posts.json 掲示している乗客の写真の一覧  ← 審査当番の道具が書き足す
+    timeline.json   時間軸（1923/1981年度/現在）  ← 手で書く
+    sources.json    出典タブに出す一覧（10件）    ← 手で書く
   yurakucho/        有楽町線（多路線対応の実演用。中身も実データ）
   board/            絶景掲示板の地図のもと         ← 自動生成
   source/           もとになった生データと計算結果 ← 自動生成
@@ -185,11 +187,17 @@ node tools/build-board-elevations.js   掲示スポットの地面の高さを�
 
 node tools/build-board-rail.js         線路の高さ表現を作る（data/board/rail-variants.json）
 
+node tools/build-timeline-geometry.js   昔の崖線を計算する（data/board/timeline-geometry.json）
+                                       屏風ヶ浦の後退量の推定。地形を作り直したときだけ
+
+python tools/fetch-timeline-photos.py  国土地理院の空中写真を落とす
+                                       （assets/choshi/timeline/）。すでにある分は飛ばす
+
 node tools/build-board.js              テンプレートにデータを流し込んで board.html を作る
 ```
 
-ふだん要るのはいちばん下の1行だけ。テンプレートか `data/choshi/board-spots.json` の
-文章まわりを直したら、これを走らせる。
+ふだん要るのはいちばん下の1行だけ。テンプレートか `data/choshi/board-spots.json`・
+`data/choshi/timeline.json` の文章まわりを直したら、これを走らせる。
 
 ```
 node tools/check-board-fresh.js        作り直し忘れていないか確かめる
@@ -201,6 +209,19 @@ node tools/check-board-fresh.js        作り直し忘れていないか確か�
 clone したばかりの手元でも GitHub Actions でも、格子なしで作り直せる。
 `board-spots.json` の座標を直したのにこの表を作り直し忘れると、
 `build-board.js` が座標の食い違いに気づいて止まる。
+
+**時間軸について**（[ADR-0006](docs/adr/0006-絶景掲示板に時間軸を持たせる.md)）:
+掲示板は空間軸／時間軸の二つのモードを持つ。時間軸のデータは、人が手で書く
+`data/choshi/timeline.json` と、生成物の `data/board/timeline-geometry.json`（昔の崖線）、
+それに `assets/choshi/timeline/` の空中写真（国土地理院、出典表示必須）からできている。
+**`timeline.json` に書く数字は、必ず [docs/時間軸_裏取り記録.md](docs/時間軸_裏取り記録.md) に
+出典があること。** `build-board.js` は、駅名が線路データと食い違っていたら止まる。
+
+**出典タブについて**: 掲示板の3つ目の軸「出典」に出す一覧は、人が手で書く
+`data/choshi/sources.json`（10件・3グループ。時間軸の内容を削除した2026-09-01に、
+その裏付けだけに使っていた出典も一緒に削った）。**掲示板が実際に使っているものだけを載せる**
+——画面に出ていないものの出典を並べると、それ自体が嘘になる。`timeline.json` の `sources` と
+歴史編の引用・参考文献に、ここへ載っていないものがあると `build-board.js` が止まる。
 
 **写真について**: `assets/choshi/board/<id>.webp` をローカルパスで参照している。
 `https://www.choshikanko.com/...` への直リンクは
@@ -243,17 +264,23 @@ select set_review_secret('（長い乱数）');
 CSS・JS・データ・陰影の絵まで全部を畳んだ 1 枚を用意してある。
 
 ```
-demo/all.html            両路線（路線選択画面から始まる）5.9 MB
-demo/choshi.html         銚子電鉄だけ（作品そのもの）    5.0 MB
+demo/all.html            両路線（路線選択画面から始まる）2.49 MB
+demo/choshi.html         銚子電鉄だけ（作品そのもの）    1.66 MB
 demo/yurakucho.html      有楽町線だけ（実演用）          1.3 MB
 demo/yurakucho-gps.html  有楽町線・開いた直後がGPS       1.3 MB
 ```
 
-`all.html`・`choshi.html` がふくれているのは、`assets/choshi/test_ima.jpg`
-（3.4MB、未変換の試し撮り画像。S02・S03 の成因カードに仮で入れてある）が
-そのまま base64 で埋め込まれているため。他の絵（陰影起伏図など）と同じく
-WebP へ変換・縮小してから差し替えれば、下の表の水準（0.5〜1.4MB 程度）に戻る。
-現地調査（2026-08-20）で本物の写真に差し替えるときに、あわせてやること。
+`all.html`・`choshi.html` には、成因カード最後のコマの写真（現地調査で撮った
+もの。いずれも1200px・品質82でWebP化ずみ）が4枚 base64で埋め込まれる。
+S01は仲ノ町駅のヤマサ醤油工場、S02・S03（成因カードを一本化しているため
+同じ1枚）は本銚子駅の森のトンネル、S05はひまわり畑、S06は外川駅の駅舎
+（`S01-yamasa.webp` ほか、`data/choshi/spots.json` 参照）。**S04（キャベツ畑）
+だけは画像を持たず文字のみ**——現地調査（8月）が端境期で畑に土しか無く、
+銚子市観光協会のフォトダウンロード素材（キャベツ畑を電車が横切る写真、
+絶景掲示板の `traincabbage` で使用中）を転用する案も検討したが、成因カードの
+画像は自分たちで撮る・描くものだけに限る方針（設計書6.2）を優先し、見送った。
+もとは無関係なスタバの写真（`test_ima.jpg`）が全スポット共通で仮置き
+されていたのを差し替えた。
 
 **ダブルクリックで開くだけで動く。**路線・地形・時刻表・絶景スポットは
 1 枚の中に埋め込んであるので、これらはサーバーもネットも要らない。
@@ -476,9 +503,9 @@ python tools/shrink-hillshade.py data/source/yurakucho-hillshade.png  data/yurak
 1 枚デモの作りそのものの限界で、本体の URL を渡せば起きない。
 
 この表は測定時点（成因カードの絵が空だった頃）のもの。いまは
-`test_ima.jpg`（上の節）が埋め込まれているぶん `demo/all.html`・
-`demo/choshi.html` の実際のサイズはこれより大きい。本物の写真に
-差し替えたら、この表も測り直すこと。
+成因カードの写真5枚（上の節）が埋め込まれているぶん `demo/all.html`・
+`demo/choshi.html` の実際のサイズはこれより大きい。写真の枚数や
+差し替えが進んだら、この表も測り直すこと。
 
 順に、効いた順。
 

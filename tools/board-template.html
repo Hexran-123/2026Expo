@@ -119,6 +119,233 @@
   .filter-tabs button[aria-pressed="true"]:hover { background: #235d79; }
   .filter-tabs .count { font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
 
+  /* ================= 時間軸（2026-08-27） =================
+   *
+   * 掲示板は「空間軸」と「時間軸」の二つのモードを持つ（ADR-0006）。
+   * 空間軸はこれまでの掲示板そのもので、時間軸に切り替えると
+   * 1923年／1981年度／現在の3時点で地物が描き換わる。
+   *
+   * **上バーの要素数はモードが変わっても4つのまま。** 軸の切替タブの右にあるのが、
+   * 空間軸では「すべて／駅／絶景」、時間軸では「1923／1981年度／現在」で、
+   * 同じ場所に入れ替わりで入る。だから帯が増えて混むことはない。
+   */
+
+  /* 軸の切替。見た目は絞り込みタブと同じ規則（選んだものは塗る）に揃える */
+  .axis-tabs svg { width: 19px; height: 19px; flex: none; display: block; }
+  .axis-tabs button { padding: 5px 12px 5px 9px; align-items: center; }
+  /*
+   * .filter-tabs は margin-right:auto を持っていて、これが「作品名のすぐ右に寄せ、
+   * 操作説明との間を空ける」役目をしている。軸の切替はその**左側**に並ぶので、
+   * ここでは打ち消す。auto を持つのは右隣の帯（絞り込み／年）のほうだけでよい。
+   */
+  .axis-tabs { margin-right: 0; }
+
+  /*
+   * 軸の切替と、その右の帯のあいだの仕切り。
+   * これが無いと、同じ見た目の帯が二つ並んで「6つのボタンが1列」に見える。
+   */
+  .bar-divider { width: 1px; height: 22px; background: #35383F; flex: none; margin: 0 -4px; }
+
+  /* 年の帯。3つしかないので絞り込みタブと同じ作り（aria-pressed の普通のボタン） */
+  .year-tabs .kicker { font-size: 10.5px; opacity: .7; }
+  .year-tabs button { flex-direction: column; align-items: flex-start; gap: 1px; padding: 3px 12px; line-height: 1.25; }
+
+  /* ---- 崖線（3Dの世界の中・地形の板と同じ平面に置く） ---- */
+  .cliff-layer { position: absolute; left: -500px; top: -634px; width: 1000px; height: 1268px; pointer-events: none; }
+  .cliff-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .cliff-line {
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .cliff-line.on { opacity: 1; }
+  /* 実測（現在）は実線、推定（1923・1981年度）は破線。質問6の決定を見た目にも出す */
+  .cliff-line.measured  { stroke: #3B4A5A; stroke-width: 3.2; }
+  .cliff-line.estimated { stroke: #C25B3A; stroke-width: 3.2; stroke-dasharray: 9 7; }
+
+  /* ---- 時間軸の地物（3Dの外・投影して置く。駅名と同じ作り） ---- */
+  .time-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+  .tl-item { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
+  .tl-mark {
+    position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+    pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0;
+    font-family: var(--font-map);
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .tl-mark.on { opacity: 1; }
+  .tl-mark.off { opacity: 0; pointer-events: none; }
+  .tl-mark .glyph {
+    width: 22px; height: 22px; border-radius: 6px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #2B2A28;
+    background: #F3EBD8; border: 2px solid #4A4640;
+    box-shadow: 0 2px 5px rgba(0,0,0,.45);
+  }
+  .tl-mark .label {
+    font-size: 12.5px; font-weight: 600; color: #fff;
+    -webkit-text-stroke: 3px rgba(18,20,24,.55); paint-order: stroke fill;
+  }
+  .tl-mark:hover .glyph, .tl-mark.active .glyph { background: var(--theme-sea-sub); border-color: #fff; }
+  .tl-mark:focus-visible { outline: none; }
+  .tl-mark:focus-visible .glyph { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--theme-sea); }
+
+  /*
+   * 地物は名前を印の**下**に置く（駅は右に置く）。
+   *
+   * 横に並べていたときは、「銚子」駅の右隣に「ヤマサ醤油」が伸びてきて、駅名と
+   * 乗車人員を覆っていた（2026-08-27に実機で確認）。縦に積めば、名前がどれだけ
+   * 長くても横には広がらないので、駅の列とぶつからない。
+   * さらに 9px 下げて、駅名の行から外している。
+   */
+  .tl-mark:not(.tl-station):not(.turbine) {
+    flex-direction: column; gap: 2px;
+    transform: translate(-50%, calc(-50% + 9px));
+  }
+  .tl-mark:not(.tl-station):not(.turbine) .label { font-size: 11.5px; }
+
+  /*
+   * 風車は8基あるので、地物と同じ印にすると台地が埋まる。小さな点にして、
+   * 名前も付けず、押せなくもしてある（.time-overlay の pointer-events は none で、
+   * button だけが auto を持つ。span で作ってあるのでそのまま素通りする）。
+   * 風車の話は「台地の畑」を押したときと、産業レイヤーの説明のほうに置いてある。
+   */
+  .tl-mark.turbine .glyph {
+    width: 11px; height: 11px; border-radius: 50%; font-size: 0;
+    border-width: 1.5px; border-color: #6B6862;
+    background: #FBFAF4; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  }
+
+  /*
+   * 時間軸のときの駅。空間軸の駅名（.station-mark）とは別物で、
+   * 押せることと、乗車人員を添えることが違う。
+   */
+  .tl-station .dot {
+    width: 11px; height: 11px; border-radius: 50%; background: var(--station);
+    border: 2px solid var(--rail); box-shadow: 0 1px 4px rgba(0,0,0,.4); flex: none;
+  }
+  /*
+   * 乗車人員は駅名の**下**に積む。横に並べると「銚子 1,263」の幅で隣の
+   * 「仲ノ町 103」に届いてしまう（この2駅は実際に500mしか離れていない）。
+   * 縦に積めば、数字が何桁でも横幅は駅名のままで済む。
+   */
+  .tl-station .txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+  .tl-station .riders {
+    font-size: 11px; color: #F3EBD8; font-variant-numeric: tabular-nums;
+    -webkit-text-stroke: 3px rgba(18,20,24,.55); paint-order: stroke fill;
+  }
+  .tl-station .riders:empty { display: none; }
+  .tl-station:hover .dot, .tl-station.active .dot { background: var(--theme-sea-sub); border-color: #fff; }
+  .tl-station:focus-visible .dot { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--theme-sea); }
+
+  /* ---- 時間軸の右パネル ---- */
+  .tl-panel { font-size: 13.5px; }
+  .tl-panel .kicker { font-size: 11.5px; color: var(--theme-sea); font-weight: 700; letter-spacing: .06em; }
+  .tl-panel h2 { font-family: var(--font-map); font-size: 17px; margin: 2px 0 4px; line-height: 1.45; }
+  .tl-panel .year { font-size: 12px; color: var(--ink-soft); margin: 0 0 12px; }
+  .tl-panel .lead { margin: 0 0 16px; }
+  .tl-panel h3 {
+    font-family: var(--font-map); font-size: 13px; margin: 18px 0 7px;
+    padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,.12);
+  }
+  .tl-stat { display: flex; align-items: baseline; gap: 8px; margin: 0 0 3px; }
+  .tl-stat .k { font-size: 12px; color: var(--ink-soft); flex: none; min-width: 7.5em; }
+  .tl-stat .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tl-stat .u { font-size: 11.5px; color: var(--ink-soft); }
+  .tl-note { font-size: 11.5px; color: var(--ink-soft); margin: 0 0 11px; padding-left: .2em; }
+
+  /*
+   * 確からしさの名乗り（質問6の決定）。**推定と未確認は必ず画面に出す。**
+   * 実測のときは出さない——全部に付けると、かえって読み飛ばされる。
+   */
+  .cert {
+    display: inline-block; font-size: 10px; line-height: 1.5; border-radius: 4px;
+    padding: 0 5px; margin-left: 5px; vertical-align: 1px; white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .cert--estimated  { color: #B4502F; }
+  .cert--approximate { color: #7A6A3A; }
+  .cert--unverified { color: #6B6862; background: rgba(0,0,0,.05); }
+
+  .tl-photos { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0 4px; }
+  .tl-photo img { width: 100%; border-radius: 8px; display: block; background: #ddd; }
+  .tl-photo figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+  .tl-photo .when { font-weight: 700; color: var(--ink); }
+
+  .tl-back {
+    appearance: none; border: 1px solid rgba(0,0,0,.2); background: transparent; cursor: pointer;
+    font-family: var(--font-map); font-size: 12px; color: var(--ink-soft);
+    border-radius: 6px; padding: 4px 10px; margin-bottom: 12px;
+  }
+  .tl-back:hover { background: rgba(0,0,0,.05); color: var(--ink); }
+
+  .tl-compare { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 2px 0 8px; }
+  .tl-compare th, .tl-compare td { text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(0,0,0,.1); }
+  .tl-compare th { font-weight: 600; color: var(--ink-soft); font-size: 11.5px; white-space: nowrap; }
+  .tl-compare td { font-variant-numeric: tabular-nums; }
+  .tl-compare tr.here { background: rgba(42,110,143,.10); }
+
+  .tl-src { font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
+  .tl-src a { color: var(--theme-sea); }
+
+  /*
+   * 調べて書いた説明文を、そのまま載せる場所（2026-08-27）。要約も言い換えもしない。
+   * **畳んであるのは隠したいからではない。** 右パネルの主役は3時点の比較のほうで、
+   * 開いた瞬間に長文が出ると、比較の表がスクロールの下へ押し出されてしまう。
+   */
+  .tl-essay {
+    margin: 16px 0 4px; border: 1px solid rgba(0,0,0,.14);
+    border-radius: 8px; background: rgba(0,0,0,.025);
+  }
+  .tl-essay > summary {
+    cursor: pointer; list-style: none; padding: 9px 12px;
+    font-family: var(--font-map); font-size: 12.5px; line-height: 1.5;
+  }
+  .tl-essay > summary::-webkit-details-marker { display: none; }
+  .tl-essay > summary::before { content: "▶"; font-size: 9px; margin-right: 7px; color: var(--ink-soft); }
+  .tl-essay[open] > summary::before { content: "▼"; }
+  .tl-essay > summary:hover { background: rgba(0,0,0,.05); }
+  .tl-essay > summary:focus-visible { outline: 2px solid var(--theme-sea); outline-offset: -2px; }
+  .tl-essay .essay-body { padding: 0 13px 12px; }
+  .tl-essay .essay-body > p { margin: 0 0 11px; line-height: 1.9; text-indent: 1em; }
+  .tl-essay .essay-body > p.tl-note, .tl-essay .essay-body > p.tl-src { text-indent: 0; }
+  .tl-essay h3 { margin-top: 14px; }
+  .tl-essay ol {
+    margin: 0 0 10px; padding-left: 1.4em;
+    font-size: 11px; color: var(--ink-soft); line-height: 1.7;
+  }
+  .tl-essay ol li { margin-bottom: 6px; }
+  .tl-essay ol a { color: var(--theme-sea); word-break: break-all; }
+
+  /*
+   * 元の文章が持っている図。細かい地図や写真なので、押すと原寸で開く。
+   * 2枚以上あるときは並べる（.essay-figs-grid）——「銚子漁港の歴史と近代化による発展」の
+   * 空中写真3枚＋街並みの写真1枚がこれにあたる。1枚だけなら縦に並ぶだけで違いは出ない。
+   */
+  .essay-figs { margin: 0 0 4px; }
+  .essay-figs-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 8px;
+  }
+  .essay-fig { margin: 0 0 10px; }
+  .essay-fig img {
+    width: 100%; display: block; border-radius: 6px;
+    border: 1px solid rgba(0,0,0,.15); background: #fff;
+  }
+  .essay-fig figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 4px; text-align: center; line-height: 1.6; }
+  .essay-fig .credit { font-size: 10.5px; }
+  .essay-fig .credit a { color: var(--theme-sea); }
+
+  /* ---- 出典タブ ---- */
+  .src-group { margin: 0 0 4px; }
+  .src-list { list-style: none; margin: 0; padding: 0; }
+  .src-list li { margin: 0 0 13px; padding-left: 11px; border-left: 2px solid rgba(0,0,0,.10); }
+  .src-list .name { font-size: 12.5px; line-height: 1.6; }
+  .src-list .use { font-size: 11.5px; color: var(--ink-soft); margin: 3px 0 0; line-height: 1.65; }
+  .src-list .use b { color: var(--ink); font-weight: 600; }
+  .src-list .cond { font-size: 11px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.6; }
+  .src-list .cond::before { content: "※ "; }
+  .src-list a { color: var(--theme-sea); font-size: 11px; word-break: break-all; }
+  .src-count { font-size: 11.5px; color: var(--ink-soft); }
+
   .stage { position: relative; flex: 1; display: flex; min-height: 0; }
 
   /* ---------------- 3D 地図ステージ ---------------- */
@@ -500,11 +727,40 @@
       radiogroup にすると矢印キーでの移動を自前で書くことになり、Tab で順に辿れる
       いまの単純さを手放すことになる。3つしかないので、その複雑さに見合わない。
     -->
-    <div class="filter-tabs" role="group" aria-label="写真の種類でしぼりこむ">
+    <!--
+      軸の切替（2026-08-27、ADR-0006）。空間軸＝これまでの掲示板、時間軸＝3時点で
+      地物が描き換わる画面。**開いたときは必ず空間軸で、覚えない**（次に開くとまた
+      空間軸に戻る）。絞り込みが「覚えない」のと同じ理由——審査員や来場者が最初に
+      見るものを、いつも同じにしておくため。
+
+      絵は「地図ピン ⇄ 時計」。5案をモックアップで見比べて選んだ
+      （ai/artifacts/絶景掲示板/mockups/icon-時間軸切替.html）。
+    -->
+    <div class="filter-tabs axis-tabs" id="axisTabs" role="group" aria-label="見る軸を切り替える">
+      <button type="button" data-axis="space" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg>空間
+      </button>
+      <button type="button" data-axis="time" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg>時間
+      </button>
+      <button type="button" data-axis="src" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M6.6 3.6h7.2L18 7.8V20a.4.4 0 0 1-.4.4H6.6a.4.4 0 0 1-.4-.4V4a.4.4 0 0 1 .4-.4Z"/><path d="M13.6 3.7v4.2h4.2"/><path d="M9 12.6h6M9 15.9h4.4"/></svg>出典
+      </button>
+    </div>
+    <div class="bar-divider"></div>
+
+    <div class="filter-tabs" id="filterTabs" role="group" aria-label="写真の種類でしぼりこむ">
       <button type="button" data-filter="all" aria-pressed="true">すべて <span class="count"></span></button>
       <button type="button" data-filter="station" aria-pressed="false">駅 <span class="count"></span></button>
       <button type="button" data-filter="scenery" aria-pressed="false">絶景 <span class="count"></span></button>
     </div>
+
+    <!--
+      年の帯。絞り込みタブと入れ替わりで同じ場所に入るので、上バーの要素は増えない。
+      **無段階のスライダーにはしない**（ADR-0006）。1950年の位置にツマミを置いたとき
+      画面に出るものは、必ず補間＝作り話になるため。
+    -->
+    <div class="filter-tabs year-tabs" id="yearTabs" role="group" aria-label="見る時点を選ぶ" hidden></div>
     <div class="controls-hint">
       <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
     </div>
@@ -518,12 +774,21 @@
           <div class="sea-plate"></div>
           __BAND_LAYERS__
           <div class="pins-layer" id="railLayer"></div>
+          <!--
+            昔の崖線（時間軸モードのみ）。これだけは3Dの世界の中に置く——
+            地形の板と同じ平面に載っていないと、崖が地面から浮いて見えるため。
+            中身は tools/build-timeline-geometry.js が計算した推定線で、
+            JS が renderCliff() で入れる。
+          -->
+          <div class="pins-layer" id="cliffLayer"></div>
         </div>
       </div>
 
       <!-- 駅名とピンは3Dの外。位置は JS が投影して決める（.stations-overlay・.pins-overlay のコメント参照） -->
       <div class="stations-overlay" id="stationsOverlay"></div>
       <div class="pins-overlay" id="pinsOverlay"></div>
+      <!-- 時間軸の地物と駅。駅名と同じく3Dの外に置いて、投影して並べる -->
+      <div class="time-overlay" id="timeOverlay" hidden></div>
 
       <div class="zoom-controls">
         <button type="button" id="zoomIn">＋</button>
@@ -798,6 +1063,7 @@
     // 駅名もピンも3Dの外にあるので、位置はここで毎回投影して置き直す
     positionStations();
     positionPins();
+    positionTimeItems();   // 時間軸の地物と駅（空間軸のときは中身が空なので何もしない）
   }
 
   // ---------------- マウス操作 ----------------
@@ -852,6 +1118,22 @@
    * これで尻尾の先が、その場所の地面にちょうど触れる。
    */
   const pinItems = [];
+
+  /*
+   * 時間軸の状態。**本体は下のほう（いいねと投稿の窓のあとろ）にまとめてある**が、
+   * 入れ物と状態だけはここで作っておく。
+   *
+   * なぜ分けるか: render() は setup の途中（fitScale()）から呼ばれる。そのとき
+   * positionTimeItems() が timeItems を読むので、const の初期化より前に読むことになり、
+   * 宣言だけ後ろに置くと Temporal Dead Zone で落ちる。配列は先に作っておけばよい。
+   *
+   * mode は開いたときは必ず "space"。**覚えない**（次に開くとまた空間軸に戻る）。
+   * timePoint の最初は "y1923" ——押し進めると 1923 → 1981年度 → 現在 の順に
+   * 話が流れるようにするため。
+   */
+  const timeItems = [];
+  let mode = "space";
+  let timePoint = "y1923";
 
   function positionPins() {
     for (const it of pinItems) {
@@ -1109,7 +1391,13 @@
   // 駅名ラベル（.stations-overlay の11駅）は、どちらを選んでも消さない。
   // あれは写真ではなく地図の骨格——どこを見ているかを読み取るためのもので、
   // 方位針や縮尺と同じ側に属する。消えるのは写真のピンだけ。
-  const filterTabs = document.querySelectorAll(".filter-tabs button");
+  /*
+   * **[data-filter] で絞ること。** 軸の切替（.axis-tabs）と年の帯（.year-tabs）も
+   * 見た目を揃えるために .filter-tabs を名乗っているので、".filter-tabs button" だけだと
+   * それらのボタンまで拾ってしまい、「空間」を押したら写真の絞り込みが走る、という
+   * ことになる（2026-08-27に実際に踏みかけた）。
+   */
+  const filterTabs = document.querySelectorAll(".filter-tabs button[data-filter]");
 
   function setFilter(next) {
     if (filter === next) return;
@@ -1507,6 +1795,520 @@
     if (e.key !== "Escape") return;
     if (modalBackdrop.classList.contains("open")) { closeModal(); return; }
     closePanel();
+  });
+
+  /* ================================================================
+   * 時間軸（2026-08-27、ADR-0006）
+   *
+   * 掲示板を「空間軸」と「時間軸」の二つのモードにする。時間軸では
+   * 1923年／1981年度／現在の3時点で、銚子という土地と銚子電鉄の姿が描き換わる。
+   *
+   * **主語は土地であって、鉄道会社の年史ではない。** 変えるのは地形の上に載っている
+   * ものだけで、段彩の板そのものは動かさない——台地と崖という地形は100年では
+   * 変わらないからである。唯一動くのが屏風ヶ浦の崖線で、これは実際に後退している。
+   *
+   * ここに出る数字は全部 data/choshi/timeline.json から来ていて、その出どころは
+   * docs/時間軸_裏取り記録.md に1件ずつ書いてある。**出典の無い数字は出さない。**
+   * 推定と未確認は画面にそう名乗らせる（.cert）。
+   * ================================================================ */
+
+  const TIMELINE = __TIMELINE_JS__;
+  const TLGEO = __TIMELINE_GEO_JS__;
+  const TL_PHOTOS = __TIMELINE_PHOTOS_JS__;
+
+  const POINT_IDS = TIMELINE.points.map(p => p.id);
+  const POINT_BY_ID = new Map(TIMELINE.points.map(p => [p.id, p]));
+  const LAYER_BY_ID = new Map(TIMELINE.layers.map(l => [l.id, l]));
+
+  /*
+   * 確からしさの名乗り。**実測のときは何も出さない。**
+   * 全部に印を付けると、かえって読み飛ばされて、推定が目立たなくなる。
+   */
+  const CERT_LABEL = { estimated: "推定", approximate: "概略", unverified: "確認中" };
+  function certBadge(c) {
+    if (!c || c === "exact") return "";
+    return `<span class="cert cert--${esc(c)}">${esc(CERT_LABEL[c] || c)}</span>`;
+  }
+
+  const SOURCES = __SOURCES_JS__;
+
+  const axisTabsEl = document.getElementById("axisTabs");
+  const filterTabsEl = document.getElementById("filterTabs");
+  const yearTabsEl = document.getElementById("yearTabs");
+  const timeOverlay = document.getElementById("timeOverlay");
+  const cliffLayerHost = document.getElementById("cliffLayer");
+
+  // 何を選んでいるか。null なら「その年ぜんたい」を出す
+  let tlSelection = null;
+
+  // ---------------- 地図に置くもの ----------------
+
+  const cliffPaths = new Map();
+  let timeBuilt = false;
+
+  /*
+   * ずらし（labelOffset）は**画面の画素でそのまま足す**。拡大率を掛けない。
+   *
+   * 掛けてしまうと、寄れば寄るほど名前が遠くへ飛んでいって、どの点のことなのか
+   * 分からなくなる。画面固定なら、寄っても引いても印との距離が変わらない。
+   * ずらすのは名前が重ならないようにするためだけで、**位置の主張ではない**
+   * （data/choshi/timeline.json の _comment を参照）。
+   */
+  function positionTimeItems() {
+    for (const it of timeItems) {
+      const { dx, dy, scale } = projectToScreen(it.x, it.y, it.z);
+      const ox = it.offset ? it.offset[0] : 0;
+      const oy = it.offset ? it.offset[1] : 0;
+      it.el.style.transform =
+        `translate3d(${(dx + ox).toFixed(1)}px, ${(dy + oy).toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
+    }
+  }
+
+  function addTimeItem(x, y, z, markEl, presentIn, extra) {
+    const item = document.createElement("div");
+    item.className = "tl-item";
+    item.appendChild(markEl);
+    timeOverlay.appendChild(item);
+    timeItems.push(Object.assign({ el: item, mark: markEl, x, y, z, presentIn }, extra || {}));
+  }
+
+  function buildCliff() {
+    const paths = POINT_IDS
+      .filter(id => TLGEO.cliff[id])
+      .map(id => {
+        const c = TLGEO.cliff[id];
+        const cls = c.confidence === "exact" ? "measured" : "estimated";
+        return `<path d="${c.path}" class="cliff-line ${cls}" data-point="${esc(id)}"></path>`;
+      })
+      .join("");
+    const div = document.createElement("div");
+    div.className = "cliff-layer";
+    div.style.transform = `translateZ(${TLGEO.cliffZ}px)`;
+    div.innerHTML = `<svg viewBox="0 0 ${WORLD_W} ${WORLD_H}">${paths}</svg>`;
+    cliffLayerHost.appendChild(div);
+    div.querySelectorAll(".cliff-line").forEach(p => cliffPaths.set(p.dataset.point, p));
+  }
+
+  function buildTimeItems() {
+    if (timeBuilt) return;
+    timeBuilt = true;
+
+    // 崖線（海岸線と崖レイヤー）は2026-09-01に内容を削除したので描かない。
+    // data/board/timeline-geometry.json 自体は tools/build-board.js が存在を
+    // 要求するので残してあるが、ここで読まなければ画面には出ない。
+
+    // --- 駅 ---
+    // 位置は空間軸の駅名と同じ（線路の高さ +3）。違うのは、押せることと、
+    // その年の1日平均乗車人員を添えることだけ。
+    const anchorByName = new Map(RAIL.stationAnchors.map(a => [a.name, a]));
+    for (const st of TIMELINE.stations) {
+      const a = anchorByName.get(st.name);
+      if (!a) continue;   // build-board.js が名前の食い違いを先に止めているので、ここには来ない
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "tl-mark tl-station";
+      mark.innerHTML =
+        `<span class="dot"></span><span class="txt"><span class="label">${esc(st.name)}</span><span class="riders"></span></span>`;
+      mark.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectTime({ kind: "station", name: st.name }, mark);
+      });
+      addTimeItem(a.x - WORLD_W / 2, a.y - WORLD_H / 2, a.z.smooth3 + 3, mark, new Set(st.in), {
+        kind: "station", data: st, ridersEl: mark.querySelector(".riders"),
+      });
+    }
+
+    // --- 地物（醤油・漁港・畑・崖） ---
+    for (const f of TIMELINE.features) {
+      const { x, y } = fromLatLon(f.lat, f.lon);
+      const present = new Set(POINT_IDS.filter(id => f.states[id] && f.states[id].present));
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "tl-mark";
+      mark.innerHTML =
+        `<span class="glyph"></span><span class="label">${esc(f.name)}</span>`;
+      mark.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectTime({ kind: "feature", id: f.id }, mark);
+      });
+      addTimeItem(x, y, groundZ(x, y) + 4, mark, present, {
+        kind: "feature", data: f, glyphEl: mark.querySelector(".glyph"),
+        offset: f.labelOffset || null,
+      });
+    }
+
+    // --- 風車 ---
+    // 8基あるので、印は小さく、名前は付けない（台地が字で埋まる）。押せなくてよい。
+    // 風車の話は「台地の畑」を押したときと、産業レイヤーの説明のほうに置いてある。
+    const wt = TIMELINE.windTurbines;
+    if (wt) {
+      const present = new Set(wt.appearsIn);
+      for (const pair of wt.points) {
+        const { x, y } = fromLatLon(pair[0], pair[1]);
+        const mark = document.createElement("span");
+        mark.className = "tl-mark turbine";
+        mark.setAttribute("aria-hidden", "true");
+        mark.innerHTML = `<span class="glyph">✦</span>`;
+        addTimeItem(x, y, groundZ(x, y) + 4, mark, present, { kind: "turbine" });
+      }
+    }
+  }
+
+  // ---------------- 年を切り替える ----------------
+
+  function applyTimePoint() {
+    for (const it of timeItems) {
+      const on = it.presentIn.has(timePoint);
+      it.mark.classList.toggle("on", on);
+      it.mark.classList.toggle("off", !on);
+      if (it.kind === "station" && it.ridersEl) {
+        const r = it.data.riders && it.data.riders[timePoint];
+        it.ridersEl.textContent = r ? r.total.toLocaleString("ja-JP") : "";
+      }
+      if (it.kind === "feature" && it.glyphEl) {
+        const s = it.data.states[timePoint];
+        if (s && s.mark) it.glyphEl.textContent = s.mark;
+      }
+    }
+    for (const entry of cliffPaths) entry[1].classList.toggle("on", entry[0] === timePoint);
+    updateYearTabs();
+    positionTimeItems();
+    renderTimePanel();
+  }
+
+  function setTimePoint(next) {
+    if (!POINT_BY_ID.has(next) || timePoint === next) return;
+    timePoint = next;
+    applyTimePoint();
+  }
+
+  function buildYearTabs() {
+    yearTabsEl.innerHTML = TIMELINE.points.map(p =>
+      `<button type="button" data-point="${esc(p.id)}" aria-pressed="false">` +
+      `<span>${esc(p.label)}</span>${p.kicker ? `<span class="kicker">${esc(p.kicker)}</span>` : ""}</button>`
+    ).join("");
+    yearTabsEl.querySelectorAll("button").forEach(b => {
+      b.addEventListener("click", () => setTimePoint(b.dataset.point));
+    });
+  }
+
+  function updateYearTabs() {
+    yearTabsEl.querySelectorAll("button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.point === timePoint));
+    });
+  }
+
+  // ---------------- 右パネル ----------------
+
+  function selectTime(sel, markEl) {
+    tlSelection = sel;
+    timeOverlay.querySelectorAll(".tl-mark.active").forEach(m => m.classList.remove("active"));
+    if (markEl) markEl.classList.add("active");
+    renderTimePanel();
+  }
+
+  function statRow(s) {
+    const unit = s.unit ? `<span class="u">${esc(s.unit)}</span>` : "";
+    return `<div class="tl-stat"><span class="k">${esc(s.label)}</span>` +
+      `<span class="v">${esc(s.value)}</span>${unit}${certBadge(s.confidence)}</div>` +
+      (s.note ? `<p class="tl-note">${esc(s.note)}</p>` : "");
+  }
+
+  /** 年ぜんたいの説明。2026-09-01に4レイヤーの中身を削除したため、
+   *  いまは年の見出しだけを出す（板そのもの・路線・駅名ラベルは空間軸と共通で残る）。 */
+  function yearPanelHTML(p) {
+    const layers = TIMELINE.layers
+      .filter(l => p.layerNotes && p.layerNotes[l.id])
+      .map(l => `<h3>${esc(l.name)}</h3><p>${esc(p.layerNotes[l.id])}</p>`)
+      .join("");
+    const stats = (p.stats || []).map(statRow).join("");
+    const srcLinks = TIMELINE.sources.slice(0, 5).map(s =>
+      `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join("／");
+    return `
+      <div class="panel-head">
+        ${p.kicker ? `<div class="kicker">${esc(p.kicker)}</div>` : ""}
+        ${p.title ? `<h2>${esc(p.title)}</h2>` : ""}
+        <p class="year">${esc(p.yearLabel)}</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          ${p.lead ? `<p class="lead">${esc(p.lead)}</p>` : ""}
+          ${stats ? `<h3>この年の数字</h3>${stats}` : ""}
+          ${layers}
+          ${TIMELINE.sources.length ? `
+          <h3>出どころ</h3>
+          <p class="tl-src">
+            数字はすべて公的統計と査読論文から取っています。1件ずつの出典は
+            リポジトリの <code>docs/時間軸_裏取り記録.md</code> にあります。<br>
+            主なもの：${srcLinks}
+          </p>` : ""}
+          ${TIMELINE.stations.length || TIMELINE.features.length
+            ? `<p class="tl-src">地図の駅や地物を押すと、その場所の3時点を並べて見られます。</p>`
+            : ""}
+        </div>
+      </div>`;
+  }
+
+  /** 駅ひとつの3時点 */
+  function stationPanelHTML(st) {
+    const rows = TIMELINE.points.map(p => {
+      const here = p.id === timePoint ? ' class="here"' : "";
+      if (!st.in.includes(p.id)) {
+        return `<tr${here}><th>${esc(p.label)}</th><td colspan="3">まだ無い</td></tr>`;
+      }
+      const r = st.riders && st.riders[p.id];
+      if (!r) return `<tr${here}><th>${esc(p.label)}</th><td colspan="3">記録なし</td></tr>`;
+      return `<tr${here}><th>${esc(p.label)}</th><td>${r.total.toLocaleString("ja-JP")}</td>` +
+        `<td>${r.normal.toLocaleString("ja-JP")}</td><td>${r.pass.toLocaleString("ja-JP")}</td></tr>`;
+    }).join("");
+
+    const a = st.riders && st.riders.y1981;
+    const b = st.riders && st.riders.ynow;
+    const kept = (a && b) ? Math.round((b.total / a.total) * 100) : null;
+    const keptNote = kept === null ? "" :
+      `<p class="tl-note">1981年度に対して <b>${kept}%</b> が残っている。10駅を合わせると26%で、` +
+      `いちばん残っているのは犬吠の71%。<b>生活の駅ほど深く減り、観光の駅は残った。</b></p>`;
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">駅</div>
+        <h2>${esc(st.name)}</h2>
+        <p class="year">${esc(st.opened)} 開業${st.openedNote ? "　" + esc(st.openedNote) : ""}</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <button type="button" class="tl-back" id="tlBack">← ${esc(POINT_BY_ID.get(timePoint).label)}の全体へ</button>
+          <h3>1日あたりの乗車人員</h3>
+          <table class="tl-compare">
+            <tr><th></th><th>計</th><th>普通</th><th>定期</th></tr>
+            ${rows}
+          </table>
+          ${keptNote}
+          <h3>出どころ</h3>
+          <p class="tl-src">
+            1981年度：${esc(TIMELINE.stationSource.y1981)}<br>
+            現在：${esc(TIMELINE.stationSource.ynow)}<br>
+            開業日：${esc(TIMELINE.stationSource.opened)}
+          </p>
+        </div>
+      </div>`;
+  }
+
+  /*
+   * 説明文をそのまま載せる（2026-08-27、2026-09-01 に複数枚対応）。
+   *
+   * **要約も言い換えもしない。** 現地と文献を調べて書いた文章で、言葉づかいそのものが
+   * 成果物だからである。paragraphs を段落として並べ、引用・参考文献も元の文章が
+   * 持っているものをそのまま出す（timeline.json の essay）。
+   *
+   * 元の文章が図を参照しているなら、figures でその図も一緒に載せる。**参照だけ残して図が
+   * 無い状態にしない**——読み手が自分の見落としだと思ってしまう。図には caption と credit を
+   * 必ず付ける（元の文章が持っている図題と出典表示をそのまま写す）。
+   *
+   * **1本の説明文が持つ図は1枚とは限らない。** 「銚子漁港の歴史と近代化による発展」は
+   * 4枚（空中写真3枚＋街並みの写真1枚）を持つので、配列にしてある。1枚だけの説明文
+   * （「愛宕山の採石場」）も同じ形（要素数1の配列）で書く。
+   */
+  function essayFigureHTML(fig) {
+    return `<figure class="essay-fig">
+        <a href="${esc(fig.src)}" target="_blank" rel="noopener">
+          <img src="${esc(fig.src)}" alt="${esc(fig.caption)}" loading="lazy">
+        </a>
+        <figcaption>${esc(fig.caption)}<br><span class="credit">${esc(fig.credit)}${
+          fig.link ? `　<a href="${esc(fig.link.url)}" target="_blank" rel="noopener">${esc(fig.link.label)}</a>` : ""
+        }</span></figcaption>
+      </figure>
+      ${fig.note ? `<p class="tl-note">${esc(fig.note)}</p>` : ""}`;
+  }
+
+  function essayHTML(e) {
+    if (!e) return "";
+    const body = e.paragraphs.map(t => `<p>${esc(t)}</p>`).join("");
+    const refs = (e.references || []).map(r => {
+      const url = r.url ? `<br><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>` : "";
+      const acc = r.accessed ? `（最終閲覧日：${esc(r.accessed)}）` : "";
+      return `<li>${esc(r.text)}${url}${acc}</li>`;
+    }).join("");
+    const figures = e.figures || [];
+    const figsHTML = figures.length
+      ? `<div class="essay-figs${figures.length > 1 ? " essay-figs-grid" : ""}">${figures.map(essayFigureHTML).join("")}</div>`
+      : "";
+    const figSources = figures.map(f => f.source).filter(Boolean);
+    return `<details class="tl-essay">
+        <summary>もっと詳しく読む：${esc(e.title)}</summary>
+        <div class="essay-body">
+          ${figsHTML}
+          ${body}
+          <h3>引用・参考文献</h3>
+          <ol>${refs}</ol>
+          <p class="tl-src">${esc(e.from)}${figSources.length ? `<br>図の出どころ：${figSources.map(esc).join("／")}` : ""}</p>
+        </div>
+      </details>`;
+  }
+
+  /** 地物ひとつの3時点（＋空中写真） */
+  function featurePanelHTML(f) {
+    const states = TIMELINE.points.map(p => {
+      const s = f.states[p.id];
+      if (!s) return "";
+      const here = p.id === timePoint ? "（いま見ている時点）" : "";
+      return `<h3>${esc(p.label)}${here}</h3><p>${esc(s.text)}</p>`;
+    }).join("");
+
+    // 空中写真。1923年は撮影という手段そのものが無いので出ない（無いものは出さない）
+    const photos = TIMELINE.points.map(p => {
+      const spec = TIMELINE.aerialPhoto[p.id];
+      const src = TL_PHOTOS[f.id + "-" + p.id];
+      if (!spec || !src) return "";
+      return `<figure class="tl-photo">
+        <img src="${esc(src)}" alt="${esc(f.name)}の空中写真（${esc(spec.capturedLabel)}）" loading="lazy">
+        <figcaption><span class="when">${esc(spec.capturedLabel)}</span>　${esc(spec.credit)}</figcaption>
+      </figure>`;
+    }).join("");
+
+    const cliffNote = (f.id === "byobu" && TLGEO.cliff.y1923)
+      ? `<p class="tl-note">地図の崖線は、1923年が現在よりおよそ${TLGEO.cliff.y1923.offsetMetres}m沖、
+         1981年度がおよそ${TLGEO.cliff.y1981.offsetMetres}m沖と推定しています。
+         この地図では${TLGEO.model.metresPerPixel}mが1画素なので、100年ぶんでも7画素ほどしか動きません。
+         誇張していないのは、そのほうが正直だからです。${certBadge("estimated")}</p>`
+      : "";
+
+    const layerName = (LAYER_BY_ID.get(f.layer) || {}).name || "";
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">${esc(layerName)}</div>
+        <h2>${esc(f.name)}</h2>
+        <p class="year">3つの時点で見る</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <button type="button" class="tl-back" id="tlBack">← ${esc(POINT_BY_ID.get(timePoint).label)}の全体へ</button>
+          ${states}
+          ${cliffNote}
+          ${essayHTML(f.essay)}
+          ${photos ? `<h3>空から見ると</h3><div class="tl-photos">${photos}</div>` : ""}
+          ${photos && f.photoNote ? `<p class="tl-note">${esc(f.photoNote)}</p>` : ""}
+          <h3>出どころ</h3>
+          <p class="tl-src">位置：${esc(f.source)}${certBadge(f.confidence)}<br>
+            空中写真：国土地理院。撮影年は写真ごとに書いてあります。<br>
+            解説の根拠は <code>docs/時間軸_裏取り記録.md</code>。</p>
+        </div>
+      </div>`;
+  }
+
+  function renderTimePanel() {
+    if (mode !== "time") return;
+    let html;
+    if (tlSelection && tlSelection.kind === "station") {
+      const st = TIMELINE.stations.find(s => s.name === tlSelection.name);
+      html = st ? stationPanelHTML(st) : yearPanelHTML(POINT_BY_ID.get(timePoint));
+    } else if (tlSelection && tlSelection.kind === "feature") {
+      const f = TIMELINE.features.find(x => x.id === tlSelection.id);
+      html = f ? featurePanelHTML(f) : yearPanelHTML(POINT_BY_ID.get(timePoint));
+    } else {
+      html = yearPanelHTML(POINT_BY_ID.get(timePoint));
+    }
+    panelInner.innerHTML = html;
+    panel.classList.add("open");
+    const back = document.getElementById("tlBack");
+    if (back) back.addEventListener("click", () => selectTime(null, null));
+  }
+
+  /* ================================================================
+   * 出典（2026-08-27、ADR-0006 の追記）
+   *
+   * **この画面が使っているものだけを並べる。** 画面に出ていないものの出典を
+   * 並べると、それ自体が嘘になる（車窓絶景ナビ側の時刻表や環境音は入れない）。
+   *
+   * 中身は data/choshi/sources.json。timeline.json の sources と食い違うと
+   * tools/build-board.js が止まる。**1件黙って落ちるのを防ぐため。**
+   * ================================================================ */
+
+  function sourcesPanelHTML() {
+    const total = SOURCES.groups.reduce((n, g) => n + g.items.length, 0);
+    const groups = SOURCES.groups.map(g => {
+      const items = g.items.map(it => {
+        const link = it.url
+          ? `<br><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.url)}</a>` : "";
+        const cond = it.note ? `<p class="cond">${esc(it.note)}</p>` : "";
+        return `<li><span class="name">${esc(it.label)}</span>${link}
+          <p class="use"><b>使っているところ：</b>${esc(it.use)}</p>${cond}</li>`;
+      }).join("");
+      return `<h3>${esc(g.name)}</h3>
+        ${g.note ? `<p class="tl-note">${esc(g.note)}</p>` : ""}
+        <ul class="src-list src-group">${items}</ul>`;
+    }).join("");
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">出典</div>
+        <h2>この画面が使っているもの</h2>
+        <p class="year"><span class="src-count">${total}件</span></p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <p class="lead">${esc(SOURCES.intro)}</p>
+          ${groups}
+        </div>
+      </div>`;
+  }
+
+  function renderSourcesPanel() {
+    panelInner.innerHTML = sourcesPanelHTML();
+    panel.classList.add("open");
+  }
+
+  // ---------------- 軸を切り替える ----------------
+
+  function setMode(next) {
+    // 出典タブだけは、押し直したときにパネルを開き直せるように素通しする
+    if (mode === next && next !== "src") return;
+    mode = next;
+    const isTime = mode === "time";
+    const isSrc = mode === "src";
+
+    if (isTime) buildTimeItems();
+
+    /*
+     * 時間軸では、写真のピンも投稿も、いいねも、写真の絞り込みも出さない（ADR-0006）。
+     * 1982年の地図の上に2026年に撮られた写真が立っていると時代がねじれるし、
+     * 過去の時点に写真を送ることはできない。画面がはっきり別の道具になるので、
+     * 何ができるのか迷わずに済む。
+     *
+     * **出典でも同じように隠す。** 読むための画面なので、押せるものを地図に残さない。
+     * ただし駅名は残す——地図が地図でなくなると、どこの出典なのか分からなくなる。
+     */
+    pinsOverlay.hidden = isTime || isSrc;
+    // 駅名の base ラベルは常に出す。時間軸は自前の駅マーク（TIMELINE.stations）で
+    // 上書きする作りだったが、2026-09-01に中身を削除したため、隠したままだと
+    // 時間軸で駅名が1つも出ない状態になってしまう（出典軸と同じ理由で残す）。
+    stationsOverlay.hidden = false;
+    filterTabsEl.hidden = isTime || isSrc;
+    postFab.hidden = isTime || isSrc;
+
+    timeOverlay.hidden = !isTime;
+    yearTabsEl.hidden = !isTime;
+
+    axisTabsEl.querySelectorAll("button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.axis === mode));
+    });
+
+    // 開いたままの写真パネルは、別の軸に移ったあとも前の軸のものを右に残してしまう
+    if (isTime || isSrc) {
+      lastOpenedPin = null;
+      document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+    }
+    tlSelection = null;
+
+    if (isTime) applyTimePoint();
+    else if (isSrc) renderSourcesPanel();
+    else panel.classList.remove("open");
+  }
+
+  buildYearTabs();
+  axisTabsEl.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => setMode(b.dataset.axis));
   });
 </script>
 

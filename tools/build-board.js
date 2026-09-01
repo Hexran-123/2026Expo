@@ -43,6 +43,51 @@ const boardSpots = JSON.parse(fs.readFileSync(path.join(ROOT, "data/choshi/board
 const elevTable = JSON.parse(fs.readFileSync(path.join(ROOT, "data/board/spot-elevations.json"), "utf8"));
 const boardPosts = JSON.parse(fs.readFileSync(path.join(ROOT, "data/choshi/board-posts.json"), "utf8"));
 
+// 時間軸（2026-08-27、ADR-0006）。timeline.json は人が手で書くファイル、
+// timeline-geometry.json は tools/build-timeline-geometry.js の生成物。
+const timeline = JSON.parse(fs.readFileSync(path.join(ROOT, "data/choshi/timeline.json"), "utf8"));
+const timelineGeoPath = path.join(ROOT, "data/board/timeline-geometry.json");
+if (!fs.existsSync(timelineGeoPath)) {
+  console.error("data/board/timeline-geometry.json が無い（昔の崖線）。");
+  console.error("");
+  console.error("作ること:");
+  console.error("  node tools/build-timeline-geometry.js");
+  process.exit(1);
+}
+const timelineGeo = JSON.parse(fs.readFileSync(timelineGeoPath, "utf8"));
+
+/*
+ * 出典（2026-08-27、ADR-0006 の追記）。人が手で書くファイル。
+ *
+ * **timeline.json の sources と食い違わせない。** あちらにあってこちらに無い出典が
+ * あると、画面の「出典」タブから1件黙って落ちる。エラーも出ないので誰も気づかない
+ * ——timeline.json の駅名を rail-variants.json と突き合わせているのと同じ理由で、
+ * ここで止めて直させる。歴史編1章の引用・参考文献の URL も同じように見る。
+ */
+const sources = JSON.parse(fs.readFileSync(path.join(ROOT, "data/choshi/sources.json"), "utf8"));
+{
+  const items = sources.groups.flatMap(g => g.items);
+  const haveIds = new Set(items.map(i => i.timelineId).filter(Boolean));
+  const missingIds = timeline.sources.map(s => s.id).filter(id => !haveIds.has(id));
+  const haveUrls = new Set(items.map(i => i.url).filter(Boolean));
+  const essayRefs = timeline.features
+    .flatMap(f => (f.essay && f.essay.references) || [])
+    .map(r => r.url).filter(Boolean);
+  const missingUrls = essayRefs.filter(u => !haveUrls.has(u));
+
+  if (missingIds.length || missingUrls.length) {
+    console.error("data/choshi/sources.json に載っていない出典がある。");
+    for (const id of missingIds) {
+      const s = timeline.sources.find(x => x.id === id);
+      console.error(`  timeline.json の sources: ${id}  ${s.label}`);
+    }
+    for (const u of missingUrls) console.error(`  歴史編の引用・参考文献: ${u}`);
+    console.error("");
+    console.error("data/choshi/sources.json に足すこと（timelineId / url を揃える）。");
+    process.exit(1);
+  }
+}
+
 // board-spots.json の座標を直したのに標高の表を作り直し忘れると、ピンが前の場所の
 // 地面の高さのまま描かれてしまう。黙って通さず、ここで止めて作り直しを促す。
 const byId = new Map(elevTable.spots.map(e => [e.id, e]));
@@ -244,6 +289,50 @@ function fill(placeholder, value) {
   tpl = tpl.split(placeholder).join(value);
 }
 
+// ------------------------------------------------------------------
+// 時間軸（ADR-0006）
+// ------------------------------------------------------------------
+
+/*
+ * 駅の名前が線路データと食い違っていたら、ここで止める。
+ *
+ * 画面側（board-template.html の buildTimeItems）は、名前で線路上の位置を引いている。
+ * 食い違うとその駅だけ黙って地図から消える——**エラーも出ないので誰も気づかない。**
+ * データの取り違えは、静かに間違った地図を出すのが一番まずい。
+ */
+{
+  const known = new Set(rail.stationAnchors.map(a => a.name));
+  const missing = timeline.stations.map(s => s.name).filter(n => !known.has(n));
+  if (missing.length) {
+    console.error(`data/choshi/timeline.json の駅名が data/board/rail-variants.json に無い: ${missing.join("、")}`);
+    console.error("どちらかの綴りが違う。線路データ側の名前に合わせること。");
+    process.exit(1);
+  }
+}
+
+/*
+ * 空中写真（国土地理院）。tools/fetch-timeline-photos.py が置いたものを拾う。
+ * **無いものは出さない**（設計書9.3）。1923年は写真そのものが存在しないので、
+ * ここに入らないのが正しい。まだ取っていないときも、画面は写真の欄ごと出さずに動く。
+ */
+const TL_DIR = path.join(ROOT, "assets/choshi/timeline");
+const relTlDir = path.relative(path.dirname(OUT_PATH), TL_DIR).split(path.sep).join("/") || ".";
+const timelinePhotos = {};
+for (const f of timeline.features) {
+  for (const pointId of Object.keys(timeline.aerialPhoto)) {
+    if (!timeline.aerialPhoto[pointId]) continue;
+    const name = `${f.id}-${pointId}.webp`;
+    if (fs.existsSync(path.join(TL_DIR, name))) {
+      timelinePhotos[`${f.id}-${pointId}`] = `${relTlDir}/${name}`;
+    }
+  }
+}
+
+fill("__TIMELINE_JS__", JSON.stringify(timeline));
+fill("__TIMELINE_GEO_JS__", JSON.stringify(timelineGeo));
+fill("__TIMELINE_PHOTOS_JS__", JSON.stringify(timelinePhotos));
+fill("__SOURCES_JS__", JSON.stringify(sources));
+
 fill("__BAND_LAYERS__", bandLayers);
 fill("__PHOTOS_JS__", JSON.stringify(photos));
 fill("__SPOTS_JS__", JSON.stringify(spotsJs));
@@ -260,3 +349,14 @@ console.log(
   "（外川駅は両方に入るので、足すと総数を1件超える）"
 );
 console.log("approximate confidence spots:", boardSpots.spots.filter(s => s.confidence === "approximate").map(s => s.id).join(", "));
+console.log(
+  "時間軸:", timeline.points.map(p => p.label).join(" / "),
+  "／駅", timeline.stations.length,
+  "／地物", timeline.features.length,
+  "／風車", (timeline.windTurbines && timeline.windTurbines.points.length) || 0,
+  "／空中写真", Object.keys(timelinePhotos).length, "枚"
+);
+console.log(
+  "出典:", sources.groups.reduce((n, g) => n + g.items.length, 0), "件 /",
+  sources.groups.length, "グループ"
+);
