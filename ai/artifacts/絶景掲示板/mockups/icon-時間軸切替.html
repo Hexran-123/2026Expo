@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>時間軸／空間軸 切替アイコン 比較</title>
+<style>
+  :root {
+    --theme-sea: #2A6E8F;
+    --theme-sea-sub: #7FC4D9;
+    --station: #FFFFFF;
+    --font-map: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
+    --font-body: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #17181b; color: #C7C9CE;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.7;
+    padding: 28px 32px 80px;
+  }
+  h1 { font-family: var(--font-map); color: #fff; font-size: 19px; margin: 0 0 6px; }
+  .lead { color: #8B8E96; font-size: 13px; margin: 0 0 30px; max-width: 62em; }
+  .variant { margin: 0 0 34px; border: 1px solid #2c2f36; border-radius: 12px; overflow: hidden; background: #1B1D21; }
+  .variant > header { padding: 12px 16px 10px; border-bottom: 1px solid #2c2f36; }
+  .variant h2 { font-family: var(--font-map); color: #fff; font-size: 15px; margin: 0 0 3px; }
+  .variant h2 .tag { font-size: 11px; color: #7FC4D9; border: 1px solid #2A6E8F; border-radius: 5px; padding: 1px 6px; margin-left: 8px; vertical-align: 2px; }
+  .variant .note { color: #8B8E96; font-size: 12.5px; margin: 0; }
+
+  /* ---- 実物大の上バー（board.html のCSSをそのまま写した） ---- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 18px; background: #1B1D21; border-bottom: 1px solid #35383F;
+  }
+  .topbar-title { font-family: var(--font-map); color: var(--station); font-size: 15px; letter-spacing: .02em; display: flex; align-items: baseline; gap: 10px; }
+  .topbar-title small { color: #8B8E96; font-weight: 400; font-size: 12px; }
+  .filter-tabs { display: flex; gap: 2px; padding: 2px; background: #24262B; border: 1px solid #35383F; border-radius: 8px; }
+  .filter-tabs button {
+    appearance: none; border: 0; cursor: pointer; padding: 5px 13px; border-radius: 6px;
+    background: transparent; color: #8B8E96;
+    font-family: var(--font-map); font-size: 12.5px; line-height: 1.4;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .filter-tabs button:hover { color: #C7C9CE; background: rgba(255,255,255,.05); }
+  .filter-tabs button[aria-pressed="true"] { background: var(--theme-sea); color: #FFF; }
+  .axis-tabs { margin-right: auto; }
+  .axis-tabs button { padding: 5px 12px 5px 9px; }
+  .axis-tabs svg { width: 19px; height: 19px; flex: none; display: block; }
+
+  /* ---- 拡大して見る欄 ---- */
+  .blowups { display: flex; gap: 26px; padding: 20px 18px 22px; flex-wrap: wrap; background: #17181b; }
+  .blowup { text-align: center; }
+  .blowup .frame {
+    width: 108px; height: 108px; border-radius: 12px; background: #24262B; border: 1px solid #35383F;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .blowup .frame.on { background: var(--theme-sea); border-color: var(--theme-sea); }
+  .blowup svg { width: 68px; height: 68px; display: block; }
+  .blowup .cap { font-size: 11.5px; color: #8B8E96; margin-top: 7px; font-family: var(--font-map); }
+
+  /* SVG は currentColor で描く（ボタンの文字色をそのまま継ぐ） */
+  .ico { stroke: currentColor; fill: none; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+  .ico .solid { fill: currentColor; stroke: none; }
+  .ico .faint { opacity: .45; }
+</style>
+</head>
+<body>
+
+<h1>時間軸／空間軸 切替アイコン ― 5案</h1>
+<p class="lead">
+  上段が実物大（board.html の上バーをそのまま写したもの・アイコンは19px）。下段は3.5倍に拡大したもので、左が「押されていない」右が「押されている」状態。
+  既存の絞り込みタブ（すべて／駅／絶景）を右隣に置いてあるので、並んだときの見え方も一緒に確かめられます。
+</p>
+
+<!-- ============ 案A ============ -->
+<div class="variant">
+  <header>
+    <h2>案A　1枚の板 ⇄ 3枚の板<span class="tag">推奨</span></h2>
+    <p class="note">地図そのものが6枚の段彩SVGの積層なので、アイコンが仕組みの縮図になる。3枚＝3時点。押す前に何が起きるか分かる。</p>
+  </header>
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <div class="filter-tabs axis-tabs">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" class="ico"><path d="M3 13 L12 8 L21 13 L12 18 Z"/><circle cx="12" cy="12.4" r="1.5" class="solid"/></svg>空間</button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" class="ico"><path d="M5 7 L12 3.6 L19 7 L12 10.4 Z" class="faint"/><path d="M5 12 L12 8.6 L19 12 L12 15.4 Z"/><path d="M5 17 L12 13.6 L19 17 L12 20.4 Z"/></svg>時間</button>
+    </div>
+    <div class="filter-tabs">
+      <button aria-pressed="true">すべて</button><button aria-pressed="false">駅</button><button aria-pressed="false">絶景</button>
+    </div>
+  </div>
+  <div class="blowups">
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M3 13 L12 8 L21 13 L12 18 Z"/><circle cx="12" cy="12.4" r="1.5" class="solid"/></svg></div><div class="cap">空間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M3 13 L12 8 L21 13 L12 18 Z"/><circle cx="12" cy="12.4" r="1.5" class="solid"/></svg></div><div class="cap">空間・選択中</div></div>
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M5 7 L12 3.6 L19 7 L12 10.4 Z" class="faint"/><path d="M5 12 L12 8.6 L19 12 L12 15.4 Z"/><path d="M5 17 L12 13.6 L19 17 L12 20.4 Z"/></svg></div><div class="cap">時間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M5 7 L12 3.6 L19 7 L12 10.4 Z" class="faint"/><path d="M5 12 L12 8.6 L19 12 L12 15.4 Z"/><path d="M5 17 L12 13.6 L19 17 L12 20.4 Z"/></svg></div><div class="cap">時間・選択中</div></div>
+  </div>
+</div>
+
+<!-- ============ 案B ============ -->
+<div class="variant">
+  <header>
+    <h2>案B　地図ピン ⇄ 時計</h2>
+    <p class="note">定番の組み合わせ。説明が要らない反面、どのサイトにもある絵で、この作品の地図と造形がつながらない。</p>
+  </header>
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <div class="filter-tabs axis-tabs">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" class="ico"><path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg>空間</button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg>時間</button>
+    </div>
+    <div class="filter-tabs">
+      <button aria-pressed="true">すべて</button><button aria-pressed="false">駅</button><button aria-pressed="false">絶景</button>
+    </div>
+  </div>
+  <div class="blowups">
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg></div><div class="cap">空間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg></div><div class="cap">空間・選択中</div></div>
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg></div><div class="cap">時間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg></div><div class="cap">時間・選択中</div></div>
+  </div>
+</div>
+
+<!-- ============ 案C ============ -->
+<div class="variant">
+  <header>
+    <h2>案C　メッシュの格子 ⇄ 年表の目盛り</h2>
+    <p class="note">抽象度が高い。「軸」であることは伝わるが、「地図が変わる」予告にはならない。3つの目盛りが3時点を表す。</p>
+  </header>
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <div class="filter-tabs axis-tabs">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.33 H20 M4 14.67 H20 M9.33 4 V20 M14.67 4 V20"/></svg>空間</button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 14 H20.5"/><circle cx="6.5" cy="14" r="2.1" class="solid"/><circle cx="12" cy="14" r="2.1" class="solid"/><circle cx="17.5" cy="14" r="2.1" class="solid"/><path d="M6.5 9.6 V11 M12 8 V11 M17.5 6.4 V11"/></svg>時間</button>
+    </div>
+    <div class="filter-tabs">
+      <button aria-pressed="true">すべて</button><button aria-pressed="false">駅</button><button aria-pressed="false">絶景</button>
+    </div>
+  </div>
+  <div class="blowups">
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.33 H20 M4 14.67 H20 M9.33 4 V20 M14.67 4 V20"/></svg></div><div class="cap">空間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.33 H20 M4 14.67 H20 M9.33 4 V20 M14.67 4 V20"/></svg></div><div class="cap">空間・選択中</div></div>
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 14 H20.5"/><circle cx="6.5" cy="14" r="2.1" class="solid"/><circle cx="12" cy="14" r="2.1" class="solid"/><circle cx="17.5" cy="14" r="2.1" class="solid"/><path d="M6.5 9.6 V11 M12 8 V11 M17.5 6.4 V11"/></svg></div><div class="cap">時間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 14 H20.5"/><circle cx="6.5" cy="14" r="2.1" class="solid"/><circle cx="12" cy="14" r="2.1" class="solid"/><circle cx="17.5" cy="14" r="2.1" class="solid"/><path d="M6.5 9.6 V11 M12 8 V11 M17.5 6.4 V11"/></svg></div><div class="cap">時間・選択中</div></div>
+  </div>
+</div>
+
+<!-- ============ 案D ============ -->
+<div class="variant">
+  <header>
+    <h2>案D　等高線 ⇄ 年輪</h2>
+    <p class="note">どちらも同心の輪。空間では土地の高さの輪、時間では年の輪。詩的だが、実物大19pxで二つの区別がつくかどうかが分かれ目（そこを確かめてください）。</p>
+  </header>
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <div class="filter-tabs axis-tabs">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" class="ico"><path d="M3 15.5c3-4 6-1 9-4.5s6.5-1.5 9-3.5"/><path d="M5 19c2.6-3.2 5.2-.8 7.6-3.6"/><path d="M12 8.6c2.4-2.4 4.6-.6 6.6-2.2"/></svg>空間</button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.8"/><circle cx="12" cy="12" r="2.6"/><circle cx="12" cy="12" r="0.9" class="solid"/></svg>時間</button>
+    </div>
+    <div class="filter-tabs">
+      <button aria-pressed="true">すべて</button><button aria-pressed="false">駅</button><button aria-pressed="false">絶景</button>
+    </div>
+  </div>
+  <div class="blowups">
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M3 15.5c3-4 6-1 9-4.5s6.5-1.5 9-3.5"/><path d="M5 19c2.6-3.2 5.2-.8 7.6-3.6"/><path d="M12 8.6c2.4-2.4 4.6-.6 6.6-2.2"/></svg></div><div class="cap">空間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M3 15.5c3-4 6-1 9-4.5s6.5-1.5 9-3.5"/><path d="M5 19c2.6-3.2 5.2-.8 7.6-3.6"/><path d="M12 8.6c2.4-2.4 4.6-.6 6.6-2.2"/></svg></div><div class="cap">空間・選択中</div></div>
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.8"/><circle cx="12" cy="12" r="2.6"/><circle cx="12" cy="12" r="0.9" class="solid"/></svg></div><div class="cap">時間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.8"/><circle cx="12" cy="12" r="2.6"/><circle cx="12" cy="12" r="0.9" class="solid"/></svg></div><div class="cap">時間・選択中</div></div>
+  </div>
+</div>
+
+<!-- ============ 案E ============ -->
+<div class="variant">
+  <header>
+    <h2>案E　四方に広がる ⇄ 一方向に流れる</h2>
+    <p class="note">「軸」の意味そのものを矢印で描く。空間＝縦横に広がる、時間＝一方向にしか進まない。もっとも抽象的で、文字ラベルなしでは通じない。</p>
+  </header>
+  <div class="topbar">
+    <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+    <div class="filter-tabs axis-tabs">
+      <button aria-pressed="true"><svg viewBox="0 0 24 24" class="ico"><path d="M12 4 V20 M4 12 H20"/><path d="M12 4 L9.6 6.8 M12 4 L14.4 6.8 M12 20 L9.6 17.2 M12 20 L14.4 17.2 M4 12 L6.8 9.6 M4 12 L6.8 14.4 M20 12 L17.2 9.6 M20 12 L17.2 14.4"/></svg>空間</button>
+      <button aria-pressed="false"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 12 H20"/><path d="M20.5 12 L16.6 8.8 M20.5 12 L16.6 15.2"/><circle cx="5.5" cy="12" r="1.9" class="solid"/><circle cx="11" cy="12" r="1.9" class="solid"/><circle cx="16.5" cy="12" r="1.9" class="solid"/></svg>時間</button>
+    </div>
+    <div class="filter-tabs">
+      <button aria-pressed="true">すべて</button><button aria-pressed="false">駅</button><button aria-pressed="false">絶景</button>
+    </div>
+  </div>
+  <div class="blowups">
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M12 4 V20 M4 12 H20"/><path d="M12 4 L9.6 6.8 M12 4 L14.4 6.8 M12 20 L9.6 17.2 M12 20 L14.4 17.2 M4 12 L6.8 9.6 M4 12 L6.8 14.4 M20 12 L17.2 9.6 M20 12 L17.2 14.4"/></svg></div><div class="cap">空間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M12 4 V20 M4 12 H20"/><path d="M12 4 L9.6 6.8 M12 4 L14.4 6.8 M12 20 L9.6 17.2 M12 20 L14.4 17.2 M4 12 L6.8 9.6 M4 12 L6.8 14.4 M20 12 L17.2 9.6 M20 12 L17.2 14.4"/></svg></div><div class="cap">空間・選択中</div></div>
+    <div class="blowup"><div class="frame" style="color:#8B8E96"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 12 H20"/><path d="M20.5 12 L16.6 8.8 M20.5 12 L16.6 15.2"/><circle cx="5.5" cy="12" r="1.9" class="solid"/><circle cx="11" cy="12" r="1.9" class="solid"/><circle cx="16.5" cy="12" r="1.9" class="solid"/></svg></div><div class="cap">時間・非選択</div></div>
+    <div class="blowup"><div class="frame on" style="color:#fff"><svg viewBox="0 0 24 24" class="ico"><path d="M3.5 12 H20"/><path d="M20.5 12 L16.6 8.8 M20.5 12 L16.6 15.2"/><circle cx="5.5" cy="12" r="1.9" class="solid"/><circle cx="11" cy="12" r="1.9" class="solid"/><circle cx="16.5" cy="12" r="1.9" class="solid"/></svg></div><div class="cap">時間・選択中</div></div>
+  </div>
+</div>
+
+</body>
+</html>

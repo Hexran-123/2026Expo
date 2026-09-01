@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>3時点の帯 置き場所 4案</title>
+<style>
+  :root {
+    --land-0:#E2EACB; --land-8:#D2E0B4; --land-16:#C6D69C;
+    --land-24:#C7CC85; --land-32:#C9B96D; --land-45:#C29A5A;
+    --water:#9DC3D7; --rail:#4A4640; --station:#FFFFFF;
+    --theme-sea:#2A6E8F; --theme-sea-sub:#7FC4D9;
+    --paper:#F3EBD8; --ink:#2B2A28; --ink-soft:#6B6862;
+    --font-map:"Hiragino Maru Gothic ProN","BIZ UDPGothic","Yu Gothic","Noto Sans JP","Meiryo",sans-serif;
+    --font-body:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP","Meiryo",sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#101114; color:#C7C9CE; font-family:var(--font-body); font-size:14px; line-height:1.7; padding:26px 30px 90px; }
+  h1 { font-family:var(--font-map); color:#fff; font-size:19px; margin:0 0 6px; }
+  .lead { color:#8B8E96; font-size:13px; margin:0 0 26px; max-width:64em; }
+  .lead b { color:#C7C9CE; font-weight:600; }
+
+  .case { margin:0 0 40px; }
+  .case > h2 { font-family:var(--font-map); color:#fff; font-size:15.5px; margin:0 0 4px; }
+  .case > h2 .tag { font-size:11px; color:#7FC4D9; border:1px solid #2A6E8F; border-radius:5px; padding:1px 6px; margin-left:8px; vertical-align:2px; }
+  .case > .note { color:#8B8E96; font-size:12.5px; margin:0 0 12px; max-width:64em; }
+
+  /* ============ アプリの枠（board.html の縮尺再現） ============ */
+  .app { width:100%; max-width:1180px; height:470px; display:flex; flex-direction:column;
+         border:1px solid #35383F; border-radius:10px; overflow:hidden; background:#17181b; }
+
+  .topbar { flex:none; display:flex; align-items:center; justify-content:space-between; gap:16px;
+            padding:10px 18px; background:#1B1D21; border-bottom:1px solid #35383F; }
+  .topbar-title { font-family:var(--font-map); color:var(--station); font-size:15px; display:flex; align-items:baseline; gap:10px; }
+  .topbar-title small { color:#8B8E96; font-weight:400; font-size:12px; }
+  .tabs { display:flex; gap:2px; padding:2px; background:#24262B; border:1px solid #35383F; border-radius:8px; }
+  .tabs button { appearance:none; border:0; cursor:pointer; padding:5px 13px; border-radius:6px;
+                 background:transparent; color:#8B8E96; font-family:var(--font-map); font-size:12.5px;
+                 line-height:1.4; display:flex; align-items:center; gap:6px; }
+  .tabs button:hover { color:#C7C9CE; background:rgba(255,255,255,.05); }
+  .tabs button[aria-pressed="true"] { background:var(--theme-sea); color:#FFF; }
+  .tabs svg { width:19px; height:19px; flex:none; display:block; }
+  .axis-tabs { margin-right:14px; }
+  .bar-divider { width:1px; height:22px; background:#35383F; margin-right:auto; }
+  .hint { color:#6E7178; font-size:11.5px; }
+
+  .stage { position:relative; flex:1; display:flex; min-height:0; }
+  .mapcol { position:relative; flex:1; display:flex; flex-direction:column; min-width:0; }
+  .mapwrap { position:relative; flex:1; overflow:hidden;
+             background:radial-gradient(120% 100% at 50% 15%, #2c2f36 0%, #1c1e22 70%, #17181b 100%); }
+  .mapwrap svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  .panel { width:300px; flex:none; background:rgba(255,255,255,.94); color:var(--ink);
+           border-left:1px solid rgba(0,0,0,.15); padding:14px 16px; overflow:auto; }
+  .panel h3 { font-family:var(--font-map); font-size:15px; margin:0 0 2px; }
+  .panel .yr { font-size:11.5px; color:var(--ink-soft); margin:0 0 10px; letter-spacing:.04em; }
+  .panel p { font-size:12.5px; margin:0 0 9px; }
+  .panel .src { font-size:11px; color:var(--ink-soft); border-top:1px solid rgba(0,0,0,.12); padding-top:8px; margin-top:10px; }
+  .panel .cert { display:inline-block; font-size:10.5px; border:1px solid var(--theme-sea); color:var(--theme-sea);
+                 border-radius:4px; padding:0 5px; margin-left:6px; vertical-align:1px; }
+
+  /* ============ 年の帯（4つの置き方） ============ */
+  .yearband { display:flex; align-items:center; gap:0; font-family:var(--font-map); }
+  .yearband button { appearance:none; border:0; background:transparent; cursor:pointer;
+                     color:#8B8E96; font-family:inherit; font-size:12.5px; padding:0;
+                     display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .yearband .dot { width:11px; height:11px; border-radius:50%; background:#3A3D44; border:2px solid #5A5E66; }
+  .yearband button[aria-pressed="true"] { color:#fff; }
+  .yearband button[aria-pressed="true"] .dot { background:var(--theme-sea-sub); border-color:#fff; box-shadow:0 0 0 4px rgba(127,196,217,.22); }
+  .yearband button:hover { color:#C7C9CE; }
+  .yearband .link { flex:1; height:2px; background:#35383F; margin:0 -2px; margin-bottom:19px; min-width:24px; }
+
+  /* 案1: 地図の下端の横帯 */
+  .band-bottom { flex:none; padding:11px 34px 12px; background:#1B1D21; border-top:1px solid #35383F; }
+  .band-bottom .yearband { justify-content:space-between; }
+  .band-bottom .yearband button { flex-direction:column-reverse; }
+
+  /* 案2: 上バーの中 */
+  .band-topbar .yearband { gap:2px; padding:2px 6px; background:#24262B; border:1px solid #35383F; border-radius:8px; }
+  .band-topbar .yearband button { flex-direction:row; gap:5px; padding:4px 9px; border-radius:6px; }
+  .band-topbar .yearband button[aria-pressed="true"] { background:var(--theme-sea); }
+  .band-topbar .yearband .dot { width:8px; height:8px; border-width:1.5px; }
+  .band-topbar .yearband .link { display:none; }
+
+  /* 案3: 地図の左端の縦帯 */
+  .band-left { position:absolute; left:16px; top:50%; transform:translateY(-50%); z-index:5;
+               padding:14px 12px; background:rgba(27,29,33,.86); border:1px solid #35383F; border-radius:10px;
+               backdrop-filter:blur(3px); }
+  .band-left .yearband { flex-direction:column; gap:0; }
+  .band-left .yearband button { flex-direction:row; gap:7px; width:100%; justify-content:flex-start; }
+  .band-left .yearband .link { flex:none; width:2px; height:26px; margin:3px 0 3px 6px; align-self:flex-start; }
+
+  /* 案4: 右パネルの上部 */
+  .band-panel { margin:-14px -16px 12px; padding:12px 16px; background:#1B1D21; border-bottom:1px solid #35383F; }
+  .band-panel .yearband { justify-content:space-between; }
+  .band-panel .yearband button { flex-direction:column-reverse; font-size:11.5px; }
+
+  .verdict { font-size:12.5px; color:#8B8E96; margin:10px 0 0; max-width:64em; }
+  .verdict b { color:#C7C9CE; }
+</style>
+</head>
+<body>
+
+<h1>3時点の帯（1923／1982／現在）― 置き場所 4案</h1>
+<p class="lead">
+  4案とも<b>実際に動きます</b>。年を押すと地図が切り替わる（線路の駅が増減し、貨物の印と風車が出入りし、屏風ヶ浦の崖線が動く）ので、
+  置き場所の使い勝手そのものを試せます。軸の切替アイコンは決定した<b>案B（地図ピン ⇄ 時計）</b>を入れてあり、時間軸モードの状態で描いてあります。
+  地図は本物ではなく置き場所を判断するための略図です。
+</p>
+
+<!-- ================= 案1 ================= -->
+<div class="case" data-case="1">
+  <h2>案1　地図の下端に横帯<span class="tag">推奨</span></h2>
+  <p class="note">年表の形で地図の下を横切る。時間が横に流れる直感と合い、地図を見ながら手元で切り替えられる。地図の高さが約34px減る。</p>
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+      <div class="tabs axis-tabs"></div>
+      <div class="bar-divider"></div>
+      <div class="hint"><b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小</div>
+    </div>
+    <div class="stage">
+      <div class="mapcol">
+        <div class="mapwrap"></div>
+        <div class="band-bottom"><div class="yearband"></div></div>
+      </div>
+      <div class="panel"></div>
+    </div>
+  </div>
+  <p class="verdict">見るところ： <b>下端まで視線を落とす距離</b>と、<b>地図が34px低くなること</b>が許容できるか。</p>
+</div>
+
+<!-- ================= 案2 ================= -->
+<div class="case" data-case="2">
+  <h2>案2　上バーに4つ目の帯として</h2>
+  <p class="note">操作が全部上バーに集まる。地図の面積は1pxも減らない。ただし上バーは「作品名／軸切替／年／操作説明」の4要素になる。</p>
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+      <div class="tabs axis-tabs"></div>
+      <div class="band-topbar"><div class="yearband"></div></div>
+      <div class="bar-divider"></div>
+      <div class="hint"><b>ドラッグ</b>：移動</div>
+    </div>
+    <div class="stage">
+      <div class="mapcol"><div class="mapwrap"></div></div>
+      <div class="panel"></div>
+    </div>
+  </div>
+  <p class="verdict">見るところ： 上バーが<b>混んで見えないか</b>。軸切替（時計アイコン）と年の帯が<b>別の操作だと分かるか</b>。</p>
+</div>
+
+<!-- ================= 案3 ================= -->
+<div class="case" data-case="3">
+  <h2>案3　地図の左端に縦帯</h2>
+  <p class="note">縦に積むので地形の積層と造形が呼応する。ただし年表を縦に読ませるのは直感に反し、左端は松岸（銚子ちぢみ）のピンが来る場所でもある。</p>
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+      <div class="tabs axis-tabs"></div>
+      <div class="bar-divider"></div>
+      <div class="hint"><b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小</div>
+    </div>
+    <div class="stage">
+      <div class="mapcol">
+        <div class="mapwrap"></div>
+        <div class="band-left"><div class="yearband"></div></div>
+      </div>
+      <div class="panel"></div>
+    </div>
+  </div>
+  <p class="verdict">見るところ： 地図の上に<b>浮いた板が増えること</b>（既に＋/－・投稿・方位磁針がある）。縦の年表が読めるか。</p>
+</div>
+
+<!-- ================= 案4 ================= -->
+<div class="case" data-case="4">
+  <h2>案4　右パネルの上部</h2>
+  <p class="note">年と解説が一体になる。ただしパネルを閉じると年を変えられなくなるので、パネルを閉じられなくするか、閉じたら空間軸へ戻す設計になる。</p>
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-title">絶景掲示板 <small>銚子の絶景をあつめる</small></div>
+      <div class="tabs axis-tabs"></div>
+      <div class="bar-divider"></div>
+      <div class="hint"><b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小</div>
+    </div>
+    <div class="stage">
+      <div class="mapcol"><div class="mapwrap"></div></div>
+      <div class="panel with-band"></div>
+    </div>
+  </div>
+  <p class="verdict">見るところ： 年が<b>地図から遠い</b>こと。切り替えるたびに視線が右端と地図を往復する。</p>
+</div>
+
+<script>
+/* ---------------- 3時点のデータ（見せるための略式。本番は timeline.json） ---------------- */
+const YEARS = [
+  {
+    id: "1923", label: "1923", sub: "設立",
+    title: "銚子〜外川、全線開業",
+    body: "銚子鉄道が銚子から外川までを結んだ年。駅は6つで、笠上黒生（1925）も君ヶ浜（1931）も西海鹿島（1970）もまだ無い。醤油と魚を運ぶ貨物が主役だった。",
+    src: "開業日・駅の開業年：銚子電気鉄道社史ほか", cert: "実記録",
+    stations: [0, 0.18, 0.30, 0.44, 0.78, 1.0],
+    names: ["銚子","仲ノ町","観音","本銚子","犬吠","外川"],
+    freight: true, windmill: false, cliff: 0
+  },
+  {
+    id: "1982", label: "1982", sub: "栄えた頃",
+    title: "貨物列車が走った、最後の頃",
+    body: "駅は10。西海鹿島（1970）まで揃い、旅客はもっとも多かったとされる。貨物営業の廃止は1984年2月1日なので、この年はまだ醤油の原料塩が線路で運ばれていた。",
+    src: "貨物廃止日：1984-02-01／旅客数は出典が食い違うため確認中", cert: "確認中",
+    stations: [0, 0.18, 0.30, 0.44, 0.56, 0.64, 0.72, 0.80, 0.88, 1.0],
+    names: ["銚子","仲ノ町","観音","本銚子","笠上黒生","西海鹿島","海鹿島","君ヶ浜","犬吠","外川"],
+    freight: true, windmill: false, cliff: 6
+  },
+  {
+    id: "now", label: "現在", sub: "2026",
+    title: "線路も駅もそのまま、人と荷物だけが消えた",
+    body: "駅は10のままで、1982年から1つも減っていない。消えたのは貨物（1984）と乗客。台地には風車が並び、キャベツの収穫量は今も日本一、漁港の水揚げも日本一が続いている。栄えを失ったのは土地ではなく、鉄道の客のほうだった。",
+    src: "風車の設置年・水揚げ量：確認中", cert: "確認中",
+    stations: [0, 0.18, 0.30, 0.44, 0.56, 0.64, 0.72, 0.80, 0.88, 1.0],
+    names: ["銚子","仲ノ町","観音","本銚子","笠上黒生","西海鹿島","海鹿島","君ヶ浜","犬吠","外川"],
+    freight: false, windmill: true, cliff: 12
+  },
+];
+
+/* ---------------- 略図の地図 ---------------- */
+function mapSVG(y) {
+  const railPts = [[90,300],[210,286],[300,268],[400,240],[520,214],[600,200],[672,196],[742,198],[812,208],[900,236]];
+  function at(t) {
+    const i = Math.min(Math.floor(t * (railPts.length - 1)), railPts.length - 2);
+    const f = t * (railPts.length - 1) - i;
+    return [railPts[i][0] + (railPts[i+1][0]-railPts[i][0])*f, railPts[i][1] + (railPts[i+1][1]-railPts[i][1])*f];
+  }
+  const railD = "M" + railPts.map(p => p.join(" ")).join(" L");
+  const stations = y.stations.map((t, i) => {
+    const [x, yy] = at(t);
+    return '<g><circle cx="'+x+'" cy="'+yy+'" r="5.5" fill="var(--station)" stroke="var(--rail)" stroke-width="2.2"/>'
+      + '<text x="'+x+'" y="'+(yy-11)+'" text-anchor="middle" font-size="11.5" fill="#fff" font-family="var(--font-map)"'
+      + ' stroke="rgba(18,20,24,.6)" stroke-width="3.2" paint-order="stroke fill">'+y.names[i]+'</text></g>';
+  }).join("");
+  // 屏風ヶ浦の崖線: cliff が大きいほど内陸（右下）へ後退している
+  const c = y.cliff;
+  const cliffD = "M"+(70+c*0.6)+" "+(392-c*0.2)+" C 260 "+(410-c*0.1)+", 430 "+(400+c*0.3)+", 560 "+(372+c*0.6);
+  const freight = y.freight
+    ? '<g transform="translate(196,300)"><rect x="-16" y="-9" width="32" height="17" rx="2.5" fill="#6E6152" stroke="#4A4640" stroke-width="1.5"/>'
+      + '<circle cx="-8" cy="9" r="3" fill="#33302B"/><circle cx="8" cy="9" r="3" fill="#33302B"/>'
+      + '<text x="0" y="-15" text-anchor="middle" font-size="10" fill="#E8DFC8" font-family="var(--font-map)">貨物</text></g>' : "";
+  const windmill = y.windmill
+    ? [0,1,2].map(i => '<g transform="translate('+(560+i*86)+',126)"><line x1="0" y1="0" x2="0" y2="30" stroke="#EDEFE4" stroke-width="2.6"/>'
+      + '<g stroke="#EDEFE4" stroke-width="2.4" stroke-linecap="round"><line x1="0" y1="0" x2="0" y2="-15"/>'
+      + '<line x1="0" y1="0" x2="13" y2="7.5"/><line x1="0" y1="0" x2="-13" y2="7.5"/></g></g>').join("") : "";
+
+  return '<svg viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice">'
+    + '<rect width="1000" height="500" fill="var(--water)" opacity=".9"/>'
+    + '<path d="M40 470 L40 250 C 220 190, 420 150, 640 132 C 800 120, 920 128, 980 150 L980 470 Z" fill="var(--land-8)"/>'
+    + '<path d="M120 470 L120 300 C 300 246, 480 210, 660 196 C 800 186, 900 194, 960 212 L960 470 Z" fill="var(--land-24)"/>'
+    + '<path d="M240 470 L240 342 C 400 300, 560 274, 720 264 C 830 258, 900 264, 940 276 L940 470 Z" fill="var(--land-45)"/>'
+    + '<path d="'+cliffD+'" fill="none" stroke="#8A7A64" stroke-width="3.4" stroke-linecap="round"'
+    + (c === 0 ? ' stroke-dasharray="9 7"' : '') + '/>'
+    + '<text x="'+(300+c*0.6)+'" y="'+(430-c*0.2)+'" font-size="11.5" fill="#F0EEE6" font-family="var(--font-map)"'
+    + ' stroke="rgba(18,20,24,.5)" stroke-width="3" paint-order="stroke fill">屏風ヶ浦の崖線'
+    + (c === 0 ? '（推定）' : '') + '</text>'
+    + windmill
+    + '<path d="'+railD+'" fill="none" stroke="var(--rail)" stroke-width="4.6" stroke-linecap="round"/>'
+    + freight + stations + '</svg>';
+}
+
+function bandHTML(y, cur) {
+  return YEARS.map((yr, i) =>
+    (i ? '<span class="link"></span>' : '') +
+    '<button type="button" data-year="'+yr.id+'" aria-pressed="'+(yr.id===cur)+'">'
+    + '<span class="txt">'+yr.label+'</span><span class="dot"></span></button>'
+  ).join("");
+}
+
+function panelHTML(y, withBand, cur) {
+  return (withBand ? '<div class="band-panel"><div class="yearband">'+bandHTML(y,cur)+'</div></div>' : '')
+    + '<h3>'+y.title+'</h3>'
+    + '<p class="yr">'+(y.id==="now" ? "現在（2026年）" : y.label+"年")+'　'+y.sub+'</p>'
+    + '<p>'+y.body+'</p>'
+    + '<p class="src">出典：'+y.src+'<span class="cert">'+y.cert+'</span></p>';
+}
+
+const AXIS_TABS =
+  '<button type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">'
+  + '<path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg>空間</button>'
+  + '<button type="button" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">'
+  + '<circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg>時間</button>';
+
+document.querySelectorAll(".case").forEach(box => {
+  let cur = "1982";
+  const axis = box.querySelector(".axis-tabs");
+  if (axis) axis.innerHTML = AXIS_TABS;
+
+  function render() {
+    const y = YEARS.find(v => v.id === cur);
+    box.querySelector(".mapwrap").innerHTML = mapSVG(y);
+    const panel = box.querySelector(".panel");
+    panel.innerHTML = panelHTML(y, panel.classList.contains("with-band"), cur);
+    box.querySelectorAll(".yearband").forEach(b => {
+      if (!b.closest(".band-panel")) b.innerHTML = bandHTML(y, cur);
+    });
+    box.querySelectorAll("[data-year]").forEach(btn => {
+      btn.addEventListener("click", () => { cur = btn.dataset.year; render(); });
+    });
+  }
+  render();
+});
+</script>
+</body>
+</html>
