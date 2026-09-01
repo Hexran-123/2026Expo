@@ -339,8 +339,6 @@
   .src-list { list-style: none; margin: 0; padding: 0; }
   .src-list li { margin: 0 0 13px; padding-left: 11px; border-left: 2px solid rgba(0,0,0,.10); }
   .src-list .name { font-size: 12.5px; line-height: 1.6; }
-  .src-list .use { font-size: 11.5px; color: var(--ink-soft); margin: 3px 0 0; line-height: 1.65; }
-  .src-list .use b { color: var(--ink); font-weight: 600; }
   .src-list .cond { font-size: 11px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.6; }
   .src-list .cond::before { content: "※ "; }
   .src-list a { color: var(--theme-sea); font-size: 11px; word-break: break-all; }
@@ -2233,7 +2231,7 @@
           ? `<br><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.url)}</a>` : "";
         const cond = it.note ? `<p class="cond">${esc(it.note)}</p>` : "";
         return `<li><span class="name">${esc(it.label)}</span>${link}
-          <p class="use"><b>使っているところ：</b>${esc(it.use)}</p>${cond}</li>`;
+          ${cond}</li>`;
       }).join("");
       return `<h3>${esc(g.name)}</h3>
         ${g.note ? `<p class="tl-note">${esc(g.note)}</p>` : ""}
