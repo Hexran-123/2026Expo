@@ -310,14 +310,35 @@
       地図は回さないので、方位の針も回さない。
       縮尺の帯は拡大に合わせて js/main.js が書き換える。
     -->
+    <!--
+      出典は地図の上に常時出す。
+
+      OpenStreetMap の帰属ガイドライン
+      https://osmfoundation.org/wiki/Licence/Attribution_Guidelines は
+      「attribution should not require individuals to interact with the map
+      to see the attribution」＝**押さないと出ない形にしてはいけない**としている。
+      畳むこと自体は認められているが、それは「最初に出してから5秒で畳む」等であって、
+      最初から隠しておくことではない。ⓘ→出典の中だけに置いていた時期があったが、
+      それはこの条件を満たしていなかったので、ここへ常時表示を足した。
+      地理院タイルの側も出典の明示を求めているので、同じ1行にまとめてある。
+
+      **この行を消したり、押したときだけ出す形に戻したりしないこと。**
+      詳しい一覧のほうは、これまでどおり ⓘ→出典で読める。
+
+      方位と縮尺より前に置いてあるのは、位置を動かさないため。
+      .map-furniture は bottom で留めてあるので、あとに足すと方位と縮尺が持ち上がる。
+    -->
     <div class="map-furniture" id="map-furniture">
-      <svg class="compass" viewBox="0 0 34 34" aria-label="北はつねに画面の上">
-        <path class="compass-needle" d="M17,4 L22.5,20 L17,16.6 L11.5,20 Z"/>
-        <text class="compass-n" x="17" y="30.5">N</text>
-      </svg>
-      <div class="scale">
-        <div class="scale-bar" id="scale-bar"></div>
-        <span class="scale-label" id="scale-label"></span>
+      <p class="map-attrib">© OpenStreetMap contributors／国土地理院タイルを加工して作成</p>
+      <div class="map-furniture-row">
+        <svg class="compass" viewBox="0 0 34 34" aria-label="北はつねに画面の上">
+          <path class="compass-needle" d="M17,4 L22.5,20 L17,16.6 L11.5,20 Z"/>
+          <text class="compass-n" x="17" y="30.5">N</text>
+        </svg>
+        <div class="scale">
+          <div class="scale-bar" id="scale-bar"></div>
+          <span class="scale-label" id="scale-label"></span>
+        </div>
       </div>
     </div>
 
@@ -375,17 +396,32 @@
             </div>
           </div>
 
+          <!--
+            国土地理院のデータは、どちらもこの作品が加工して使っている
+            （標高タイル→6段の段彩、陰影起伏図→貼り合わせて縮小）。
+            地理院の「出典の記載」https://www.gsi.go.jp/LAW/2930-meizi.html は
+            **編集・加工したことを書くこと**、および編集・加工したものを地理院が
+            作ったかのように見せないことを求めている。「加工して作成」はその表記。
+            出典さえ書けば申請は要らない（標高タイル・陰影起伏図とも
+            「出典の記載のみで利用可能なもの」）。**この文言を短くしないこと。**
+
+            時刻表と絶景スポットの解説は路線ごとに出どころが違うので、
+            中身は js/main.js が data/lines.json の credits から入れる。
+            静的に書いておくと、有楽町線を見ているのに銚子電鉄と出る。
+          -->
           <dl class="credits-list">
             <dt>線路・駅・工場・農地・海岸線</dt>
             <dd>© OpenStreetMap contributors（ODbL）</dd>
             <dt>標高（地形の色分け）</dt>
-            <dd>国土地理院 標高タイル（DEM5A／DEM10B）</dd>
+            <dd>国土地理院 標高タイル（DEM5A／DEM10B）を加工して作成</dd>
             <dt>地形の陰影</dt>
-            <dd>国土地理院 陰影起伏図タイル</dd>
+            <dd>国土地理院 陰影起伏図タイルを加工して作成（貼り合わせ・縮小）</dd>
             <dt>天気予報</dt>
             <dd>気象庁</dd>
             <dt>時刻表</dt>
-            <dd>銚子電気鉄道 公式サイト</dd>
+            <dd id="credits-timetable"></dd>
+            <dt id="credits-spots-term" hidden>絶景スポットの解説</dt>
+            <dd id="credits-spots" hidden></dd>
             <dt>環境音 ─ 地形（風）</dt>
             <dd>“wind_forest_08_strong_l_02” by teadrinker（<a
               href="https://freesound.org/people/teadrinker/sounds/403050/"
@@ -502,7 +538,10 @@
         足すと、地図より先にボタンの列が目に入る。この段には余白があり、
         高さも増えない。
 
-        出典を隠しきりにはできない（ODbL・地理院タイル利用規約が明示を求める。
+        出典の**帰属そのものは地図の上に常時出している**（.map-attrib）。
+        OSM の帰属ガイドラインが「押さないと出ない形にしてはいけない」と
+        しているためで、ここから開くのは詳しい一覧のほう。
+        一覧も隠しきりにはしない（ODbL・地理院タイル利用規約が明示を求める。
         ADR-0003）ので、どの画面からでも 1 手で辿れる場所には残す。
       -->
       <div class="bar-tools">

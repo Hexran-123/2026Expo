@@ -695,9 +695,15 @@ body {
   /* 戻すボタンと同じ高さ。ここも画面が変わっても動かさない */
   bottom: max(150px, calc(var(--bottom-bar, 128px) + 22px));
 
+  /*
+     縦に積む。出典が上、方位と縮尺が下。
+     bottom で留めてあるので、下端＝方位と縮尺の位置は出典を足しても動かない
+     （出典を下に置くと方位と縮尺が持ち上がってしまう）。
+  */
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
 
   color: var(--ink-soft);
   /* 地図の色の上でも読めるように、白いふちを回す */
@@ -707,6 +713,26 @@ body {
   /* 見るだけのもの。地図の操作を邪魔しない */
   pointer-events: none;
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s ease;
+}
+
+/* 方位と縮尺は、これまでどおり横に並べる */
+.map-furniture-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/*
+   地図の上に常時出る出典（OSM の帰属ガイドライン）。
+   読めるだけの大きさは要るが、地図より前に出てはいけないので、
+   字は小さく、色は薄い。白いふちは .map-furniture の filter が回している。
+*/
+.map-attrib {
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  opacity: 0.85;
 }
 
 .compass {

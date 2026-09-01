@@ -179,7 +179,10 @@ for (const post of boardPosts.posts) {
   }
   photos[post.id] = `${relAssetDir}/posts/${post.file}`;
 
+  // by は掲示板のバッジを決める（"team" なら「制作チーム撮影」）。
+  // 持たない投稿＝乗客から届いたものなので、無いときは付けない。
   const entry = { id: post.id, spotId: post.spotId || null, publishedAt: post.publishedAt };
+  if (post.by) entry.by = post.by;
   if (!post.spotId) {
     // 掲示スポットに紐づかない写真は、自分の座標で1本のピンになる
     const { u, v } = toUV(post.lat, post.lon);

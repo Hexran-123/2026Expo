@@ -18,6 +18,9 @@
     "  lat/lon     … spotId を持たない写真（掲示板の地図をタップして置いたもの）の座標",
     "  elevationM  … 同上。ピンを地面の高さに置くために要る（publish-posts.js が計算する）",
     "  publishedAt … 掲示した日（審査を通した日）",
+    "  by          … \"team\" なら制作チームが現地調査で撮ったもの。無ければ乗客から届いたもの。",
+    "                掲示板のバッジがこれで変わる。**乗客の写真でないものに「乗客から届いた写真」と",
+    "                出さないため。** publish-posts.js は by を付けないので、実際の投稿は自動で乗客側になる。",
     "",
     "保存期限: 2027年4月30日にすべて削除する（ADR-0004）。写真ファイルを消すだけでは",
     "git の履歴に残るので、そのときは履歴ごと書き換えること。手順は",
@@ -28,241 +31,281 @@
       "id": "onsite-ashikajima-1",
       "file": "onsite-ashikajima-1.webp",
       "spotId": "ashikajima",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-cabbage-1",
       "file": "onsite-cabbage-1.webp",
       "spotId": "cabbage",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-choshieki-2",
       "file": "onsite-choshieki-2.webp",
       "spotId": "choshieki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-choshieki-3",
       "file": "onsite-choshieki-3.webp",
       "spotId": "choshieki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-foresttunnel-1",
       "file": "onsite-foresttunnel-1.webp",
       "spotId": "foresttunnel",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-1",
       "file": "onsite-inuboeki-1.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-2",
       "file": "onsite-inuboeki-2.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-3",
       "file": "onsite-inuboeki-3.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-4",
       "file": "onsite-inuboeki-4.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-5",
       "file": "onsite-inuboeki-5.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inuboeki-6",
       "file": "onsite-inuboeki-6.webp",
       "spotId": "inuboeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inubosaki-1",
       "file": "onsite-inubosaki-1.webp",
       "spotId": "inubosaki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inubosaki-2",
       "file": "onsite-inubosaki-2.webp",
       "spotId": "inubosaki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inubosaki-3",
       "file": "onsite-inubosaki-3.webp",
       "spotId": "inubosaki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-inubosaki-4",
       "file": "onsite-inubosaki-4.webp",
       "spotId": "inubosaki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kannoneki-1",
       "file": "onsite-kannoneki-1.webp",
       "spotId": "kannoneki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kannoneki-2",
       "file": "onsite-kannoneki-2.webp",
       "spotId": "kannoneki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kannoneki-3",
       "file": "onsite-kannoneki-3.webp",
       "spotId": "kannoneki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kannoneki-4",
       "file": "onsite-kannoneki-4.webp",
       "spotId": "kannoneki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kasagami-1",
       "file": "onsite-kasagami-1.webp",
       "spotId": "kasagami",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kasagami-2",
       "file": "onsite-kasagami-2.webp",
       "spotId": "kasagami",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kasagami-3",
       "file": "onsite-kasagami-3.webp",
       "spotId": "kasagami",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kimigahamaeki-1",
       "file": "onsite-kimigahamaeki-1.webp",
       "spotId": "kimigahamaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-kimigahamaeki-2",
       "file": "onsite-kimigahamaeki-2.webp",
       "spotId": "kimigahamaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-manganji-1",
       "file": "onsite-manganji-1.webp",
       "spotId": "manganji",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-manganji-2",
       "file": "onsite-manganji-2.webp",
       "spotId": "manganji",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-manganji-3",
       "file": "onsite-manganji-3.webp",
       "spotId": "manganji",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-motochoshieki-1",
       "file": "onsite-motochoshieki-1.webp",
       "spotId": "motochoshieki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-nakanochoeki-1",
       "file": "onsite-nakanochoeki-1.webp",
       "spotId": "nakanochoeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-sunflower-1",
       "file": "onsite-sunflower-1.webp",
       "spotId": "sunflower",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-1",
       "file": "onsite-togawaeki-1.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-2",
       "file": "onsite-togawaeki-2.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-3",
       "file": "onsite-togawaeki-3.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-4",
       "file": "onsite-togawaeki-4.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-5",
       "file": "onsite-togawaeki-5.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-6",
       "file": "onsite-togawaeki-6.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-7",
       "file": "onsite-togawaeki-7.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-togawaeki-8",
       "file": "onsite-togawaeki-8.webp",
       "spotId": "togawaeki",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-yamasa-1",
       "file": "onsite-yamasa-1.webp",
       "spotId": "yamasa",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     },
     {
       "id": "onsite-yamasa-2",
       "file": "onsite-yamasa-2.webp",
       "spotId": "yamasa",
-      "publishedAt": "2026-08-24"
+      "publishedAt": "2026-08-24",
+      "by": "team"
     }
   ]
 }

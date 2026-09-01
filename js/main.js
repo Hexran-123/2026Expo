@@ -5093,6 +5093,28 @@ async function main() {
   }
 
   /*
+   * 時刻表と絶景スポットの解説の出どころは、路線ごとに違う。
+   * data/lines.json の credits から入れる。静的に書いておくと、有楽町線を
+   * 見ているのに「銚子電気鉄道 公式サイト」と出たままになる（実際そうなっていた）。
+   *
+   * spots は無い路線があるので、そのときは dt ごと隠す。
+   * 「無いなら出さない」（設計書 9.3）で、空の見出しを残さない。
+   */
+  const lineCredits = (currentLine && currentLine.credits) || {};
+  const creditsTimetable = document.getElementById('credits-timetable');
+  if (creditsTimetable) {
+    creditsTimetable.textContent = lineCredits.timetable || '―';
+  }
+  const creditsSpots = document.getElementById('credits-spots');
+  const creditsSpotsTerm = document.getElementById('credits-spots-term');
+  if (creditsSpots && creditsSpotsTerm) {
+    const hasSpotCredits = Boolean(lineCredits.spots);
+    if (hasSpotCredits) creditsSpots.textContent = lineCredits.spots;
+    creditsSpots.hidden = !hasSpotCredits;
+    creditsSpotsTerm.hidden = !hasSpotCredits;
+  }
+
+  /*
    * 出典を開けるのは、上の帯の中の「出典」からだけ。つまりここへ来るときは
    * 帯が出ている。読んでいるあいだに帯がひとりでに畳まれないよう時計を止め、
    * 閉じたところで数え直す。帯を新たに出しているわけではない。

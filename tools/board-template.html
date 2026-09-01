@@ -572,6 +572,23 @@
     text-shadow: 0 1px 3px rgba(0,0,0,.6); white-space: nowrap;
   }
 
+  /*
+   * 地図の上に常時出す出典（ADR-0003 の追記）。**押さないと出ない形にしないこと。**
+   *
+   * 凡例（.legend-note）とは色を変えてある。あちらは地図の外の暗い地の上に
+   * 出ることを見込んだ薄い灰色だが、この行が乗るのは地形と海——どちらも明るい。
+   * 薄い灰色のままだと読めないので、濃い字に白いふちを回している。
+   * 帰属は「読めること」までが条件なので、ここは凡例と揃えない。
+   */
+  .map-attrib {
+    position: absolute; right: 22px; bottom: 4px; z-index: 5;
+    color: #2A2E33; font-size: 11px; text-align: right; line-height: 1.5;
+    white-space: nowrap;
+    text-shadow:
+      0 0 3px rgba(255,255,255,.95), 0 0 6px rgba(255,255,255,.85),
+      0 0 10px rgba(255,255,255,.7);
+  }
+
   .post-fab {
     position: absolute; right: 22px; top: 18px; z-index: 6;
     display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 14px;
@@ -797,7 +814,24 @@
         <button type="button" class="needle-wrap" id="compassReset" aria-label="最初の表示に戻す（角度・拡大・位置）" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></button>
         <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
       </div>
+      <!--
+        出典は地図の上に常時出す。**出典タブの中だけに置かないこと。**
+
+        OpenStreetMap の帰属ガイドライン
+        https://osmfoundation.org/wiki/Licence/Attribution_Guidelines は
+        「attribution should not require individuals to interact with the map
+        to see the attribution」＝押さないと出ない形にしてはいけない、としている。
+        出典タブは1手で開けるが、それでも「押さないと出ない」ことに変わりはない。
+        地理院タイルの側も出典の明示を求めているので、同じ行にまとめてある。
+
+        「加工して作成」は地理院の「出典の記載」
+        https://www.gsi.go.jp/LAW/2930-meizi.html が求めている表記。
+        段彩も陰影も、この画面のために作り直したものだから省けない。
+
+        詳しい一覧のほうは、これまでどおり出典タブで読める。
+      -->
       <div class="legend-note">◆点線＝銚子電鉄の路線外（JR松岸）<br>◆提供元は写真の説明に記載</div>
+      <div class="map-attrib">© OpenStreetMap contributors／国土地理院タイルを加工して作成</div>
     </div>
 
     <div class="panel" id="panel">
@@ -930,7 +964,10 @@
   })).concat(
     USER_POSTS.filter(post => !post.spotId).map(post => ({
       kind: "post",
-      id: post.id, name: "乗客から届いた写真", u: post.u, v: post.v, z: post.z,
+      id: post.id,
+      // ピンの名前も、撮った人に合わせる（userCard と同じ理由）
+      name: post.by === "team" ? "制作チーム撮影の写真" : "乗客から届いた写真",
+      u: post.u, v: post.v, z: post.z,
       photoId: post.id,
       /*
        * 掲示板の投稿の窓から、地図をクリックして置かれた写真。掲示スポットに
@@ -1349,17 +1386,27 @@
    * 旅の記録の中だけに残る（2026-08-19 の決定）。
    * バッジを無彩色にしているのは、4 つのテーマ色が地理的な意味を表す色であり、
    * 成因カードを持たない投稿にその色を与えると意味があるように見えるため（ADR-0004）。
+   *
+   * **制作チームが現地調査で撮ったものは、そう名乗る。**
+   * board-posts.json の by が "team" のものがそれで、いまの掲示はすべてこれである。
+   * これを「乗客から届いた写真」と出していた時期があったが、撮っていない人が
+   * 撮ったことになってしまう。この作品は「分かっていないことを分かっているように
+   * 見せない」を通しているので、出どころについても同じにする。
+   * publish-posts.js は by を付けないので、実際に届いた投稿は自動で乗客側になる。
    */
   function userCard(post) {
+    const byTeam = post.by === "team";
     return {
       likeId: post.id,
       name: null,
       src: PHOTOS[post.id],
-      alt: "乗客から届いた写真",
-      badge: '<span class="badge badge-user">乗客から届いた写真</span>',
+      alt: byTeam ? "制作チームが現地調査で撮った写真" : "乗客から届いた写真",
+      badge: byTeam
+        ? '<span class="badge badge-sample">制作チーム撮影</span>'
+        : '<span class="badge badge-user">乗客から届いた写真</span>',
       caption: null,
       approximate: false,
-      credit: null,
+      credit: byTeam ? "撮影：制作チーム（2026年8月20日 現地調査）" : null,
     };
   }
 
