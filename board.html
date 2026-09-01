@@ -119,6 +119,233 @@
   .filter-tabs button[aria-pressed="true"]:hover { background: #235d79; }
   .filter-tabs .count { font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
 
+  /* ================= 時間軸（2026-08-27） =================
+   *
+   * 掲示板は「空間軸」と「時間軸」の二つのモードを持つ（ADR-0006）。
+   * 空間軸はこれまでの掲示板そのもので、時間軸に切り替えると
+   * 1923年／1981年度／現在の3時点で地物が描き換わる。
+   *
+   * **上バーの要素数はモードが変わっても4つのまま。** 軸の切替タブの右にあるのが、
+   * 空間軸では「すべて／駅／絶景」、時間軸では「1923／1981年度／現在」で、
+   * 同じ場所に入れ替わりで入る。だから帯が増えて混むことはない。
+   */
+
+  /* 軸の切替。見た目は絞り込みタブと同じ規則（選んだものは塗る）に揃える */
+  .axis-tabs svg { width: 19px; height: 19px; flex: none; display: block; }
+  .axis-tabs button { padding: 5px 12px 5px 9px; align-items: center; }
+  /*
+   * .filter-tabs は margin-right:auto を持っていて、これが「作品名のすぐ右に寄せ、
+   * 操作説明との間を空ける」役目をしている。軸の切替はその**左側**に並ぶので、
+   * ここでは打ち消す。auto を持つのは右隣の帯（絞り込み／年）のほうだけでよい。
+   */
+  .axis-tabs { margin-right: 0; }
+
+  /*
+   * 軸の切替と、その右の帯のあいだの仕切り。
+   * これが無いと、同じ見た目の帯が二つ並んで「6つのボタンが1列」に見える。
+   */
+  .bar-divider { width: 1px; height: 22px; background: #35383F; flex: none; margin: 0 -4px; }
+
+  /* 年の帯。3つしかないので絞り込みタブと同じ作り（aria-pressed の普通のボタン） */
+  .year-tabs .kicker { font-size: 10.5px; opacity: .7; }
+  .year-tabs button { flex-direction: column; align-items: flex-start; gap: 1px; padding: 3px 12px; line-height: 1.25; }
+
+  /* ---- 崖線（3Dの世界の中・地形の板と同じ平面に置く） ---- */
+  .cliff-layer { position: absolute; left: -500px; top: -634px; width: 1000px; height: 1268px; pointer-events: none; }
+  .cliff-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .cliff-line {
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .cliff-line.on { opacity: 1; }
+  /* 実測（現在）は実線、推定（1923・1981年度）は破線。質問6の決定を見た目にも出す */
+  .cliff-line.measured  { stroke: #3B4A5A; stroke-width: 3.2; }
+  .cliff-line.estimated { stroke: #C25B3A; stroke-width: 3.2; stroke-dasharray: 9 7; }
+
+  /* ---- 時間軸の地物（3Dの外・投影して置く。駅名と同じ作り） ---- */
+  .time-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+  .tl-item { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
+  .tl-mark {
+    position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+    pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0;
+    font-family: var(--font-map);
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .tl-mark.on { opacity: 1; }
+  .tl-mark.off { opacity: 0; pointer-events: none; }
+  .tl-mark .glyph {
+    width: 22px; height: 22px; border-radius: 6px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #2B2A28;
+    background: #F3EBD8; border: 2px solid #4A4640;
+    box-shadow: 0 2px 5px rgba(0,0,0,.45);
+  }
+  .tl-mark .label {
+    font-size: 12.5px; font-weight: 600; color: #fff;
+    -webkit-text-stroke: 3px rgba(18,20,24,.55); paint-order: stroke fill;
+  }
+  .tl-mark:hover .glyph, .tl-mark.active .glyph { background: var(--theme-sea-sub); border-color: #fff; }
+  .tl-mark:focus-visible { outline: none; }
+  .tl-mark:focus-visible .glyph { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--theme-sea); }
+
+  /*
+   * 地物は名前を印の**下**に置く（駅は右に置く）。
+   *
+   * 横に並べていたときは、「銚子」駅の右隣に「ヤマサ醤油」が伸びてきて、駅名と
+   * 乗車人員を覆っていた（2026-08-27に実機で確認）。縦に積めば、名前がどれだけ
+   * 長くても横には広がらないので、駅の列とぶつからない。
+   * さらに 9px 下げて、駅名の行から外している。
+   */
+  .tl-mark:not(.tl-station):not(.turbine) {
+    flex-direction: column; gap: 2px;
+    transform: translate(-50%, calc(-50% + 9px));
+  }
+  .tl-mark:not(.tl-station):not(.turbine) .label { font-size: 11.5px; }
+
+  /*
+   * 風車は8基あるので、地物と同じ印にすると台地が埋まる。小さな点にして、
+   * 名前も付けず、押せなくもしてある（.time-overlay の pointer-events は none で、
+   * button だけが auto を持つ。span で作ってあるのでそのまま素通りする）。
+   * 風車の話は「台地の畑」を押したときと、産業レイヤーの説明のほうに置いてある。
+   */
+  .tl-mark.turbine .glyph {
+    width: 11px; height: 11px; border-radius: 50%; font-size: 0;
+    border-width: 1.5px; border-color: #6B6862;
+    background: #FBFAF4; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+  }
+
+  /*
+   * 時間軸のときの駅。空間軸の駅名（.station-mark）とは別物で、
+   * 押せることと、乗車人員を添えることが違う。
+   */
+  .tl-station .dot {
+    width: 11px; height: 11px; border-radius: 50%; background: var(--station);
+    border: 2px solid var(--rail); box-shadow: 0 1px 4px rgba(0,0,0,.4); flex: none;
+  }
+  /*
+   * 乗車人員は駅名の**下**に積む。横に並べると「銚子 1,263」の幅で隣の
+   * 「仲ノ町 103」に届いてしまう（この2駅は実際に500mしか離れていない）。
+   * 縦に積めば、数字が何桁でも横幅は駅名のままで済む。
+   */
+  .tl-station .txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+  .tl-station .riders {
+    font-size: 11px; color: #F3EBD8; font-variant-numeric: tabular-nums;
+    -webkit-text-stroke: 3px rgba(18,20,24,.55); paint-order: stroke fill;
+  }
+  .tl-station .riders:empty { display: none; }
+  .tl-station:hover .dot, .tl-station.active .dot { background: var(--theme-sea-sub); border-color: #fff; }
+  .tl-station:focus-visible .dot { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--theme-sea); }
+
+  /* ---- 時間軸の右パネル ---- */
+  .tl-panel { font-size: 13.5px; }
+  .tl-panel .kicker { font-size: 11.5px; color: var(--theme-sea); font-weight: 700; letter-spacing: .06em; }
+  .tl-panel h2 { font-family: var(--font-map); font-size: 17px; margin: 2px 0 4px; line-height: 1.45; }
+  .tl-panel .year { font-size: 12px; color: var(--ink-soft); margin: 0 0 12px; }
+  .tl-panel .lead { margin: 0 0 16px; }
+  .tl-panel h3 {
+    font-family: var(--font-map); font-size: 13px; margin: 18px 0 7px;
+    padding-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,.12);
+  }
+  .tl-stat { display: flex; align-items: baseline; gap: 8px; margin: 0 0 3px; }
+  .tl-stat .k { font-size: 12px; color: var(--ink-soft); flex: none; min-width: 7.5em; }
+  .tl-stat .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tl-stat .u { font-size: 11.5px; color: var(--ink-soft); }
+  .tl-note { font-size: 11.5px; color: var(--ink-soft); margin: 0 0 11px; padding-left: .2em; }
+
+  /*
+   * 確からしさの名乗り（質問6の決定）。**推定と未確認は必ず画面に出す。**
+   * 実測のときは出さない——全部に付けると、かえって読み飛ばされる。
+   */
+  .cert {
+    display: inline-block; font-size: 10px; line-height: 1.5; border-radius: 4px;
+    padding: 0 5px; margin-left: 5px; vertical-align: 1px; white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .cert--estimated  { color: #B4502F; }
+  .cert--approximate { color: #7A6A3A; }
+  .cert--unverified { color: #6B6862; background: rgba(0,0,0,.05); }
+
+  .tl-photos { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0 4px; }
+  .tl-photo img { width: 100%; border-radius: 8px; display: block; background: #ddd; }
+  .tl-photo figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+  .tl-photo .when { font-weight: 700; color: var(--ink); }
+
+  .tl-back {
+    appearance: none; border: 1px solid rgba(0,0,0,.2); background: transparent; cursor: pointer;
+    font-family: var(--font-map); font-size: 12px; color: var(--ink-soft);
+    border-radius: 6px; padding: 4px 10px; margin-bottom: 12px;
+  }
+  .tl-back:hover { background: rgba(0,0,0,.05); color: var(--ink); }
+
+  .tl-compare { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 2px 0 8px; }
+  .tl-compare th, .tl-compare td { text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(0,0,0,.1); }
+  .tl-compare th { font-weight: 600; color: var(--ink-soft); font-size: 11.5px; white-space: nowrap; }
+  .tl-compare td { font-variant-numeric: tabular-nums; }
+  .tl-compare tr.here { background: rgba(42,110,143,.10); }
+
+  .tl-src { font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
+  .tl-src a { color: var(--theme-sea); }
+
+  /*
+   * 調べて書いた説明文を、そのまま載せる場所（2026-08-27）。要約も言い換えもしない。
+   * **畳んであるのは隠したいからではない。** 右パネルの主役は3時点の比較のほうで、
+   * 開いた瞬間に長文が出ると、比較の表がスクロールの下へ押し出されてしまう。
+   */
+  .tl-essay {
+    margin: 16px 0 4px; border: 1px solid rgba(0,0,0,.14);
+    border-radius: 8px; background: rgba(0,0,0,.025);
+  }
+  .tl-essay > summary {
+    cursor: pointer; list-style: none; padding: 9px 12px;
+    font-family: var(--font-map); font-size: 12.5px; line-height: 1.5;
+  }
+  .tl-essay > summary::-webkit-details-marker { display: none; }
+  .tl-essay > summary::before { content: "▶"; font-size: 9px; margin-right: 7px; color: var(--ink-soft); }
+  .tl-essay[open] > summary::before { content: "▼"; }
+  .tl-essay > summary:hover { background: rgba(0,0,0,.05); }
+  .tl-essay > summary:focus-visible { outline: 2px solid var(--theme-sea); outline-offset: -2px; }
+  .tl-essay .essay-body { padding: 0 13px 12px; }
+  .tl-essay .essay-body > p { margin: 0 0 11px; line-height: 1.9; text-indent: 1em; }
+  .tl-essay .essay-body > p.tl-note, .tl-essay .essay-body > p.tl-src { text-indent: 0; }
+  .tl-essay h3 { margin-top: 14px; }
+  .tl-essay ol {
+    margin: 0 0 10px; padding-left: 1.4em;
+    font-size: 11px; color: var(--ink-soft); line-height: 1.7;
+  }
+  .tl-essay ol li { margin-bottom: 6px; }
+  .tl-essay ol a { color: var(--theme-sea); word-break: break-all; }
+
+  /*
+   * 元の文章が持っている図。細かい地図や写真なので、押すと原寸で開く。
+   * 2枚以上あるときは並べる（.essay-figs-grid）——「銚子漁港の歴史と近代化による発展」の
+   * 空中写真3枚＋街並みの写真1枚がこれにあたる。1枚だけなら縦に並ぶだけで違いは出ない。
+   */
+  .essay-figs { margin: 0 0 4px; }
+  .essay-figs-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 8px;
+  }
+  .essay-fig { margin: 0 0 10px; }
+  .essay-fig img {
+    width: 100%; display: block; border-radius: 6px;
+    border: 1px solid rgba(0,0,0,.15); background: #fff;
+  }
+  .essay-fig figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 4px; text-align: center; line-height: 1.6; }
+  .essay-fig .credit { font-size: 10.5px; }
+  .essay-fig .credit a { color: var(--theme-sea); }
+
+  /* ---- 出典タブ ---- */
+  .src-group { margin: 0 0 4px; }
+  .src-list { list-style: none; margin: 0; padding: 0; }
+  .src-list li { margin: 0 0 13px; padding-left: 11px; border-left: 2px solid rgba(0,0,0,.10); }
+  .src-list .name { font-size: 12.5px; line-height: 1.6; }
+  .src-list .use { font-size: 11.5px; color: var(--ink-soft); margin: 3px 0 0; line-height: 1.65; }
+  .src-list .use b { color: var(--ink); font-weight: 600; }
+  .src-list .cond { font-size: 11px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.6; }
+  .src-list .cond::before { content: "※ "; }
+  .src-list a { color: var(--theme-sea); font-size: 11px; word-break: break-all; }
+  .src-count { font-size: 11.5px; color: var(--ink-soft); }
+
   .stage { position: relative; flex: 1; display: flex; min-height: 0; }
 
   /* ---------------- 3D 地図ステージ ---------------- */
@@ -500,11 +727,40 @@
       radiogroup にすると矢印キーでの移動を自前で書くことになり、Tab で順に辿れる
       いまの単純さを手放すことになる。3つしかないので、その複雑さに見合わない。
     -->
-    <div class="filter-tabs" role="group" aria-label="写真の種類でしぼりこむ">
+    <!--
+      軸の切替（2026-08-27、ADR-0006）。空間軸＝これまでの掲示板、時間軸＝3時点で
+      地物が描き換わる画面。**開いたときは必ず空間軸で、覚えない**（次に開くとまた
+      空間軸に戻る）。絞り込みが「覚えない」のと同じ理由——審査員や来場者が最初に
+      見るものを、いつも同じにしておくため。
+
+      絵は「地図ピン ⇄ 時計」。5案をモックアップで見比べて選んだ
+      （ai/artifacts/絶景掲示板/mockups/icon-時間軸切替.html）。
+    -->
+    <div class="filter-tabs axis-tabs" id="axisTabs" role="group" aria-label="見る軸を切り替える">
+      <button type="button" data-axis="space" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 21c0 0 6.4-7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 14 12 21 12 21Z"/><circle cx="12" cy="9.6" r="2.3"/></svg>空間
+      </button>
+      <button type="button" data-axis="time" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 6.8 V12 L15.6 14.2"/></svg>時間
+      </button>
+      <button type="button" data-axis="src" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M6.6 3.6h7.2L18 7.8V20a.4.4 0 0 1-.4.4H6.6a.4.4 0 0 1-.4-.4V4a.4.4 0 0 1 .4-.4Z"/><path d="M13.6 3.7v4.2h4.2"/><path d="M9 12.6h6M9 15.9h4.4"/></svg>出典
+      </button>
+    </div>
+    <div class="bar-divider"></div>
+
+    <div class="filter-tabs" id="filterTabs" role="group" aria-label="写真の種類でしぼりこむ">
       <button type="button" data-filter="all" aria-pressed="true">すべて <span class="count"></span></button>
       <button type="button" data-filter="station" aria-pressed="false">駅 <span class="count"></span></button>
       <button type="button" data-filter="scenery" aria-pressed="false">絶景 <span class="count"></span></button>
     </div>
+
+    <!--
+      年の帯。絞り込みタブと入れ替わりで同じ場所に入るので、上バーの要素は増えない。
+      **無段階のスライダーにはしない**（ADR-0006）。1950年の位置にツマミを置いたとき
+      画面に出るものは、必ず補間＝作り話になるため。
+    -->
+    <div class="filter-tabs year-tabs" id="yearTabs" role="group" aria-label="見る時点を選ぶ" hidden></div>
     <div class="controls-hint">
       <b>ドラッグ</b>：移動　／　<b>ホイール</b>：拡大縮小　／　<b>Ctrl+ドラッグ</b>（または右ドラッグ）：回転・傾き
     </div>
@@ -553,12 +809,21 @@
     </svg>
   </div>
           <div class="pins-layer" id="railLayer"></div>
+          <!--
+            昔の崖線（時間軸モードのみ）。これだけは3Dの世界の中に置く——
+            地形の板と同じ平面に載っていないと、崖が地面から浮いて見えるため。
+            中身は tools/build-timeline-geometry.js が計算した推定線で、
+            JS が renderCliff() で入れる。
+          -->
+          <div class="pins-layer" id="cliffLayer"></div>
         </div>
       </div>
 
       <!-- 駅名とピンは3Dの外。位置は JS が投影して決める（.stations-overlay・.pins-overlay のコメント参照） -->
       <div class="stations-overlay" id="stationsOverlay"></div>
       <div class="pins-overlay" id="pinsOverlay"></div>
+      <!-- 時間軸の地物と駅。駅名と同じく3Dの外に置いて、投影して並べる -->
+      <div class="time-overlay" id="timeOverlay" hidden></div>
 
       <div class="zoom-controls">
         <button type="button" id="zoomIn">＋</button>
@@ -675,7 +940,7 @@
    * 同じ場所を指す 4 件（公式写真は無く、乗客から届いた写真の掲示先）からなる。
    * 写真も投稿も無いものは、tools/build-board.js が既に外してある。
    */
-  const SPOTS = [{"id":"inubosaki","name":"犬吠埼灯台","u":0.8195271717729831,"v":0.5632421283193008,"z":29,"photo":"inubosaki","caption":"太平洋を望む白亜の灯台。初日の出の名所としても知られる。","approximate":false,"categories":["scenery"],"posts":["onsite-inubosaki-1","onsite-inubosaki-2","onsite-inubosaki-3","onsite-inubosaki-4"]},{"id":"kimigahama","name":"君ヶ浜","u":0.8068065595623148,"v":0.5110563148872351,"z":0,"photo":"kimigahama","caption":"遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"chikyu","name":"地球の丸く見える丘展望館","u":0.6812189701738451,"v":0.5765743681434375,"z":54,"photo":"chikyu","caption":"愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"byobugaura","name":"屏風ヶ浦","u":0.08649657205195642,"v":0.5795397652609793,"z":0,"photo":"byobugaura","caption":"約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"togawako","name":"外川漁港","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"togawako","caption":"銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。","approximate":true,"categories":["scenery"],"posts":[]},{"id":"kinmedai","name":"きんめだい","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"kinmedai","caption":"外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。","approximate":true,"categories":["scenery"],"posts":[]},{"id":"togawaeki","name":"外川駅","u":0.7130954584766809,"v":0.6405111142397492,"z":31,"photo":"togawaeki","caption":"銚子電鉄の終点。昔ながらの木造駅舎が今も残る。","approximate":false,"categories":["station","scenery"],"posts":["onsite-togawaeki-1","onsite-togawaeki-2","onsite-togawaeki-3","onsite-togawaeki-4","onsite-togawaeki-5","onsite-togawaeki-6","onsite-togawaeki-7","onsite-togawaeki-8"]},{"id":"sengaiwa","name":"千騎ヶ岩","u":0.6336133791685272,"v":0.6663938641633905,"z":15.7,"photo":"sengaiwa","caption":"外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"inuiwa","name":"犬岩","u":0.6062417606636323,"v":0.6515650938047903,"z":8.4,"photo":"inuiwa","caption":"両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"cabbage","name":"キャベツ畑","u":0.7290679426000605,"v":0.3935434187024844,"z":31.1,"photo":"cabbage","caption":"風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。","approximate":false,"categories":["scenery"],"posts":["onsite-cabbage-1"]},{"id":"traincabbage","name":"銚子電鉄とキャベツ畑","u":0.7406262465803045,"v":0.4553768121036731,"z":30.6,"photo":"traincabbage","caption":"沿線随一の撮影名所。キャベツ畑を電車が横切る。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"chijimi","name":"銚子ちぢみ伝統工芸館","u":0.13033298994981224,"v":0.2532613057096356,"z":8.6,"photo":"chijimi","caption":"江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。","approximate":true,"categories":["scenery"],"posts":[]},{"id":"yamasa","name":"ヤマサ醤油工場","u":0.48675073705776023,"v":0.37409833799515496,"z":4.5,"photo":null,"caption":"利根川の水運が原料を運んだ、醤油の街の工場。仲ノ町駅のすぐ横にある。","approximate":false,"categories":["scenery"],"posts":["onsite-yamasa-1","onsite-yamasa-2"]},{"id":"foresttunnel","name":"森のトンネル","u":0.6280692799576235,"v":0.35659865774406124,"z":33,"photo":null,"caption":"低地から台地へ上がるために、土を切り開いた跡。本銚子駅の前後だけ緑が覆いかぶさる。","approximate":false,"categories":["scenery"],"posts":["onsite-foresttunnel-1"]},{"id":"sunflower","name":"ひまわり畑","u":0.7502967250903679,"v":0.5464536793359384,"z":27.3,"photo":null,"caption":"キャベツの休みの季節に、畑をやすませるための花。君ヶ浜〜犬吠のあたりに広がる。","approximate":false,"categories":["scenery"],"posts":["onsite-sunflower-1"]},{"id":"manganji","name":"満願寺","u":0.7135664894397046,"v":0.5814717799342294,"z":37.2,"photo":null,"caption":"犬吠埼観音として親しまれる、関東八十八ヶ所霊場の特別霊場。","approximate":false,"categories":["scenery"],"posts":["onsite-manganji-1","onsite-manganji-2","onsite-manganji-3"]},{"id":"choshieki","name":"銚子駅","u":0.43814385822965846,"v":0.3713837012116683,"z":6.9,"photo":null,"caption":"銚子電鉄の起点駅。JR銚子駅と同じ建物にあり、ここから外川行きの電車が出る。","approximate":false,"categories":["station"],"posts":["onsite-choshieki-2","onsite-choshieki-3"]},{"id":"nakanochoeki","name":"仲ノ町駅","u":0.4954578693354817,"v":0.3761365465465586,"z":5.2,"photo":null,"caption":"銚子電鉄の車庫がある駅。朝いちばんの下り2本は、銚子駅ではなくここから出る。","approximate":false,"categories":["station"],"posts":["onsite-nakanochoeki-1"]},{"id":"kannoneki","name":"観音駅","u":0.5576117467195356,"v":0.37471319162555505,"z":13.7,"photo":null,"caption":"飯沼観音（圓福寺）への下車駅。とんがり屋根の洋風駅舎が線路ぎわに建つ。","approximate":false,"categories":["station"],"posts":["onsite-kannoneki-1","onsite-kannoneki-2","onsite-kannoneki-3","onsite-kannoneki-4"]},{"id":"motochoshieki","name":"本銚子駅","u":0.6278619893177306,"v":0.3567128830919553,"z":31.4,"photo":null,"caption":"低地から台地へ上がりきったところにある、森のトンネルの切通しの駅。","approximate":false,"categories":["station"],"posts":["onsite-motochoshieki-1"]},{"id":"kasagami","name":"笠上黒生駅","u":0.7136553282853354,"v":0.38015942051755036,"z":32.7,"photo":null,"caption":"単線の銚子電鉄で唯一、上り下りの電車がすれ違える駅。","approximate":false,"categories":["station"],"posts":["onsite-kasagami-1","onsite-kasagami-2","onsite-kasagami-3"]},{"id":"kimigahamaeki","name":"君ヶ浜駅","u":0.7452736286930894,"v":0.5129321092721107,"z":16.3,"photo":null,"caption":"白いコンクリートの門が入口に立つ駅。砂浜の君ヶ浜へは、ここから歩く。","approximate":false,"categories":["station"],"posts":["onsite-kimigahamaeki-1","onsite-kimigahamaeki-2"]},{"id":"ashikajima","name":"海鹿島駅","u":0.7734188854789052,"v":0.43938883294104664,"z":31.5,"photo":null,"caption":"「海鹿島」と書いて「あしかじま」と読む、関東最東端の駅として駅名標に記される。","approximate":false,"categories":["station"],"posts":["onsite-ashikajima-1"]},{"id":"inuboeki","name":"犬吠駅","u":0.7514997511252586,"v":0.5781244418097163,"z":28.9,"photo":null,"caption":"ポルトガル風の白い駅舎で「関東の駅百選」に選ばれた、犬吠埼灯台の最寄り駅。","approximate":false,"categories":["station"],"posts":["onsite-inuboeki-1","onsite-inuboeki-2","onsite-inuboeki-3","onsite-inuboeki-4","onsite-inuboeki-5","onsite-inuboeki-6"]}];
+  const SPOTS = [{"id":"inubosaki","name":"犬吠埼灯台","u":0.8195271717729831,"v":0.5632421283193008,"z":29,"photo":"inubosaki","caption":"太平洋を望む白亜の灯台。初日の出の名所としても知られる。","approximate":false,"categories":["scenery"],"posts":["onsite-inubosaki-1","onsite-inubosaki-2","onsite-inubosaki-3","onsite-inubosaki-4"]},{"id":"kimigahama","name":"君ヶ浜","u":0.8068065595623148,"v":0.5110563148872351,"z":0,"photo":"kimigahama","caption":"遠くに犬吠埼灯台を望む砂浜。晴れた日は水平線がくっきり見える。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"chikyu","name":"地球の丸く見える丘展望館","u":0.6812189701738451,"v":0.5765743681434375,"z":54,"photo":"chikyu","caption":"愛宕山の上から太平洋と屏風ヶ浦を一望できる展望台。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"byobugaura","name":"屏風ヶ浦","u":0.08649657205195642,"v":0.5795397652609793,"z":0,"photo":"byobugaura","caption":"約10kmにわたって続く海食崖。「東洋のドーバー」とも呼ばれる。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"togawako","name":"外川漁港","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"togawako","caption":"銚子漁業発祥の地。手釣りのきんめ漁が今も行われている。","approximate":true,"categories":["scenery"],"posts":[]},{"id":"kinmedai","name":"きんめだい","u":0.698859958866827,"v":0.668709604614757,"z":2.2,"photo":"kinmedai","caption":"外川支所の一本釣りで水揚げされる、千葉ブランド水産物第1号。","approximate":true,"categories":["scenery"],"posts":[]},{"id":"togawaeki","name":"外川駅","u":0.7130954584766809,"v":0.6405111142397492,"z":31,"photo":"togawaeki","caption":"銚子電鉄の終点。昔ながらの木造駅舎が今も残る。","approximate":false,"categories":["station","scenery"],"posts":["onsite-togawaeki-1","onsite-togawaeki-2","onsite-togawaeki-3","onsite-togawaeki-4","onsite-togawaeki-5","onsite-togawaeki-6","onsite-togawaeki-7","onsite-togawaeki-8"]},{"id":"sengaiwa","name":"千騎ヶ岩","u":0.6336133791685272,"v":0.6663938641633905,"z":15.7,"photo":"sengaiwa","caption":"外川漁港と犬若漁港の間にそそり立つ、千葉県最古の地層でできた岩礁。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"inuiwa","name":"犬岩","u":0.6062417606636323,"v":0.6515650938047903,"z":8.4,"photo":"inuiwa","caption":"両耳を立てた犬のうしろ姿に見える、高さ約15mの岩。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"cabbage","name":"キャベツ畑","u":0.7290679426000605,"v":0.3935434187024844,"z":31.1,"photo":"cabbage","caption":"風車が並ぶ台地に広がる、春キャベツ収穫量日本一の畑。","approximate":false,"categories":["scenery"],"posts":["onsite-cabbage-1"]},{"id":"traincabbage","name":"銚子電鉄とキャベツ畑","u":0.7406262465803045,"v":0.4553768121036731,"z":30.6,"photo":"traincabbage","caption":"沿線随一の撮影名所。キャベツ畑を電車が横切る。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"chijimi","name":"銚子ちぢみ伝統工芸館","u":0.13033298994981224,"v":0.2532613057096356,"z":8.6,"photo":"chijimi","caption":"江戸時代から伝わる織物「銚子ちぢみ」を今に伝える工芸館（松岸、路線外）。","approximate":false,"categories":["scenery"],"posts":[]},{"id":"yamasa","name":"ヤマサ醤油工場","u":0.48675073705776023,"v":0.37409833799515496,"z":4.5,"photo":null,"caption":"利根川の水運が原料を運んだ、醤油の街の工場。仲ノ町駅のすぐ横にある。","approximate":false,"categories":["scenery"],"posts":["onsite-yamasa-1","onsite-yamasa-2"]},{"id":"foresttunnel","name":"森のトンネル","u":0.6280692799576235,"v":0.35659865774406124,"z":33,"photo":null,"caption":"低地から台地へ上がるために、土を切り開いた跡。本銚子駅の前後だけ緑が覆いかぶさる。","approximate":false,"categories":["scenery"],"posts":["onsite-foresttunnel-1"]},{"id":"sunflower","name":"ひまわり畑","u":0.7502967250903679,"v":0.5464536793359384,"z":27.3,"photo":null,"caption":"キャベツの休みの季節に、畑をやすませるための花。君ヶ浜〜犬吠のあたりに広がる。","approximate":false,"categories":["scenery"],"posts":["onsite-sunflower-1"]},{"id":"manganji","name":"満願寺","u":0.7135664894397046,"v":0.5814717799342294,"z":37.2,"photo":null,"caption":"犬吠埼観音として親しまれる、関東八十八ヶ所霊場の特別霊場。","approximate":false,"categories":["scenery"],"posts":["onsite-manganji-1","onsite-manganji-2","onsite-manganji-3"]},{"id":"choshieki","name":"銚子駅","u":0.43814385822965846,"v":0.3713837012116683,"z":6.9,"photo":null,"caption":"銚子電鉄の起点駅。JR銚子駅と同じ建物にあり、ここから外川行きの電車が出る。","approximate":false,"categories":["station"],"posts":["onsite-choshieki-2","onsite-choshieki-3"]},{"id":"nakanochoeki","name":"仲ノ町駅","u":0.4954578693354817,"v":0.3761365465465586,"z":5.2,"photo":null,"caption":"銚子電鉄の車庫がある駅。朝いちばんの下り2本は、銚子駅ではなくここから出る。","approximate":false,"categories":["station"],"posts":["onsite-nakanochoeki-1"]},{"id":"kannoneki","name":"観音駅","u":0.5576117467195356,"v":0.37471319162555505,"z":13.7,"photo":null,"caption":"飯沼観音（圓福寺）への下車駅。とんがり屋根の洋風駅舎が線路ぎわに建つ。","approximate":false,"categories":["station"],"posts":["onsite-kannoneki-1","onsite-kannoneki-2","onsite-kannoneki-3","onsite-kannoneki-4"]},{"id":"motochoshieki","name":"本銚子駅","u":0.6278619893177306,"v":0.3567128830919553,"z":31.4,"photo":null,"caption":"低地から台地へ上がりきったところにある、森のトンネルの切通しの駅。","approximate":false,"categories":["station"],"posts":["onsite-motochoshieki-1"]},{"id":"kasagami","name":"笠上黒生駅","u":0.7136553282853354,"v":0.38015942051755036,"z":32.7,"photo":null,"caption":"単線の銚子電鉄で唯一、上り下りの電車がすれ違える駅。","approximate":false,"categories":["station"],"posts":["onsite-kasagami-1","onsite-kasagami-2","onsite-kasagami-3"]},{"id":"kimigahamaeki","name":"君ヶ浜駅","u":0.7452736286930894,"v":0.5129321092721107,"z":16.3,"photo":null,"caption":"白いコンクリートの門が入口に立つ駅。砂浜の君ヶ浜へは、ここから歩く。","approximate":false,"categories":["station"],"posts":["onsite-kimigahamaeki-1","onsite-kimigahamaeki-2"]},{"id":"ashikajima","name":"海鹿島駅","u":0.7734188854789052,"v":0.43938883294104664,"z":31.5,"photo":null,"caption":"「海鹿島」と書いて「あしかじま」と読む、関東最東端の駅として駅名標に記される。","approximate":false,"categories":["station"],"posts":["onsite-ashikajima-1"]},{"id":"inuboeki","name":"犬吠駅","u":0.7514997511252586,"v":0.5781244418097163,"z":28.9,"photo":null,"caption":"ポルトガル風の白い駅舎で「関東の駅百選」に選ばれた、犬吠埼灯台の最寄り駅。","approximate":false,"categories":["station"],"posts":["onsite-inuboeki-1","onsite-inuboeki-2","onsite-inuboeki-3","onsite-inuboeki-4","onsite-inuboeki-5","onsite-inuboeki-6"]}];
 
   /*
    * 乗客から届いた写真（ADR-0004）。**審査を通ったものだけ**がここに入る。
@@ -833,6 +1098,7 @@
     // 駅名もピンも3Dの外にあるので、位置はここで毎回投影して置き直す
     positionStations();
     positionPins();
+    positionTimeItems();   // 時間軸の地物と駅（空間軸のときは中身が空なので何もしない）
   }
 
   // ---------------- マウス操作 ----------------
@@ -887,6 +1153,22 @@
    * これで尻尾の先が、その場所の地面にちょうど触れる。
    */
   const pinItems = [];
+
+  /*
+   * 時間軸の状態。**本体は下のほう（いいねと投稿の窓のあとろ）にまとめてある**が、
+   * 入れ物と状態だけはここで作っておく。
+   *
+   * なぜ分けるか: render() は setup の途中（fitScale()）から呼ばれる。そのとき
+   * positionTimeItems() が timeItems を読むので、const の初期化より前に読むことになり、
+   * 宣言だけ後ろに置くと Temporal Dead Zone で落ちる。配列は先に作っておけばよい。
+   *
+   * mode は開いたときは必ず "space"。**覚えない**（次に開くとまた空間軸に戻る）。
+   * timePoint の最初は "y1923" ——押し進めると 1923 → 1981年度 → 現在 の順に
+   * 話が流れるようにするため。
+   */
+  const timeItems = [];
+  let mode = "space";
+  let timePoint = "y1923";
 
   function positionPins() {
     for (const it of pinItems) {
@@ -1144,7 +1426,13 @@
   // 駅名ラベル（.stations-overlay の11駅）は、どちらを選んでも消さない。
   // あれは写真ではなく地図の骨格——どこを見ているかを読み取るためのもので、
   // 方位針や縮尺と同じ側に属する。消えるのは写真のピンだけ。
-  const filterTabs = document.querySelectorAll(".filter-tabs button");
+  /*
+   * **[data-filter] で絞ること。** 軸の切替（.axis-tabs）と年の帯（.year-tabs）も
+   * 見た目を揃えるために .filter-tabs を名乗っているので、".filter-tabs button" だけだと
+   * それらのボタンまで拾ってしまい、「空間」を押したら写真の絞り込みが走る、という
+   * ことになる（2026-08-27に実際に踏みかけた）。
+   */
+  const filterTabs = document.querySelectorAll(".filter-tabs button[data-filter]");
 
   function setFilter(next) {
     if (filter === next) return;
@@ -1542,6 +1830,511 @@
     if (e.key !== "Escape") return;
     if (modalBackdrop.classList.contains("open")) { closeModal(); return; }
     closePanel();
+  });
+
+  /* ================================================================
+   * 時間軸（2026-08-27、ADR-0006）
+   *
+   * 掲示板を「空間軸」と「時間軸」の二つのモードにする。時間軸では
+   * 1923年／1981年度／現在の3時点で、銚子という土地と銚子電鉄の姿が描き換わる。
+   *
+   * **主語は土地であって、鉄道会社の年史ではない。** 変えるのは地形の上に載っている
+   * ものだけで、段彩の板そのものは動かさない——台地と崖という地形は100年では
+   * 変わらないからである。唯一動くのが屏風ヶ浦の崖線で、これは実際に後退している。
+   *
+   * ここに出る数字は全部 data/choshi/timeline.json から来ていて、その出どころは
+   * docs/時間軸_裏取り記録.md に1件ずつ書いてある。**出典の無い数字は出さない。**
+   * 推定と未確認は画面にそう名乗らせる（.cert）。
+   * ================================================================ */
+
+  const TIMELINE = {"_comment":["絶景掲示板の時間軸（1923年／1981年度／現在）で使うデータ。","","**人が手で書くファイル。** data/choshi/ の中では6つ目にあたる（CLAUDE.md 参照）。","自動生成ではないので、tools/ のスクリプトがこれを書き換えることはない。","","**ここに書く数字は、必ず docs/時間軸_裏取り記録.md に出典があること。**","出典を書けない数字は書かない。裏が取れていないものは confidence を \"unverified\" にして、","画面に「確認中」と出す（board-template.html の CERT_LABEL を参照）。","","confidence の語は data/choshi/board-spots.json と揃えてある:","  exact       … 一次資料の実測値・実記録","  approximate … 概略。位置や範囲がおおよそ","  estimated   … 推定。計算で出した値（画面では破線で描く）","  unverified  … 未確認。画面では「確認中」","","labelOffset は、印が重ならないように画面上でずらす量（画素）。**緯度経度は動かさない。**","地図の印は lat/lon の場所を指しているが、銚子駅・仲ノ町駅とヤマサ醤油のように","実際にほぼ同じ場所にあるものは、そのまま描くと名前が重なって読めなくなる。","ずらすのは絵の都合であって、位置の主張ではない（パネルには本当の出典を出している）。","","地物には essay を持たせられる。チームが調べて書いた説明文を**要約せずそのまま**載せる場所で、","画面では畳んであり、押すと開く（board-template.html の essayHTML）。references は、その文章が","持っている「引用・参考文献」をそのまま写したもの。ここだけは出典の形が他と違うが、それは","元の文章の一部だからである。**文言を編集しないこと。**","","崖線のジオメトリはここには書かない。tools/build-timeline-geometry.js が","data/board/timeline-geometry.json へ生成する（推定の作り方をリポジトリに残すため）。"],"layers":[{"id":"rail","name":"路線・駅・貨物","short":"鉄道","note":"線路の形は3時点とも変わらない。変わるのは駅の数と、駅ごとの乗車人員と、貨物。"},{"id":"coast","name":"海岸線と崖","short":"海岸","note":"屏風ヶ浦の崖線は実際に後退している。銚子漁港は埋立の範囲が分からないので位置だけ。"},{"id":"industry","name":"産業","short":"産業","note":"醤油・漁・台地の作付け・風車。土地のほうは今も栄えている、という話の材料。"},{"id":"population","name":"人の広がり","short":"人口","note":"銚子市の国勢調査人口。1923年は市制前なので、比べられる数字が無い。"}],"points":[{"id":"y1923","label":"1923","yearLabel":"1923年（大正12）","kicker":"はじまり","title":"銚子から外川まで、線路がつながった","lead":"7月5日、銚子鉄道が銚子〜外川間を開業した。駅は6つしかなく、笠上黒生も君ヶ浜も犬吠も西海鹿島も、まだ無い。醤油と魚を運ぶための鉄道でもあった。銚子市はまだ存在せず、ここは銚子町・本銚子町・西銚子町・豊浦村に分かれていた。","stats":[{"label":"駅の数","value":"6","unit":"駅","confidence":"exact","note":"銚子・仲ノ町・観音・本銚子・海鹿島・外川。犬吠駅の開業は1935年なので、まだ無い。","source":"各駅の開業年月日（裏取り記録 3章）"},{"label":"旅客","value":"—","confidence":"unverified","note":"千葉県統計年鑑のオンライン公開は昭和40年版までで、戦前の数値に届いていない。","source":null},{"label":"貨物","value":"あり","confidence":"approximate","note":"貨物営業は開業から1984年まで続く。仲ノ町駅からヤマサ醤油第一工場へ専用線が延びていた。この年のトン数は未確認。","source":"仲ノ町駅の記述、貨物営業廃止日（裏取り記録 3章）"},{"label":"銚子の人口","value":"—","confidence":"unverified","note":"銚子市の発足は1933年2月11日なので、この年に「銚子市の人口」は無い。市になった1933年の人口は44,366人。","source":"銚子市 歴史文化基本構想／銚子市統計書（裏取り記録 5章）"}],"layerNotes":{"rail":"銚子・仲ノ町・観音・本銚子・海鹿島・外川の6駅。この年の7月5日に全線が開業した。","coast":"屏風ヶ浦の崖は、まだ年間1m近い速さで削られていた。消波堤はどこにも無い。近代的な銚子漁港もまだ無く、修築工事の完成は1943年である。","industry":"ヤマサ醤油は既にある。台地に広がっていたのは甘藷（サツマイモ）と麦で、キャベツはまだ無い。風車も無い。","population":"銚子市はまだ無い。銚子町・本銚子町・西銚子町・豊浦村が合併して市になるのは10年後の1933年。"}},{"id":"y1981","label":"1981年度","yearLabel":"1981年度（昭和56年度）","kicker":"生活の足だった頃","title":"1日4,009人が、通学と通勤に使っていた","lead":"駅は10。1970年の西海鹿島開業で今の姿が揃っている。乗った人の54%が定期券で、これは観光路線ではなく街の足だったということ。街の人口はまだピークの97%を保っていた。ただし貨物列車は、この時点でもう走っていない。","stats":[{"label":"駅の数","value":"10","unit":"駅","confidence":"exact","note":"1970年3月1日の西海鹿島駅開業で、現在と同じ10駅になった。以後1駅も減っていない。","source":"裏取り記録 3章"},{"label":"年間の乗車人員","value":"1,463,127","unit":"人","confidence":"exact","note":"普通676,947／定期786,180。定期が54%を占める。","source":"千葉県統計年鑑 昭和57年版 p.214 表121"},{"label":"1日の乗車人員","value":"4,009","unit":"人","confidence":"exact","note":"10駅の合計。駅別の内訳は地図上の各駅を押すと出る。","source":"千葉県統計年鑑 昭和57年版 p.215-216 表122"},{"label":"貨物発送トン数","value":"0","unit":"t","confidence":"exact","note":"計上なし。貨物営業の廃止は1984年2月1日だが、車扱の輸送は1978年度の時点で既にゼロだった。廃止は実態が消えたあとの手続きにあたる。","source":"千葉県統計年鑑 昭和54年版・昭和57年版"},{"label":"銚子市の人口","value":"89,416","unit":"人","confidence":"approximate","note":"1980年（昭和55）国勢調査の値。1981年度そのものの国勢調査は無い。1985年は87,883人。ピーク（1965年 91,492人）の約97%。","source":"銚子市統計書 令和4年度版 表3-1"}],"layerNotes":{"rail":"10駅すべてが揃っている。定期券の客が普通の客を上回っていて、通学と通勤の足だった。貨物はもう走っていない。","coast":"屏風ヶ浦の消波堤が、両端から順に据えられていく途中。三崎町のあたりでは1979〜1983年の区間ができたところ。崖の後退は、この頃から一桁遅くなっていく。銚子漁港は運河（1971）と第3卸売市場No.1（1977）ができ、黒生の埋立が進んでいた。","industry":"キャベツが台地を覆っている。1953年の試作から30年近く経ち、産地として定着した頃。ヤマサ醤油への専用線はまだ図面上は残るが、貨物の実績はゼロ。風車はまだ1本も無い。","population":"89,416人（1980年国勢調査）。ピークの1965年から16年で2,076人しか減っていない。**街はまだ縮んでいない。先に減ったのは鉄道の客のほうだった。**"}},{"id":"ynow","label":"現在","yearLabel":"現在（2018年度〜2020年）","kicker":"いま","title":"線路も駅もそのままで、人と荷物だけが消えた","lead":"駅は10のままで、1981年度から1つも減っていない。減ったのは客で、1日4,009人が1,049人になった。とりわけ定期券の客は12%まで落ちた。ただし犬吠駅だけは71%を保っている——観光の駅だからである。そして土地のほうは、今も栄えている。","stats":[{"label":"駅の数","value":"10","unit":"駅","confidence":"exact","note":"1981年度から1駅も減っていない。廃止された駅は一つも無い。","source":"裏取り記録 3章"},{"label":"年間の乗車人員","value":"350,337","unit":"人","confidence":"exact","note":"2018年度。普通257,877／定期92,460。1981年度の24%、1964年の20.5%。","source":"千葉県統計年鑑 令和元年版 表110"},{"label":"1日の乗車人員","value":"1,049","unit":"人","confidence":"exact","note":"2018年度。10駅の合計。1981年度（4,009人）の26%。","source":"千葉県統計年鑑 令和元年版 表111"},{"label":"定期券の客","value":"92,460","unit":"人","confidence":"exact","note":"1981年度の786,180人から12%まで落ちた。普通の客は38%残っている。通学通勤の足から、観光の乗り物へ変わった。","source":"千葉県統計年鑑 令和元年版 表110"},{"label":"銚子市の人口","value":"58,431","unit":"人","confidence":"exact","note":"2020年（令和2）国勢調査。ピーク（1965年 91,492人）の64%。","source":"銚子市統計書 令和4年度版 表3-1"}],"layerNotes":{"rail":"10駅のまま。客は1981年度の26%になった。駅を押すと、どの駅がどれだけ残ったかが出る——生活の駅ほど深く減り、観光の駅は残っている。","coast":"屏風ヶ浦は一部を除いて大半に消波堤が入り、波による崖脚の侵食はほとんど無くなった。代わりに崖の上が崩れて崖錐が育つという、別の壊れ方に変わっている。屏風ヶ浦から流れ出る土砂は以前の1/3になり、九十九里浜のほうが痩せはじめた。","industry":"台地には風車が並ぶ。キャベツの収穫量も、漁港の水揚げも、今なお全国の上位にある。ヤマサ醤油も動いている。**衰えたのは鉄道の客であって、土地ではない。**","population":"58,431人（2020年国勢調査）。ピークの64%。世帯数は逆に増え続けていて、世帯が小さくなっている。"}}],"stations":[{"name":"銚子","opened":"1923-07-05","openedNote":"起点","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":1263,"normal":658,"pass":605},"ynow":{"total":384,"normal":258,"pass":126}}},{"name":"仲ノ町","opened":"1923-07-05","openedNote":"1913年開業→1917年廃止→1923年再開業","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":103,"normal":57,"pass":46},"ynow":{"total":28,"normal":27,"pass":1}}},{"name":"観音","opened":"1923-07-05","openedNote":"1925年に現在地へ移転","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":384,"normal":233,"pass":151},"ynow":{"total":74,"normal":50,"pass":24}}},{"name":"本銚子","opened":"1923-07-05","openedNote":"1913年開業→1917年営業終了→1923年に駅舎新設","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":514,"normal":184,"pass":330},"ynow":{"total":88,"normal":43,"pass":45}}},{"name":"笠上黒生","opened":"1925-07-01","openedNote":"電化と同じ日に開業","in":["y1981","ynow"],"riders":{"y1981":{"total":310,"normal":122,"pass":188},"ynow":{"total":94,"normal":38,"pass":56}}},{"name":"西海鹿島","opened":"1970-03-01","openedNote":"いちばん新しい駅。これで10駅が揃った","in":["y1981","ynow"],"riders":{"y1981":{"total":243,"normal":94,"pass":149},"ynow":{"total":30,"normal":22,"pass":8}}},{"name":"海鹿島","opened":"1923-07-05","openedNote":"1913年開業→1917年廃止→1923年再開業","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":451,"normal":142,"pass":309},"ynow":{"total":84,"normal":35,"pass":49}}},{"name":"君ヶ浜","opened":"1931-06-21","openedNote":null,"in":["y1981","ynow"],"riders":{"y1981":{"total":37,"normal":18,"pass":19},"ynow":{"total":13,"normal":8,"pass":5}}},{"name":"犬吠","opened":"1935-08-14","openedNote":"「灯台前駅」として開業し、1942年に犬吠駅へ改称。1923年には無い","in":["y1981","ynow"],"riders":{"y1981":{"total":160,"normal":137,"pass":23},"ynow":{"total":114,"normal":109,"pass":5}}},{"name":"外川","opened":"1923-07-05","openedNote":"終点","in":["y1923","y1981","ynow"],"riders":{"y1981":{"total":544,"normal":210,"pass":334},"ynow":{"total":140,"normal":113,"pass":26}}}],"stationSource":{"y1981":"千葉県統計年鑑 昭和57年版 表122「私鉄駅別1日平均運輸状況（昭和56年度）」p.215-216","ynow":"千葉県統計年鑑 令和元年版 表111「民鉄等駅別1日平均運輸状況（2018年度）」","opened":"各駅のWikipedia記事（裏取り記録 3章）。一次資料での再確認は未了"},"features":[{"id":"yamasa","labelOffset":[0,30],"name":"ヤマサ醤油","layer":"industry","lat":35.729108,"lon":140.832566,"confidence":"exact","source":"data/choshi/board-spots.json（同じ場所を指す）","states":{"y1923":{"present":true,"mark":"工","text":"既に操業している。仲ノ町駅の構内から第一工場へ専用線が延び、原料の塩などを運んでいた。"},"y1981":{"present":true,"mark":"工","text":"工場は動いているが、鉄道での貨物輸送はこの年度ゼロ。専用線の役目は終わっていた。"},"ynow":{"present":true,"mark":"工","text":"今も動いている。仲ノ町駅は今もヤマサ醤油の工場に囲まれている。"}}},{"id":"choshiko","labelOffset":[0,-26],"name":"銚子漁港","layer":"coast","lat":35.733921,"lon":140.8393115,"confidence":"approximate","source":"OpenStreetMap node 4883796831（ODbL）。埋立の範囲と年は未確認","states":{"y1923":{"present":false,"mark":"港","text":"近代的な漁港はまだ無い。修築工事は大正末期に着手し、完成は1943年である。"},"y1981":{"present":true,"mark":"港","text":"運河（1971年）で利根川河口を通らずに済むようになり、第3卸売市場No.1（1977年）ができた。黒生の埋立が進んでいる最中。"},"ynow":{"present":true,"mark":"港","text":"第1卸売市場（2014年度）まで揃った。水揚げは今も全国の上位にある。"}},"essay":{"title":"銚子漁港の歴史と近代化による発展","from":"チーム作成「銚子電鉄～歴史編～」2章の説明文。要約せずそのまま載せている。","figures":[{"src":"assets/choshi/essay/choshiko-fig1.webp","caption":"図１　1961～1969年に撮影された銚子漁港の空中写真","credit":"地理院地図より筆者引用","note":null,"link":{"url":"https://maps.gsi.go.jp/development/ichiran.html","label":"地理院タイル一覧"},"source":"チーム作成「銚子電鉄～歴史編～」2章の図1。地理院地図（国土地理院）のスクリーンショット"},{"src":"assets/choshi/essay/choshiko-fig2.webp","caption":"図２　1974～1978年に撮影された銚子漁港の空中写真","credit":"地理院地図より筆者引用","note":null,"link":{"url":"https://maps.gsi.go.jp/development/ichiran.html","label":"地理院タイル一覧"},"source":"チーム作成「銚子電鉄～歴史編～」2章の図2。地理院地図（国土地理院）のスクリーンショット"},{"src":"assets/choshi/essay/choshiko-fig3.webp","caption":"図３　2011年に撮影された銚子漁港の空中写真","credit":"地理院地図より筆者引用","note":null,"link":{"url":"https://maps.gsi.go.jp/development/ichiran.html","label":"地理院タイル一覧"},"source":"チーム作成「銚子電鉄～歴史編～」2章の図3。地理院地図（国土地理院）のスクリーンショット"},{"src":"assets/choshi/essay/choshiko-fig4.webp","caption":"図４　外川の街並み","credit":"銚子市観光協会より筆者引用","note":null,"link":{"url":"https://www.choshikanko.com/photo/category/sizen_hukei/machinami/","label":"銚子市観光協会 フォトダウンロード"},"source":"チーム作成「銚子電鉄～歴史編～」2章の図4。一般社団法人銚子市観光協会 フォトダウンロード（町並み）からダウンロードしたもの。直リンクはしていない（docs/銚子市観光協会フォトダウンロード利用規約.md）"}],"paragraphs":["図１～３はそれぞれ1961～1969年、1974～1978年、2011年に撮影された銚子漁港周辺の空中写真である。写真を見ると、1974～1978年に撮影された銚子漁港には、1961～1969年に撮影された写真にはない、利根川の河口部に新設された堤防が見られる。また、2011年の銚子漁港は、1974～1978年の写真と比べて格段に沖合の堤防が増えたほか、埋め立てられ、漁港の面積が増加したことがわかる。","ではなぜこのような劇的な変化が生まれたのだろうか。かつて江戸時代から大正時代まで銚子地域で漁業の中心といえば、銚子電鉄の終着駅である外川駅に近い外川漁港だった。これは、江戸時代に紀州（和歌山県）を中心とした関西からの出稼ぎ漁民たちによって干鰯（イワシを干した高級肥料）の生産が盛んになったためである。外川地区は干鰯を作るのに必要な広く乾燥した砂地があり、その砂地まで漁港からまっすぐ坂道を伸ばすことで、荷車でイワシを砂地に運んだ後に干鰯に加工するという生産の流れを作っていた。現在は砂地こそないものの、外川漁港から外川駅方面に何本も坂道が伸びている。なお、この外川駅や外川地区の街並みは1985年放送のNHK連続テレビ小説『澪つくし』のロケ地にもなっている。","しかし大正時代以降干鰯の需要が低下し、沿岸漁業が衰退して沖合漁業の勢いが増すにつれ、銚子の漁業の中心が外川漁港から現在の銚子漁港に移った。しかし当時の銚子漁港は大型船が入港することができず、とても沖合漁業の中心地になれるような港ではなかった。また、利根川の河口部ということもあって河口と風向の関係や、川の波と海からの波がぶつかることによって生じる複雑な波、河口付近などの岩礁といった厄介な要素が絡み合い、銚子漁港は日本三大難所の１つに数えられていた。","その中で立ち上がったのが当時、銚子醤油株式会社（現・ヒゲタ醤油）の社長だった濱口吉兵衛（なお濱口は銚子電鉄の前身でもある銚子遊覧鉄道の社長も経験した）であった。濱口は社長を務めながら衆議院議員としても活躍し、日本三大難所の１つにも数えられ、海難事故が度々発生していた銚子漁港の整備を関係各所に訴えたことで、国庫補助による県営事業に結び付けた。その後国庫補助はまとまらなかったものの、県とともに濱口自らが足りない資金を準備し、1925年にようやく銚子漁港の近代化に向けた整備が始まった。そしてその後も国によって整備が進められ、現在の銚子漁港が形成されたのだ。","銚子漁港は1960年に「第3種漁港（利用範囲が全国的な漁港）のうち水産業の振興上特に重要な漁港で政令で定めるもの」である特定第３種漁港に認定され、2011年から８年連続で水揚げ量１位、2025年の水揚げ量も全国１位という、日本を代表する漁港になった。銚子漁港がそのような大規模な漁港になるにあたり、江戸時代からの関西の出稼ぎ漁民、醤油会社の社長など、様々な人々の営み、尽力が大きな原動力となったのである。"],"references":[{"text":"国土地理院, 「地理院タイル一覧.」","url":"https://maps.gsi.go.jp/development/ichiran.html","accessed":"2026年８月28日"},{"text":"全国漁港漁場協会HP, 「特三の漁港から 第25回 銚子市.」","url":"https://gyokou.or.jp/toku3/topics/post92.html","accessed":"2026年８月30日"},{"text":"全国漁港漁場協会HP（2025）, 「特定第三種漁港とは.」","url":"https://gyokou.or.jp/toku3port/","accessed":"2026年８月30日"},{"text":"全国ロケ地ガイドHP（2003）, 「澪つくし ロケ地情報・マップ.」","url":"https://loca.ash.jp/info/1994/a1985_mio.htm","accessed":"2026年８月30日"},{"text":"高橋昭七, 漁港紹介―Ⅱ 銚子漁港(千葉県). 水産土木 ３（２）: 47-50.","url":null,"accessed":null},{"text":"銚子市HP（2026）, 「記念碑・モニュメント（その2）.」","url":"https://www.city.choshi.chiba.jp/kanko/page110094.html","accessed":"2026年８月30日"},{"text":"銚子市観光協会HP, 「町並み - フォトダウンロード.」","url":"https://www.choshikanko.com/photo/category/sizen_hukei/machinami/","accessed":"2026年８月30日"},{"text":"まっぷるウェブHP（2024）, 「銚子漁港は水揚げ量8年連続日本一！漁場が豊かな銚子がすごい！.」","url":"https://articles.mapple.net/bk/3427/?pg=1","accessed":"2026年８月30日"}]}},{"id":"cabbage","labelOffset":[26,44],"name":"台地の畑","layer":"industry","lat":35.726929,"lon":140.858751,"confidence":"exact","source":"data/choshi/board-spots.json（キャベツ畑と同じ場所）","states":{"y1923":{"present":true,"mark":"藷","text":"キャベツはまだ無い。台地の畑は甘藷（サツマイモ）と麦が中心で、江戸時代から続く甘藷栽培と澱粉づくりが行われていた。"},"y1981":{"present":true,"mark":"菜","text":"キャベツ畑になっている。1953年に試作、1954年に初出荷、1957年に「灯台印」の出荷組合ができてから、産地として広がった。"},"ynow":{"present":true,"mark":"菜","text":"春キャベツの産地として全国の上位にある。畑の向こうに風車が並ぶ。"}}},{"id":"byobu","labelOffset":[34,16],"name":"屏風ヶ浦","layer":"coast","lat":35.7060864,"lon":140.7893142,"confidence":"exact","source":"data/choshi/board-spots.json","states":{"y1923":{"present":true,"mark":"崖","text":"波が直接、崖の足もとを叩いていた。崖は年間1m近い速さで削られ、突き出た岬から先に削られていく。崖線は今より およそ50m 沖にあったと推定される。"},"y1981":{"present":true,"mark":"崖","text":"消波堤が両端から順に据えられていく途中。三崎町のあたりでは1979〜1983年の区間ができた頃で、崖の後退はこれから一桁遅くなる。"},"ynow":{"present":true,"mark":"崖","text":"一部を除いて大半に消波堤が入った。波による崖脚の侵食はほぼ止まった代わりに、崖の上が崩れて崖錐が育つ、別の壊れ方に変わっている。流れ出る土砂は以前の1/3になり、九十九里浜が痩せはじめた。"}}},{"id":"quarry","labelOffset":[-40,26],"name":"愛宕山の採石場","layer":"rail","lat":35.7058699,"lon":140.8570759,"confidence":"approximate","source":"採石場跡の1つが満願寺になっている（歴史編1章）。座標は data/choshi/board-spots.json の満願寺。採石場そのものの範囲は未確認","photoNote":"1974〜1978年の写真で、まん中に白く抜けて見えるのが削られた斜面である。現在の写真では同じ場所に建物が建っていて、これが満願寺にあたる。","states":{"y1923":{"present":true,"mark":"石","text":"愛宕山では銚子石が採られていた。醤油と魚だけでなく、この石の輸送も銚子電鉄が担っていた。ただし採石輸送がいつ始まったかは未確認。"},"y1981":{"present":true,"mark":"寺","text":"採石は1968年に取りやめになり、輸送も終わった。この年度の貨物トン数がゼロなのは、その先にある結果である。採石場跡の1つは1976年開創の満願寺になっている。"},"ynow":{"present":true,"mark":"寺","text":"石を運ぶ仕事を失ったことが、ぬれ煎餅をはじめとする副業を生んだ。跡地の満願寺は、今は君ヶ浜〜犬吠のひまわり畑とあわせて訪ねる場所になっている。"}},"essay":{"title":"愛宕山の採石場と銚子電鉄","from":"チーム作成「銚子電鉄～歴史編～」1章の説明文。要約せずそのまま載せている。","figures":[{"src":"assets/choshi/essay/quarry-fig1.webp","caption":"図１　1972‐1982年と現在の地理院地図の比較","credit":"『今昔マップ on the web』より作成","note":"左が1972〜1982年の旧版地形図で、赤丸が採石場。右は現在の地理院地図。押すと大きく開く。","link":{"url":"https://ktgis.net/kjmapw/","label":"今昔マップ on the web"},"source":"チーム作成「銚子電鉄～歴史編～」1章の図1。画面は 今昔マップ on the web（(C)谷 謙二、埼玉大学教育学部）。地図は旧版地形図・地理院地図とも国土地理院で、赤丸は作成者が追記したもの。掲載条件は同サイト「使用上の注意」に従っている（docs/今昔マップ利用条件.md）"}],"paragraphs":["犬吠駅近くにある愛宕山にはかつて採石場があった。図１は1972年から1982年の旧版地形図と現在の地理院地図を比較したものである。左側の地図が1972年から1982年の旧版地形図であるが、赤丸で囲った部分が採石場である。","なぜ愛宕山周辺で採石が行われていたのだろうか。それは千葉県最古ともいわれる愛宕山の地層に由来する。愛宕山には海洋プレートが大陸プレートの下に沈み込む際、沈みこまずに大陸プレート上にくっついた「付加体」だと考えられている「愛宕山層群」がある。愛宕山層群は約2億年前の地層と考えられており、砂岩と泥岩のほかに「高神礫岩」という名もある礫岩やチャート、フズリナの化石を含む石灰岩などで構成されている。フズリナの化石は古生代ペルム紀後期(約2億7000万年前～)のものも見つかっており、愛宕山層群の歴史の古さがよくわかる。","さらにその上部には白亜紀前期(約１億3000万～１億年前)の地層である「銚子層群」が広がっている。白亜紀頃の地層であるため、恐竜の化石が多く見つかっている。加えて銚子層群の硬い砂岩は昔から「銚子石」として採掘され、建材や砥石に活用されてきたのだ。","そしてこの愛宕山で採れる銚子石の採石輸送を担っていたのが銚子電鉄である。しかし、1968年に犬吠駅に近い県営の採石場での採掘が取りやめになり、採石輸送ができなくなったことで銚子電鉄は経営危機に瀕することになった。しかしこの経営危機によって、1975年には観音駅でたい焼きやたこ焼きを販売する直営売店をはじめとし、1995年にスタートしたぬれ煎餅など、「副業で本業の鉄道運行を支える奇抜な経営戦略」という、銚子電鉄独自のアイデンティティが形成されたのである。","ちなみに現在、この採石場跡の1つは絶景スポット「君ヶ浜駅～犬吠駅付近のひまわり畑」で紹介した「満願寺」(1976年開創)になっている。"],"references":[{"text":"犬吠埼観光ホテル HP（2015）, 「満願寺」「節分会・追儺豆まき」(銚子市).","url":"http://www.inubou.co.jp/blog/index.php?e=2414","accessed":"2026年８月27日"},{"text":"おとなの週末Web HP（2025）, 鉄道経営を支えた副業は”粉もん事業”　沿線には皇族別邸もあった関東最東端を走るローカル私鉄.","url":"https://otonano-shumatsu.com/articles/488240/2","accessed":"2026年８月27日"},{"text":"今昔マップ on the web","url":"https://ktgis.net/kjmapw/","accessed":"2026年８月27日"},{"text":"谷 謙二（2017）, 「今昔マップ旧版地形図タイル画像配信・閲覧サービス」の開発．GIS-理論と応用 25(1): 1-10．","url":null,"accessed":null},{"text":"戸邉恵里・高木秀雄・高橋雅紀（2006）, 銚子半島先白亜系愛宕山層群中の花崗岩礫のK-Ar年代. 地質学雑誌 112（１）: 98-101.","url":null,"accessed":null},{"text":"まっぷるウェブHP（2024）, 銚子の地層は恐竜時代の岩もむき出しに！見どころ満載の千葉最古の地層.","url":"https://articles.mapple.net/bk/3632/?pg=1#ls_1","accessed":"2026年８月27日"}]}}],"windTurbines":{"layer":"industry","name":"風車","confidence":"exact","positionSource":"OpenStreetMap（ODbL）。man_made=wind_turbine / generator:source=wind。地図の範囲内・銚子側の8基","yearSource":"銚子ウィンドファーム（コスモエコパワー）は2007年2月運転開始・1,500kW×7基。銚子周辺には複数事業者の風車が30基以上あり、8基それぞれの設置年は未確認","appearsIn":["ynow"],"note":"1923年にも1981年度にも風車は無い。日本で商用の風力発電が広がるのは2000年代以降である。","points":[[35.719204,140.780731],[35.719367,140.785153],[35.719388,140.789709],[35.723066,140.787473],[35.723729,140.784739],[35.724988,140.789283],[35.72717,140.787672],[35.725768,140.781809]]},"population":{"layer":"population","name":"銚子市の人口","anchorLat":35.7294122,"anchorLon":140.8273135,"source":"銚子市統計書 令和4年度版 表3-1「世帯数および人口の推移」（資料＝総務省統計局 国勢調査報告）","peak":{"year":1965,"value":91492},"values":{"y1923":{"value":null,"confidence":"unverified","text":"この年に「銚子市」は無い。市になったのは1933年2月11日で、そのときの人口は44,366人だった。"},"y1981":{"value":89416,"confidence":"approximate","text":"1980年（昭和55）国勢調査。ピークの約97%。"},"ynow":{"value":58431,"confidence":"exact","text":"2020年（令和2）国勢調査。ピークの64%。"}}},"aerialPhoto":{"y1981":{"tileset":"gazo1","capturedLabel":"1974〜1978年撮影","credit":"国土地理院","note":"1981年度に一番近い空中写真がこれしか無い。撮影年は1974〜1978年で、3〜7年のずれがある。ずれを隠さずに撮影年を出すこと。"},"ynow":{"tileset":"ort","capturedLabel":"2007年以降撮影","credit":"国土地理院","note":"地理院の最新の空中写真。"},"y1923":null},"sources":[{"id":"chiba-s40","label":"千葉県統計年鑑 昭和40年版 表117 私鉄運輸状況","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s40/documents/1965117y-118y.pdf"},{"id":"chiba-s54","label":"千葉県統計年鑑 昭和54年版 表122 私鉄運輸状況","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s54/documents/122n_16.pdf"},{"id":"chiba-s57","label":"千葉県統計年鑑 昭和57年版 表121・122","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s57/documents/121n_13.pdf"},{"id":"chiba-r1","label":"千葉県統計年鑑 令和元年版 表110・111","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-r1/documents/110n.xlsx"},{"id":"choshi-toukei","label":"銚子市統計書 令和4年度版 表3-1 世帯数および人口の推移","url":"https://www.city.choshi.chiba.jp/content/000045293.xlsx"},{"id":"choshi-rekishi","label":"銚子市 歴史文化基本構想 第4章","url":"https://www.city.choshi.chiba.jp/content/000054840.pdf"},{"id":"byobu-paper","label":"吉村光敏・八木令子・小田島高之「屏風ケ浦海食崖の景観と近年の地形変化」千葉県立中央博物館研究報告 16(2):73-87 (2023)","url":"https://www.chiba-muse.or.jp/NATURAL/files/1680069394174/simple/Journal_16-2_1yoshimura.pdf"},{"id":"alic-cabbage","label":"農畜産業振興機構 きゃべつ ちばみどり農業協同組合","url":"https://vegetable.alic.go.jp/yasaijoho/santi/0404_santi0404.html"},{"id":"cosmo-wind","label":"コスモエコパワー 銚子ウィンドファーム","url":"https://cosmo.eco-power.co.jp/wind_power/choshi/"},{"id":"gsi-tiles","label":"国土地理院タイル一覧","url":"https://maps.gsi.go.jp/development/ichiran.html"},{"id":"osm","label":"OpenStreetMap（ODbL）","url":"https://www.openstreetmap.org/copyright"}]};
+  const TLGEO = {"_comment":["絶景掲示板の時間軸で使う、昔の屏風ヶ浦の崖線。**自動生成なので直接編集しない。**","作り直すとき: node tools/build-timeline-geometry.js","","現在の崖線は data/board/terrain.json の標高32m段彩の縁をそのまま使い、","過去の分はそれを沖へ押し出して求めている。押し出す量の根拠は","docs/時間軸_裏取り記録.md 4章と tools/build-timeline-geometry.js の冒頭コメント。","","**現在（ynow）以外は推定である。** 画面では破線で描き、「推定」と名乗ること。"],"generatedAt":"2026-08-27","source":{"terrain":"data/board/terrain.json（標高32mの段彩の縁）","retreatRates":"吉村光敏・八木令子・小田島高之 (2023) 千葉県立中央博物館研究報告 16(2):73-87"},"model":{"cliffBandElevation":32,"metresPerPixel":9.769,"steps":[{"from":"ynow","to":"y1981","years":45,"rate":0.25,"note":"消波堤の設置が進んだあと（0.1〜0.4m/年の中間）"},{"from":"y1981","to":"y1923","years":58,"rate":1,"note":"消波堤の前。波が直接崖脚を叩いていた"}],"note":"1923年の崖線は現在よりおよそ69m沖、1981年度はおよそ11m沖。この地図では9.8mが1pxなので、見た目には7pxと1pxしか違わない。誇張しないこと。"},"cliffPointCount":19,"cliffZ":39,"cliff":{"ynow":{"offsetMetres":0,"offsetPx":0,"confidence":"exact","path":"M248.6,637.3 L248.9,639.2 L244.5,653 L243.7,658 L244.5,660.5 L245.3,661.3 L247.7,662.2 L248.1,662.8 L247.5,663.9 L243.7,667.1 L232.1,672.2 L201.4,682.5 L178.8,688.6 L160.6,694.4 L116.1,710.8 L106,713.7 L80.4,724.4 L53.1,733.4 L17.3,748"},"y1981":{"offsetMetres":11,"offsetPx":1.13,"confidence":"estimated","path":"M249.71,637.12 L249.99,639.48 L245.59,653.3 L244.83,658 L245.51,660.01 L245.83,660.31 L248.23,661.21 L249.22,662.93 L248.29,664.71 L244.23,668.09 L232.49,673.26 L201.73,683.58 L179.12,689.68 L160.98,695.46 L116.48,711.86 L106.4,714.75 L80.79,725.46 L53.49,734.45 L17.73,749.04"},"y1923":{"offsetMetres":69,"offsetPx":7.06,"confidence":"estimated","path":"M255.58,636.2 L255.73,640.98 L251.31,654.88 L250.76,658 L250.86,657.42 L248.61,655.06 L251.04,655.97 L255.11,663.63 L252.44,668.95 L247.05,673.32 L234.52,678.84 L203.48,689.25 L180.78,695.38 L162.96,701.06 L118.45,717.46 L108.51,720.3 L82.86,731.02 L55.57,740.02 L19.97,754.54"}}};
+  const TL_PHOTOS = {"yamasa-y1981":"assets/choshi/timeline/yamasa-y1981.webp","yamasa-ynow":"assets/choshi/timeline/yamasa-ynow.webp","choshiko-y1981":"assets/choshi/timeline/choshiko-y1981.webp","choshiko-ynow":"assets/choshi/timeline/choshiko-ynow.webp","cabbage-y1981":"assets/choshi/timeline/cabbage-y1981.webp","cabbage-ynow":"assets/choshi/timeline/cabbage-ynow.webp","byobu-y1981":"assets/choshi/timeline/byobu-y1981.webp","byobu-ynow":"assets/choshi/timeline/byobu-ynow.webp","quarry-y1981":"assets/choshi/timeline/quarry-y1981.webp","quarry-ynow":"assets/choshi/timeline/quarry-ynow.webp"};
+
+  const POINT_IDS = TIMELINE.points.map(p => p.id);
+  const POINT_BY_ID = new Map(TIMELINE.points.map(p => [p.id, p]));
+  const LAYER_BY_ID = new Map(TIMELINE.layers.map(l => [l.id, l]));
+
+  /*
+   * 確からしさの名乗り。**実測のときは何も出さない。**
+   * 全部に印を付けると、かえって読み飛ばされて、推定が目立たなくなる。
+   */
+  const CERT_LABEL = { estimated: "推定", approximate: "概略", unverified: "確認中" };
+  function certBadge(c) {
+    if (!c || c === "exact") return "";
+    return `<span class="cert cert--${esc(c)}">${esc(CERT_LABEL[c] || c)}</span>`;
+  }
+
+  const SOURCES = {"_comment":["絶景掲示板の「出典」タブに出す、この画面が使っているものの一覧。","","**人が手で書くファイル。** data/choshi/ の中では7つ目にあたる（CLAUDE.md 参照）。","自動生成ではないので、tools/ のスクリプトがこれを書き換えることはない。","","**載せるのは、絶景掲示板（board.html）が実際に使っているものだけ。**","車窓絶景ナビ側だけで使うもの（時刻表・環境音の4本・有楽町線のデータなど）は","ここには書かない。画面に出ていないものの出典を並べると、それ自体が嘘になる。","","**data/choshi/timeline.json の sources と食い違わせないこと。** timelineId を持たせて","あり、あちらにあってこちらに無い出典があると tools/build-board.js が止まる。","歴史編1章の引用・参考文献（essay.references）の URL も同じように照合している。","黙って1件落ちるより、作り直しのときに気づけるほうがよい。","","各項目:","  label      … 出典の名前。一次資料は発行元と表・ページまで書く","  url        … リンク先。無いものは null（紙の資料、まとめて指すものなど）","  use        … **この画面のどこで使っているか。** 書けないものはここに載せない","  note       … 使うときの条件や、確からしさの断り。無ければ null","  timelineId … data/choshi/timeline.json の sources[].id と対応するもの。無ければ null"],"intro":"絶景掲示板が使っている資料とデータを、全部ここに並べています。数字の1件ずつの出どころは、リポジトリの docs/時間軸_裏取り記録.md にあります。","groups":[{"id":"stats","name":"統計・公的資料","note":"時間軸の数字は、すべてここから取っています。二次情報だけで進めていたら、地図に嘘が3つ入っていました（ADR-0006）。","items":[{"label":"千葉県統計年鑑 昭和40年版 表117・118 私鉄運輸状況","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s40/documents/1965117y-118y.pdf","use":"1964年の年間輸送人員（171万人）。現在の350,337人がその20.5%にあたること","note":null,"timelineId":"chiba-s40"},{"label":"千葉県統計年鑑 昭和54年版 表122 私鉄運輸状況","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s54/documents/122n_16.pdf","use":"貨物の車扱輸送が1978年度の時点で既にゼロだったこと","note":null,"timelineId":"chiba-s54"},{"label":"千葉県統計年鑑 昭和57年版 表121・122（p.214、p.215-216）","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-s57/documents/121n_13.pdf","use":"1981年度の年間輸送人員1,463,127人、1日の乗車人員4,009人、10駅それぞれの内訳、貨物発送トン数0t","note":"この年鑑は各年版につき最新1年分だけ会社別の内訳を載せる。上段の年度別推移は県内私鉄の合計であって、銚子電鉄ではない","timelineId":"chiba-s57"},{"label":"千葉県統計年鑑 令和元年版 表110・111","url":"https://www.pref.chiba.lg.jp/toukei/toukeidata/nenkan/nenkan-r1/documents/110n.xlsx","use":"2018年度の年間輸送人員350,337人、1日の乗車人員1,049人、10駅それぞれの内訳","note":null,"timelineId":"chiba-r1"},{"label":"銚子市統計書 令和4年度版 表3-1 世帯数および人口の推移","url":"https://www.city.choshi.chiba.jp/content/000045293.xlsx","use":"銚子市の人口（1980年 89,416人／2020年 58,431人／ピーク1965年 91,492人）","note":"資料は総務省統計局 国勢調査報告","timelineId":"choshi-toukei"},{"label":"銚子市 歴史文化基本構想 第4章","url":"https://www.city.choshi.chiba.jp/content/000054840.pdf","use":"銚子市の発足が1933年2月11日で、そのときの人口が44,366人だったこと","note":null,"timelineId":"choshi-rekishi"}]},{"id":"papers","name":"論文・研究","note":"査読を通った原著論文を直接読んでいます。要約サイトを経由していません。","items":[{"label":"吉村光敏・八木令子・小田島高之「屏風ケ浦海食崖の景観と近年の地形変化」千葉県立中央博物館研究報告 16(2):73-87（2023）","url":"https://www.chiba-muse.or.jp/NATURAL/files/1680069394174/simple/Journal_16-2_1yoshimura.pdf","use":"屏風ヶ浦の崖の後退速度、消波堤の区間ごとの設置年、1923年と1981年度の崖線の推定、流れ出る土砂が1/3になったこと","note":"崖線の位置そのものは推定です。画面では破線で描き「推定」と名乗っています","timelineId":"byobu-paper"},{"label":"戸邉恵里・高木秀雄・高橋雅紀（2006）銚子半島先白亜系愛宕山層群中の花崗岩礫のK-Ar年代. 地質学雑誌 112(1): 98-101.","url":null,"use":"愛宕山層群について（「愛宕山の採石場」の説明文の参考文献）","note":"「銚子電鉄～歴史編～」1章が挙げている文献です","timelineId":null},{"label":"谷 謙二（2017）「今昔マップ旧版地形図タイル画像配信・閲覧サービス」の開発. GIS-理論と応用 25(1): 1-10.","url":null,"use":"「愛宕山の採石場」の図1をつくったサービスの原著","note":"今昔マップの「使用上の注意」が、論文で使う場合に挙げるよう求めているものです","timelineId":null},{"label":"高橋昭七 漁港紹介―Ⅱ 銚子漁港(千葉県). 水産土木 3(2): 47-50.","url":null,"use":"銚子漁港が日本三大難所の1つに数えられていたこと、その整備の経緯","note":"「銚子電鉄～歴史編～」2章が挙げている文献です","timelineId":null}]},{"id":"geodata","name":"地図・地形のデータ","note":"地図はタイルを画面から直接叩かず、ファイルにして持っています（ADR-0001・ADR-0003）。段彩の板も陰影も、この画面のために作り直したものです。","items":[{"label":"国土地理院 標高タイル DEM10B","url":"https://maps.gsi.go.jp/development/ichiran.html","use":"地形の段彩（色の段になっている板そのもの）と、路線に沿った標高","note":null,"timelineId":null},{"label":"国土地理院 標高タイル DEM5A（穴のところは DEM10B で補完）","url":"https://maps.gsi.go.jp/development/ichiran.html","use":"掲示スポット25件それぞれの地面の高さ。写真のピンを地面に立てるために使っています","note":null,"timelineId":null},{"label":"国土地理院 陰影起伏図タイル","url":"https://maps.gsi.go.jp/development/ichiran.html#hillshademap","use":"地形の陰影。自前で計算せず、地理院が計算済みのものをそのまま使っています","note":null,"timelineId":null},{"label":"国土地理院 年代別空中写真 gazo1（1974〜1978年撮影）","url":"https://maps.gsi.go.jp/development/ichiran.html","use":"時間軸の「空から見ると」の、昔のほうの写真","note":"1981年度に対して3〜7年のずれがあります。ずれは隠さず、写真ごとに撮影年を出しています","timelineId":null},{"label":"国土地理院 空中写真 ort（2007年以降撮影）","url":"https://maps.gsi.go.jp/development/ichiran.html","use":"時間軸の「空から見ると」の、現在のほうの写真","note":"1923年の空中写真は存在しません。撮影という手段そのものが無かったので、その時点には出していません","timelineId":null},{"label":"国土地理院 地名検索（msearch.gsi.go.jp）","url":"https://msearch.gsi.go.jp/","use":"松岸町の位置（銚子電鉄の路線外にあたる、点線の区間）","note":null,"timelineId":null},{"label":"国土地理院タイル一覧","url":"https://maps.gsi.go.jp/development/ichiran.html","use":"上のタイルの出どころと利用条件の確認。「銚子漁港の歴史と近代化による発展」の図1〜3（地理院地図のスクリーンショット3枚）の引用元でもあります","note":null,"timelineId":"gsi-tiles"},{"label":"OpenStreetMap（ODbL）","url":"https://www.openstreetmap.org/copyright","use":"線路の形と駅の位置、犬吠埼灯台・千騎ヶ岩・犬岩・地球の丸く見える丘展望館・君ヶ浜・屏風ヶ浦・満願寺の座標、銚子漁港の位置、台地に立つ風車8基の位置、海岸線","note":"ODbL。node/way の ID まで1件ずつ data/choshi/board-spots.json に記録してあります","timelineId":"osm"},{"label":"今昔マップ on the web（(C)谷 謙二、埼玉大学教育学部 人文地理学研究室）","url":"https://ktgis.net/kjmapw/","use":"「愛宕山の採石場」の図1（1972〜1982年の旧版地形図と現在の地理院地図の比較）","note":"ロゴが入った状態のスクリーンショットを、同サイトの「使用上の注意」に従って掲載しています。中の地図は旧版地形図・地理院地図とも国土地理院のもので、赤丸は作成者が書き加えたものです","timelineId":null}]},{"id":"local","name":"産業・地域の資料","note":null,"items":[{"label":"農畜産業振興機構（alic）きゃべつ ちばみどり農業協同組合","url":"https://vegetable.alic.go.jp/yasaijoho/santi/0404_santi0404.html","use":"春キャベツが1953年に試作・1954年に初出荷・1957年に「灯台印」の出荷組合ができたこと。それ以前の台地は甘藷と麦だったこと","note":null,"timelineId":"alic-cabbage"},{"label":"コスモエコパワー 銚子ウィンドファーム","url":"https://cosmo.eco-power.co.jp/wind_power/choshi/","use":"風車が2007年2月運転開始であること（＝1923年にも1981年度にも風車は無いこと）","note":"銚子周辺には複数の事業者の風車が30基以上あり、地図に出している8基それぞれの設置年は未確認です","timelineId":"cosmo-wind"},{"label":"銚子市漁業協同組合／全国漁港漁場協会／水産庁・千葉県の事業評価資料","url":"https://www.choshi-gyokyo.jp/","use":"銚子漁港の年表（1943年 完成、1971年 運河、1977年 第3卸売市場No.1、2014年度 第1卸売市場）","note":"指定の種別と年に資料どうしの食い違いがあり、食い違っている2行は画面に出していません。埋立の範囲と年は未確認なので、海岸線の形は年ごとに描き分けていません","timelineId":null},{"label":"犬吠埼観光ホテル HP（2015）「満願寺」「節分会・追儺豆まき」(銚子市)","url":"http://www.inubou.co.jp/blog/index.php?e=2414","use":"「愛宕山の採石場」の説明文の参考文献（満願寺について）","note":"「銚子電鉄～歴史編～」1章が挙げている文献です。最終閲覧日 2026年8月27日","timelineId":null},{"label":"おとなの週末Web HP（2025）鉄道経営を支えた副業は”粉もん事業”","url":"https://otonano-shumatsu.com/articles/488240/2","use":"同上（副業で本業を支える経営について）","note":"同上","timelineId":null},{"label":"まっぷるウェブ HP（2024）銚子の地層は恐竜時代の岩もむき出しに！","url":"https://articles.mapple.net/bk/3632/?pg=1#ls_1","use":"同上（銚子の地層について）","note":"同上","timelineId":null},{"label":"各駅の Wikipedia 記事","url":"https://ja.wikipedia.org/wiki/%E9%8A%9A%E5%AD%90%E9%9B%BB%E6%B0%97%E9%89%84%E9%81%93%E7%B7%9A","use":"10駅それぞれの開業年月日（1923年の6駅、1925年の笠上黒生、1931年の君ヶ浜、1935年の犬吠、1970年の西海鹿島）","note":"二次情報です。社史や鉄道省の開業告示による一次確認は済んでいません","timelineId":null},{"label":"全国漁港漁場協会HP「特三の漁港から 第25回 銚子市」","url":"https://gyokou.or.jp/toku3/topics/post92.html","use":"「銚子漁港の歴史と近代化による発展」の説明文の参考文献（銚子漁港の整備の経緯について）","note":"「銚子電鉄～歴史編～」2章が挙げている文献です。最終閲覧日 2026年8月30日","timelineId":null},{"label":"全国漁港漁場協会HP（2025）「特定第三種漁港とは」","url":"https://gyokou.or.jp/toku3port/","use":"銚子漁港が1960年に特定第3種漁港に認定されたこと","note":"同上","timelineId":null},{"label":"全国ロケ地ガイドHP（2003）「澪つくし ロケ地情報・マップ」","url":"https://loca.ash.jp/info/1994/a1985_mio.htm","use":"外川駅・外川地区の街並みが1985年放送のNHK連続テレビ小説『澪つくし』のロケ地になったこと","note":"同上","timelineId":null},{"label":"銚子市HP（2026）「記念碑・モニュメント（その2）」","url":"https://www.city.choshi.chiba.jp/kanko/page110094.html","use":"同上（銚子漁港の近代化について）","note":"同上","timelineId":null},{"label":"まっぷるウェブHP（2024）「銚子漁港は水揚げ量8年連続日本一！」","url":"https://articles.mapple.net/bk/3427/?pg=1","use":"銚子漁港が2011年から8年連続、2025年も水揚げ量全国1位であること","note":"同上","timelineId":null}]},{"id":"photos","name":"写真","note":"地図に立っている写真は、出どころが3つに分かれています。写真を押したときのパネルにも、1枚ずつ提供元が出ます。","items":[{"label":"一般社団法人銚子市観光協会 フォトダウンロード（12枚）","url":"https://www.choshikanko.com/","use":"掲示スポットのうち12件の公式写真（犬吠埼灯台・君ヶ浜・地球の丸く見える丘展望館・屏風ヶ浦・外川漁港・きんめだい・外川駅・千騎ヶ岩・犬岩・キャベツ畑・銚子電鉄とキャベツ畑・銚子ちぢみ）","note":"規約により直リンクは禁止されているので、ダウンロードしてこのサイト内に置いています。この写真素材を使って何かを販売することもしません","timelineId":null},{"label":"銚子市観光協会HP「町並み - フォトダウンロード」（1枚）","url":"https://www.choshikanko.com/photo/category/sizen_hukei/machinami/","use":"「銚子漁港の歴史と近代化による発展」の図4（外川の街並み）","note":"上と同じ観光協会のフォトダウンロードから、別のカテゴリでダウンロードしたもの。直リンクはしていません","timelineId":null},{"label":"制作チームの現地調査写真（2026年8月20日 撮影、41枚）","url":null,"use":"地図に立っている写真のピン。撮影者は制作チームです","note":"この日の写真で、満願寺・銚子駅・笠上黒生駅・海鹿島駅・犬吠駅の5件を掲示スポットに足しました","timelineId":null},{"label":"乗客から届いた写真","url":null,"use":"掲示板に掲示している投稿写真。著作権は撮った人のものです","note":"掲示しているのは制作者が目で見て通したものだけです。EXIF（撮影場所などの情報）は送る前に落としています。2027年4月30日にすべて削除します","timelineId":null}]},{"id":"ours","name":"制作チームが書いたもの","note":null,"items":[{"label":"「銚子電鉄～歴史編～」1章 愛宕山の採石場と銚子電鉄","url":null,"use":"「愛宕山の採石場」を押すと出る説明文の全文と、その図1","note":"文献を当たって書いたものです。要約せずそのまま載せています","timelineId":null},{"label":"掲示スポットの説明文と、時間軸の各時点の文章","url":null,"use":"写真パネルの短い説明、年ごとの解説、駅と地物の3時点の文章","note":"上に並べた資料から書いたものです。数字の1件ずつの出どころは docs/時間軸_裏取り記録.md にあります","timelineId":null}]}]};
+
+  const axisTabsEl = document.getElementById("axisTabs");
+  const filterTabsEl = document.getElementById("filterTabs");
+  const yearTabsEl = document.getElementById("yearTabs");
+  const timeOverlay = document.getElementById("timeOverlay");
+  const cliffLayerHost = document.getElementById("cliffLayer");
+
+  // 何を選んでいるか。null なら「その年ぜんたい」を出す
+  let tlSelection = null;
+
+  // ---------------- 地図に置くもの ----------------
+
+  const cliffPaths = new Map();
+  let timeBuilt = false;
+
+  /*
+   * ずらし（labelOffset）は**画面の画素でそのまま足す**。拡大率を掛けない。
+   *
+   * 掛けてしまうと、寄れば寄るほど名前が遠くへ飛んでいって、どの点のことなのか
+   * 分からなくなる。画面固定なら、寄っても引いても印との距離が変わらない。
+   * ずらすのは名前が重ならないようにするためだけで、**位置の主張ではない**
+   * （data/choshi/timeline.json の _comment を参照）。
+   */
+  function positionTimeItems() {
+    for (const it of timeItems) {
+      const { dx, dy, scale } = projectToScreen(it.x, it.y, it.z);
+      const ox = it.offset ? it.offset[0] : 0;
+      const oy = it.offset ? it.offset[1] : 0;
+      it.el.style.transform =
+        `translate3d(${(dx + ox).toFixed(1)}px, ${(dy + oy).toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
+    }
+  }
+
+  function addTimeItem(x, y, z, markEl, presentIn, extra) {
+    const item = document.createElement("div");
+    item.className = "tl-item";
+    item.appendChild(markEl);
+    timeOverlay.appendChild(item);
+    timeItems.push(Object.assign({ el: item, mark: markEl, x, y, z, presentIn }, extra || {}));
+  }
+
+  function buildCliff() {
+    const paths = POINT_IDS
+      .filter(id => TLGEO.cliff[id])
+      .map(id => {
+        const c = TLGEO.cliff[id];
+        const cls = c.confidence === "exact" ? "measured" : "estimated";
+        return `<path d="${c.path}" class="cliff-line ${cls}" data-point="${esc(id)}"></path>`;
+      })
+      .join("");
+    const div = document.createElement("div");
+    div.className = "cliff-layer";
+    div.style.transform = `translateZ(${TLGEO.cliffZ}px)`;
+    div.innerHTML = `<svg viewBox="0 0 ${WORLD_W} ${WORLD_H}">${paths}</svg>`;
+    cliffLayerHost.appendChild(div);
+    div.querySelectorAll(".cliff-line").forEach(p => cliffPaths.set(p.dataset.point, p));
+  }
+
+  function buildTimeItems() {
+    if (timeBuilt) return;
+    timeBuilt = true;
+
+    buildCliff();
+
+    // --- 駅 ---
+    // 位置は空間軸の駅名と同じ（線路の高さ +3）。違うのは、押せることと、
+    // その年の1日平均乗車人員を添えることだけ。
+    const anchorByName = new Map(RAIL.stationAnchors.map(a => [a.name, a]));
+    for (const st of TIMELINE.stations) {
+      const a = anchorByName.get(st.name);
+      if (!a) continue;   // build-board.js が名前の食い違いを先に止めているので、ここには来ない
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "tl-mark tl-station";
+      mark.innerHTML =
+        `<span class="dot"></span><span class="txt"><span class="label">${esc(st.name)}</span><span class="riders"></span></span>`;
+      mark.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectTime({ kind: "station", name: st.name }, mark);
+      });
+      addTimeItem(a.x - WORLD_W / 2, a.y - WORLD_H / 2, a.z.smooth3 + 3, mark, new Set(st.in), {
+        kind: "station", data: st, ridersEl: mark.querySelector(".riders"),
+      });
+    }
+
+    // --- 地物（醤油・漁港・畑・崖） ---
+    for (const f of TIMELINE.features) {
+      const { x, y } = fromLatLon(f.lat, f.lon);
+      const present = new Set(POINT_IDS.filter(id => f.states[id] && f.states[id].present));
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "tl-mark";
+      mark.innerHTML =
+        `<span class="glyph"></span><span class="label">${esc(f.name)}</span>`;
+      mark.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectTime({ kind: "feature", id: f.id }, mark);
+      });
+      addTimeItem(x, y, groundZ(x, y) + 4, mark, present, {
+        kind: "feature", data: f, glyphEl: mark.querySelector(".glyph"),
+        offset: f.labelOffset || null,
+      });
+    }
+
+    // --- 風車 ---
+    // 8基あるので、印は小さく、名前は付けない（台地が字で埋まる）。押せなくてよい。
+    // 風車の話は「台地の畑」を押したときと、産業レイヤーの説明のほうに置いてある。
+    const wt = TIMELINE.windTurbines;
+    if (wt) {
+      const present = new Set(wt.appearsIn);
+      for (const pair of wt.points) {
+        const { x, y } = fromLatLon(pair[0], pair[1]);
+        const mark = document.createElement("span");
+        mark.className = "tl-mark turbine";
+        mark.setAttribute("aria-hidden", "true");
+        mark.innerHTML = `<span class="glyph">✦</span>`;
+        addTimeItem(x, y, groundZ(x, y) + 4, mark, present, { kind: "turbine" });
+      }
+    }
+  }
+
+  // ---------------- 年を切り替える ----------------
+
+  function applyTimePoint() {
+    for (const it of timeItems) {
+      const on = it.presentIn.has(timePoint);
+      it.mark.classList.toggle("on", on);
+      it.mark.classList.toggle("off", !on);
+      if (it.kind === "station" && it.ridersEl) {
+        const r = it.data.riders && it.data.riders[timePoint];
+        it.ridersEl.textContent = r ? r.total.toLocaleString("ja-JP") : "";
+      }
+      if (it.kind === "feature" && it.glyphEl) {
+        const s = it.data.states[timePoint];
+        if (s && s.mark) it.glyphEl.textContent = s.mark;
+      }
+    }
+    for (const entry of cliffPaths) entry[1].classList.toggle("on", entry[0] === timePoint);
+    updateYearTabs();
+    positionTimeItems();
+    renderTimePanel();
+  }
+
+  function setTimePoint(next) {
+    if (!POINT_BY_ID.has(next) || timePoint === next) return;
+    timePoint = next;
+    applyTimePoint();
+  }
+
+  function buildYearTabs() {
+    yearTabsEl.innerHTML = TIMELINE.points.map(p =>
+      `<button type="button" data-point="${esc(p.id)}" aria-pressed="false">` +
+      `<span>${esc(p.label)}</span><span class="kicker">${esc(p.kicker)}</span></button>`
+    ).join("");
+    yearTabsEl.querySelectorAll("button").forEach(b => {
+      b.addEventListener("click", () => setTimePoint(b.dataset.point));
+    });
+  }
+
+  function updateYearTabs() {
+    yearTabsEl.querySelectorAll("button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.point === timePoint));
+    });
+  }
+
+  // ---------------- 右パネル ----------------
+
+  function selectTime(sel, markEl) {
+    tlSelection = sel;
+    timeOverlay.querySelectorAll(".tl-mark.active").forEach(m => m.classList.remove("active"));
+    if (markEl) markEl.classList.add("active");
+    renderTimePanel();
+  }
+
+  function statRow(s) {
+    const unit = s.unit ? `<span class="u">${esc(s.unit)}</span>` : "";
+    return `<div class="tl-stat"><span class="k">${esc(s.label)}</span>` +
+      `<span class="v">${esc(s.value)}</span>${unit}${certBadge(s.confidence)}</div>` +
+      (s.note ? `<p class="tl-note">${esc(s.note)}</p>` : "");
+  }
+
+  /** 年ぜんたいの説明 */
+  function yearPanelHTML(p) {
+    const layers = TIMELINE.layers
+      .filter(l => p.layerNotes && p.layerNotes[l.id])
+      .map(l => `<h3>${esc(l.name)}</h3><p>${esc(p.layerNotes[l.id])}</p>`)
+      .join("");
+    const srcLinks = TIMELINE.sources.slice(0, 5).map(s =>
+      `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join("／");
+    return `
+      <div class="panel-head">
+        <div class="kicker">${esc(p.kicker)}</div>
+        <h2>${esc(p.title)}</h2>
+        <p class="year">${esc(p.yearLabel)}</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <p class="lead">${esc(p.lead)}</p>
+          <h3>この年の数字</h3>
+          ${p.stats.map(statRow).join("")}
+          ${layers}
+          <h3>出どころ</h3>
+          <p class="tl-src">
+            数字はすべて公的統計と査読論文から取っています。1件ずつの出典は
+            リポジトリの <code>docs/時間軸_裏取り記録.md</code> にあります。<br>
+            主なもの：${srcLinks}
+          </p>
+          <p class="tl-src">地図の駅や地物を押すと、その場所の3時点を並べて見られます。</p>
+        </div>
+      </div>`;
+  }
+
+  /** 駅ひとつの3時点 */
+  function stationPanelHTML(st) {
+    const rows = TIMELINE.points.map(p => {
+      const here = p.id === timePoint ? ' class="here"' : "";
+      if (!st.in.includes(p.id)) {
+        return `<tr${here}><th>${esc(p.label)}</th><td colspan="3">まだ無い</td></tr>`;
+      }
+      const r = st.riders && st.riders[p.id];
+      if (!r) return `<tr${here}><th>${esc(p.label)}</th><td colspan="3">記録なし</td></tr>`;
+      return `<tr${here}><th>${esc(p.label)}</th><td>${r.total.toLocaleString("ja-JP")}</td>` +
+        `<td>${r.normal.toLocaleString("ja-JP")}</td><td>${r.pass.toLocaleString("ja-JP")}</td></tr>`;
+    }).join("");
+
+    const a = st.riders && st.riders.y1981;
+    const b = st.riders && st.riders.ynow;
+    const kept = (a && b) ? Math.round((b.total / a.total) * 100) : null;
+    const keptNote = kept === null ? "" :
+      `<p class="tl-note">1981年度に対して <b>${kept}%</b> が残っている。10駅を合わせると26%で、` +
+      `いちばん残っているのは犬吠の71%。<b>生活の駅ほど深く減り、観光の駅は残った。</b></p>`;
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">駅</div>
+        <h2>${esc(st.name)}</h2>
+        <p class="year">${esc(st.opened)} 開業${st.openedNote ? "　" + esc(st.openedNote) : ""}</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <button type="button" class="tl-back" id="tlBack">← ${esc(POINT_BY_ID.get(timePoint).label)}の全体へ</button>
+          <h3>1日あたりの乗車人員</h3>
+          <table class="tl-compare">
+            <tr><th></th><th>計</th><th>普通</th><th>定期</th></tr>
+            ${rows}
+          </table>
+          ${keptNote}
+          <h3>出どころ</h3>
+          <p class="tl-src">
+            1981年度：${esc(TIMELINE.stationSource.y1981)}<br>
+            現在：${esc(TIMELINE.stationSource.ynow)}<br>
+            開業日：${esc(TIMELINE.stationSource.opened)}
+          </p>
+        </div>
+      </div>`;
+  }
+
+  /*
+   * 説明文をそのまま載せる（2026-08-27、2026-09-01 に複数枚対応）。
+   *
+   * **要約も言い換えもしない。** 現地と文献を調べて書いた文章で、言葉づかいそのものが
+   * 成果物だからである。paragraphs を段落として並べ、引用・参考文献も元の文章が
+   * 持っているものをそのまま出す（timeline.json の essay）。
+   *
+   * 元の文章が図を参照しているなら、figures でその図も一緒に載せる。**参照だけ残して図が
+   * 無い状態にしない**——読み手が自分の見落としだと思ってしまう。図には caption と credit を
+   * 必ず付ける（元の文章が持っている図題と出典表示をそのまま写す）。
+   *
+   * **1本の説明文が持つ図は1枚とは限らない。** 「銚子漁港の歴史と近代化による発展」は
+   * 4枚（空中写真3枚＋街並みの写真1枚）を持つので、配列にしてある。1枚だけの説明文
+   * （「愛宕山の採石場」）も同じ形（要素数1の配列）で書く。
+   */
+  function essayFigureHTML(fig) {
+    return `<figure class="essay-fig">
+        <a href="${esc(fig.src)}" target="_blank" rel="noopener">
+          <img src="${esc(fig.src)}" alt="${esc(fig.caption)}" loading="lazy">
+        </a>
+        <figcaption>${esc(fig.caption)}<br><span class="credit">${esc(fig.credit)}${
+          fig.link ? `　<a href="${esc(fig.link.url)}" target="_blank" rel="noopener">${esc(fig.link.label)}</a>` : ""
+        }</span></figcaption>
+      </figure>
+      ${fig.note ? `<p class="tl-note">${esc(fig.note)}</p>` : ""}`;
+  }
+
+  function essayHTML(e) {
+    if (!e) return "";
+    const body = e.paragraphs.map(t => `<p>${esc(t)}</p>`).join("");
+    const refs = (e.references || []).map(r => {
+      const url = r.url ? `<br><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>` : "";
+      const acc = r.accessed ? `（最終閲覧日：${esc(r.accessed)}）` : "";
+      return `<li>${esc(r.text)}${url}${acc}</li>`;
+    }).join("");
+    const figures = e.figures || [];
+    const figsHTML = figures.length
+      ? `<div class="essay-figs${figures.length > 1 ? " essay-figs-grid" : ""}">${figures.map(essayFigureHTML).join("")}</div>`
+      : "";
+    const figSources = figures.map(f => f.source).filter(Boolean);
+    return `<details class="tl-essay">
+        <summary>もっと詳しく読む：${esc(e.title)}</summary>
+        <div class="essay-body">
+          ${figsHTML}
+          ${body}
+          <h3>引用・参考文献</h3>
+          <ol>${refs}</ol>
+          <p class="tl-src">${esc(e.from)}${figSources.length ? `<br>図の出どころ：${figSources.map(esc).join("／")}` : ""}</p>
+        </div>
+      </details>`;
+  }
+
+  /** 地物ひとつの3時点（＋空中写真） */
+  function featurePanelHTML(f) {
+    const states = TIMELINE.points.map(p => {
+      const s = f.states[p.id];
+      if (!s) return "";
+      const here = p.id === timePoint ? "（いま見ている時点）" : "";
+      return `<h3>${esc(p.label)}${here}</h3><p>${esc(s.text)}</p>`;
+    }).join("");
+
+    // 空中写真。1923年は撮影という手段そのものが無いので出ない（無いものは出さない）
+    const photos = TIMELINE.points.map(p => {
+      const spec = TIMELINE.aerialPhoto[p.id];
+      const src = TL_PHOTOS[f.id + "-" + p.id];
+      if (!spec || !src) return "";
+      return `<figure class="tl-photo">
+        <img src="${esc(src)}" alt="${esc(f.name)}の空中写真（${esc(spec.capturedLabel)}）" loading="lazy">
+        <figcaption><span class="when">${esc(spec.capturedLabel)}</span>　${esc(spec.credit)}</figcaption>
+      </figure>`;
+    }).join("");
+
+    const cliffNote = (f.id === "byobu" && TLGEO.cliff.y1923)
+      ? `<p class="tl-note">地図の崖線は、1923年が現在よりおよそ${TLGEO.cliff.y1923.offsetMetres}m沖、
+         1981年度がおよそ${TLGEO.cliff.y1981.offsetMetres}m沖と推定しています。
+         この地図では${TLGEO.model.metresPerPixel}mが1画素なので、100年ぶんでも7画素ほどしか動きません。
+         誇張していないのは、そのほうが正直だからです。${certBadge("estimated")}</p>`
+      : "";
+
+    const layerName = (LAYER_BY_ID.get(f.layer) || {}).name || "";
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">${esc(layerName)}</div>
+        <h2>${esc(f.name)}</h2>
+        <p class="year">3つの時点で見る</p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <button type="button" class="tl-back" id="tlBack">← ${esc(POINT_BY_ID.get(timePoint).label)}の全体へ</button>
+          ${states}
+          ${cliffNote}
+          ${essayHTML(f.essay)}
+          ${photos ? `<h3>空から見ると</h3><div class="tl-photos">${photos}</div>` : ""}
+          ${photos && f.photoNote ? `<p class="tl-note">${esc(f.photoNote)}</p>` : ""}
+          <h3>出どころ</h3>
+          <p class="tl-src">位置：${esc(f.source)}${certBadge(f.confidence)}<br>
+            空中写真：国土地理院。撮影年は写真ごとに書いてあります。<br>
+            解説の根拠は <code>docs/時間軸_裏取り記録.md</code>。</p>
+        </div>
+      </div>`;
+  }
+
+  function renderTimePanel() {
+    if (mode !== "time") return;
+    let html;
+    if (tlSelection && tlSelection.kind === "station") {
+      const st = TIMELINE.stations.find(s => s.name === tlSelection.name);
+      html = st ? stationPanelHTML(st) : yearPanelHTML(POINT_BY_ID.get(timePoint));
+    } else if (tlSelection && tlSelection.kind === "feature") {
+      const f = TIMELINE.features.find(x => x.id === tlSelection.id);
+      html = f ? featurePanelHTML(f) : yearPanelHTML(POINT_BY_ID.get(timePoint));
+    } else {
+      html = yearPanelHTML(POINT_BY_ID.get(timePoint));
+    }
+    panelInner.innerHTML = html;
+    panel.classList.add("open");
+    const back = document.getElementById("tlBack");
+    if (back) back.addEventListener("click", () => selectTime(null, null));
+  }
+
+  /* ================================================================
+   * 出典（2026-08-27、ADR-0006 の追記）
+   *
+   * **この画面が使っているものだけを並べる。** 画面に出ていないものの出典を
+   * 並べると、それ自体が嘘になる（車窓絶景ナビ側の時刻表や環境音は入れない）。
+   *
+   * 中身は data/choshi/sources.json。timeline.json の sources と食い違うと
+   * tools/build-board.js が止まる。**1件黙って落ちるのを防ぐため。**
+   * ================================================================ */
+
+  function sourcesPanelHTML() {
+    const total = SOURCES.groups.reduce((n, g) => n + g.items.length, 0);
+    const groups = SOURCES.groups.map(g => {
+      const items = g.items.map(it => {
+        const link = it.url
+          ? `<br><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.url)}</a>` : "";
+        const cond = it.note ? `<p class="cond">${esc(it.note)}</p>` : "";
+        return `<li><span class="name">${esc(it.label)}</span>${link}
+          <p class="use"><b>使っているところ：</b>${esc(it.use)}</p>${cond}</li>`;
+      }).join("");
+      return `<h3>${esc(g.name)}</h3>
+        ${g.note ? `<p class="tl-note">${esc(g.note)}</p>` : ""}
+        <ul class="src-list src-group">${items}</ul>`;
+    }).join("");
+
+    return `
+      <div class="panel-head">
+        <div class="kicker">出典</div>
+        <h2>この画面が使っているもの</h2>
+        <p class="year"><span class="src-count">${total}件</span></p>
+      </div>
+      <div class="panel-body tl-panel">
+        <div>
+          <p class="lead">${esc(SOURCES.intro)}</p>
+          ${groups}
+        </div>
+      </div>`;
+  }
+
+  function renderSourcesPanel() {
+    panelInner.innerHTML = sourcesPanelHTML();
+    panel.classList.add("open");
+  }
+
+  // ---------------- 軸を切り替える ----------------
+
+  function setMode(next) {
+    // 出典タブだけは、押し直したときにパネルを開き直せるように素通しする
+    if (mode === next && next !== "src") return;
+    mode = next;
+    const isTime = mode === "time";
+    const isSrc = mode === "src";
+
+    if (isTime) buildTimeItems();
+
+    /*
+     * 時間軸では、写真のピンも投稿も、いいねも、写真の絞り込みも出さない（ADR-0006）。
+     * 1982年の地図の上に2026年に撮られた写真が立っていると時代がねじれるし、
+     * 過去の時点に写真を送ることはできない。画面がはっきり別の道具になるので、
+     * 何ができるのか迷わずに済む。
+     *
+     * **出典でも同じように隠す。** 読むための画面なので、押せるものを地図に残さない。
+     * ただし駅名は残す——地図が地図でなくなると、どこの出典なのか分からなくなる。
+     */
+    pinsOverlay.hidden = isTime || isSrc;
+    stationsOverlay.hidden = isTime;
+    filterTabsEl.hidden = isTime || isSrc;
+    postFab.hidden = isTime || isSrc;
+
+    timeOverlay.hidden = !isTime;
+    yearTabsEl.hidden = !isTime;
+
+    axisTabsEl.querySelectorAll("button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.axis === mode));
+    });
+
+    // 開いたままの写真パネルは、別の軸に移ったあとも前の軸のものを右に残してしまう
+    if (isTime || isSrc) {
+      lastOpenedPin = null;
+      document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+    }
+    tlSelection = null;
+
+    if (isTime) applyTimePoint();
+    else if (isSrc) renderSourcesPanel();
+    else panel.classList.remove("open");
+  }
+
+  buildYearTabs();
+  axisTabsEl.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => setMode(b.dataset.axis));
   });
 </script>
 
