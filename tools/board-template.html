@@ -549,22 +549,42 @@
   }
   .zoom-controls button:hover { background: rgba(42,110,143,.85); }
 
+  /*
+   * 方位と縮尺。**車窓絶景ナビ（css/style.css の .map-furniture・.compass・.scale）と
+   * 同じ形にそろえてある**（2026-09-17 のFB「掲示板の方位はちょっとキモいから統一」）。
+   * 矢印＋N の針、両端だけ立てた縮尺の帯、字は薄い墨色に白いふち。
+   * 片方の形を変えたら、もう片方も合わせること（コードは共有していない。設計書 1.1）。
+   *
+   * ナビと違うのは二つだけ。掲示板の地図は回るので針も回ること、
+   * 針が「最初の表示に戻す」ボタンを兼ねること。
+   */
   .compass {
     position: absolute; left: 22px; bottom: 20px; z-index: 5;
-    display: flex; align-items: flex-end; gap: 14px;
-    color: var(--station); font-family: var(--font-map); font-size: 12px;
-    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    display: flex; align-items: flex-end; gap: 10px;
+    color: var(--ink-soft);
+    filter:
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.95))
+      drop-shadow(0 0 5px rgba(255, 255, 255, 0.75));
   }
   /* 「初期表示に戻す」ボタン。div だとキーボードで押せないので button にしてある */
   .compass .needle-wrap {
-    width: 26px; height: 26px; border-radius: 50%;
-    background: rgba(20,22,26,.55); border: 1px solid rgba(255,255,255,.35);
-    display: grid; place-items: center; cursor: pointer;
-    padding: 0; margin: 0; color: inherit; font: inherit; text-shadow: inherit;
+    width: 26px; height: 26px; flex: none;
+    background: none; border: none; border-radius: 50%;
+    padding: 0; margin: 0; color: inherit; cursor: pointer;
   }
-  .compass .needle { font-size: 12px; transition: transform .05s linear; }
-  .scale-bar { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .scale-bar .bar { width: 60px; height: 3px; background: var(--station); border-radius: 2px; }
+  .compass .needle-wrap:hover { color: var(--ink); }
+  .compass .needle { display: block; width: 100%; height: 100%; transition: transform .05s linear; }
+  .compass .needle path { fill: currentColor; }
+  .compass .needle text {
+    fill: currentColor; font-family: var(--font-map); font-size: 13px; font-weight: 700; text-anchor: middle;
+  }
+  .scale-bar { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+  /* 両端だけ立てた帯。地図の目盛りの決まった形 */
+  .scale-bar .bar { height: 6px; border: 1.5px solid currentColor; border-top: none; }
+  .scale-bar .label {
+    font-family: var(--font-map); font-size: 11px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: .02em;
+  }
 
   .legend-note {
     position: absolute; right: 22px; bottom: 20px; z-index: 5;
@@ -811,8 +831,8 @@
       </div>
       <button class="post-fab" type="button" id="postFab"><span class="plus">＋</span>投稿する</button>
       <div class="compass">
-        <button type="button" class="needle-wrap" id="compassReset" aria-label="最初の表示に戻す（角度・拡大・位置）" title="最初の表示に戻す（角度・拡大・位置）"><span class="needle" id="needle">北</span></button>
-        <div class="scale-bar"><div class="bar"></div><span>2km</span></div>
+        <button type="button" class="needle-wrap" id="compassReset" aria-label="最初の表示に戻す（角度・拡大・位置）" title="最初の表示に戻す（角度・拡大・位置）"><svg class="needle" id="needle" viewBox="0 0 34 34" aria-hidden="true"><path d="M17,4 L22.5,20 L17,16.6 L11.5,20 Z"/><text x="17" y="30.5">N</text></svg></button>
+        <div class="scale-bar"><div class="bar" id="scaleBar"></div><span class="label" id="scaleLabel"></span></div>
       </div>
       <!--
         出典は地図の上に常時出す。**出典タブの中だけに置かないこと。**
@@ -929,6 +949,15 @@
   }
 
   const WORLD_W = 1000, WORLD_H = 1268;
+
+  /* tools/build-board.js と同じ投影範囲。地図上の位置から緯度経度に戻すのと、縮尺の帯に要る */
+  const PROJ = __PROJ_JS__;
+
+  /* 世界座標の 1 単位が東西に何 m か（縮尺の帯に使う。南北も比が合わせてあるので同じ値になる） */
+  const METERS_PER_WORLD = (() => {
+    const r = (PROJ.minLat + PROJ.maxLat) / 2 * Math.PI / 180;
+    return (PROJ.maxLon - PROJ.minLon) * (111412.84 * Math.cos(r) - 93.5 * Math.cos(3 * r)) / WORLD_W;
+  })();
 
   /*
    * 掲示スポット（data/choshi/board-spots.json）。
@@ -1076,6 +1105,7 @@
     const h = state.heading * Math.PI / 180;
     const t = state.tilt * Math.PI / 180;
     const s = baseFitScale * state.zoom;
+    z *= reliefScale();   // .world にかけている scale3d(1, 1, k) と同じ
 
     const x1 = x * Math.cos(h) - y * Math.sin(h);
     const y1 = x * Math.sin(h) + y * Math.cos(h);
@@ -1090,11 +1120,55 @@
     return { dx: qx * f, dy: qy * f, scale: s * f };
   }
 
+  /*
+   * 高さをどれだけ持ち上げるか（0〜1）。視点の傾きで決める（2026-09-17）。
+   *
+   * 標高は 1m ＝ 1.2 単位で持ち上げているが、水平は 1 単位 ≒ 9.8m なので、
+   * 高さは水平の約 12 倍に誇張されている。斜めから見るぶんには起伏が読めてよいが、
+   * 真上に近づくほど「持ち上げた板が遠近で外へずれる」だけになり、台地の形が崩れ、
+   * 線路がちぎれて見えた（FB「真上から見たら地図が変形している」）。
+   *
+   * そこで、初期表示の傾き（35°）より寝かせたぶんだけ高さを比例して縮め、
+   * 真上（0°）では高さ 0、つまり緯度経度どおりの平面の地図になるようにした。
+   * 35° 以上では 1（これまでどおり ×1.2）なので、初期表示の見え方は変わらない。
+   *
+   * 0 ちょうどにしないのは、scale3d(1,1,0) が逆行列を持たない変形になり、
+   * ブラウザによって板の重なり順が崩れるため。
+   */
+  const RELIEF_FULL_TILT = 35;
+  function reliefScale() {
+    return Math.max(0.001, Math.min(1, state.tilt / RELIEF_FULL_TILT));
+  }
+
+  /*
+   * 縮尺の帯（車窓絶景ナビの createScaleBar と同じ決め方）。
+   * 数字を切りのよい値から選び、帯の長さのほうで合わせる。
+   * 斜めから見ている地図は、画面の奥と手前で縮み方が違う。ここで合わせているのは
+   * **画面のまん中を東西に測った長さ**（傾きにも遠近にも左右されない向き）。
+   */
+  const scaleBar = document.getElementById("scaleBar");
+  const scaleLabel = document.getElementById("scaleLabel");
+  const SCALE_MAX_WIDTH = 96;
+  const SCALE_STEPS = [100, 200, 500, 1000, 2000, 5000];
+  function updateScaleBar(s) {
+    const metersPerPixel = METERS_PER_WORLD / s;
+    let meters = SCALE_STEPS[0];
+    for (const step of SCALE_STEPS) {
+      if (step / metersPerPixel <= SCALE_MAX_WIDTH) meters = step;
+    }
+    scaleBar.style.width = `${(meters / metersPerPixel).toFixed(1)}px`;
+    scaleLabel.textContent = meters >= 1000 ? `${meters / 1000}km` : `${meters}m`;
+  }
+
+  const world = document.querySelector(".world");
+
   function render() {
     const s = baseFitScale * state.zoom;
     cameraRig.style.transform =
       `translate3d(${state.panX}px, ${state.panY}px, 0) scale3d(${s}, ${s}, ${s}) rotateX(${state.tilt}deg) rotateZ(${state.heading}deg)`;
+    world.style.transform = `scale3d(1, 1, ${reliefScale()})`;
     needle.style.transform = `rotate(${-state.heading}deg)`;
+    updateScaleBar(s);
     // 駅名もピンも3Dの外にあるので、位置はここで毎回投影して置き直す
     positionStations();
     positionPins();
@@ -1120,7 +1194,8 @@
       state.panX += dx; state.panY += dy;
     } else {
       state.heading += dx * 0.3;
-      state.tilt = Math.max(15, Math.min(70, state.tilt - dy * 0.25));
+      // 0° ＝ 真上。そこまで倒すと高さが消えて平面の地図になる（reliefScale）
+      state.tilt = Math.max(0, Math.min(70, state.tilt - dy * 0.25));
     }
     render();
   });
@@ -1590,9 +1665,6 @@
   const postState = document.getElementById("postState");
   const modalSend = document.getElementById("modalSend");
 
-  /* tools/build-board.js と同じ投影範囲。地図上の位置から緯度経度に戻すのに要る */
-  const PROJ = __PROJ_JS__;
-
   /** 選んだ写真（EXIF を落として縮めたもの）と、置いた場所 */
   let draft = { photo: null, lat: null, lon: null };
   let draftPin = null;
@@ -1610,6 +1682,7 @@
     const t = state.tilt * Math.PI / 180;
     const s = baseFitScale * state.zoom;
     const P = PERSPECTIVE;
+    z *= reliefScale();   // projectToScreen と同じく、視点の傾きに合わせて高さを縮める
 
     const denom = s * (P * Math.cos(t) + dy * Math.sin(t));
     if (Math.abs(denom) < 1e-6) return null;

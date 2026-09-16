@@ -148,10 +148,10 @@
       ],
       "name": "銚子漁港",
       "layer": "coast",
-      "lat": 35.733921,
-      "lon": 140.8393115,
+      "lat": 35.742641,
+      "lon": 140.858662,
       "confidence": "approximate",
-      "source": "OpenStreetMap node 4883796831（ODbL）。埋立の範囲と年は未確認",
+      "source": "OpenStreetMap node 1420729583「千葉県銚子漁港事務所」（ODbL、元は国土数値情報 公共施設データ）を港の代表点とする。港は利根川河口の右岸に3km近く続くので点1つでは表せない。埋立の範囲と年は未確認",
       "states": {
         "y1923": {
           "present": false,
