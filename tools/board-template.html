@@ -271,6 +271,51 @@
   .tl-photo figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
   .tl-photo .when { font-weight: 700; color: var(--ink); }
 
+  /*
+   * 地物の説明欄の写真（2026-09-17、mockup-decision-時間軸の説明の出し方.md の案3）。
+   * 撮影年の切り替え → 写真（押すと大きく開く）→ 図題と出典 → 断り書き、の順に積む。
+   * 切り替えは写真が2枚以上あるときだけ出す。
+   */
+  .tl-shot { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; }
+  .tl-shot-tabs {
+    align-self: flex-start; display: flex; gap: 2px; padding: 2px;
+    background: #E9E7E1; border: 1px solid rgba(0,0,0,.1); border-radius: 8px;
+  }
+  .tl-shot-tabs button {
+    appearance: none; border: 0; cursor: pointer; padding: 4px 12px; border-radius: 6px;
+    background: transparent; color: var(--ink-soft);
+    font-family: var(--font-map); font-size: 12px; line-height: 1.5; white-space: nowrap;
+  }
+  .tl-shot-tabs button:hover { color: var(--ink); background: rgba(0,0,0,.05); }
+  .tl-shot-tabs button[aria-pressed="true"] { background: var(--theme-sea); color: #fff; }
+  .tl-shot-tabs button:focus-visible { outline: 2px solid var(--theme-sea); outline-offset: 2px; }
+  .tl-shot-open {
+    appearance: none; border: 0; padding: 0; margin: 0; cursor: zoom-in; display: block; width: 100%;
+    background: #1B1D21; border-radius: 8px; overflow: hidden;
+  }
+  .tl-shot-open img { display: block; width: 100%; height: auto; }
+  .tl-shot-open:focus-visible { outline: 2px solid var(--theme-sea); outline-offset: 2px; }
+  .tl-shot-cap { font-size: 11px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+  .tl-shot-cap a { color: var(--theme-sea); }
+  .tl-shot .tl-note { margin: 0; }
+
+  /* 写真を大きく見る。押す・Esc・閉じるボタンのどれでも閉じ、押した写真へフォーカスを戻す */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; padding: 32px;
+    background: rgba(12,13,16,.88); cursor: zoom-out;
+  }
+  .lightbox[hidden] { display: none; }
+  .lightbox img { max-width: 100%; max-height: calc(100vh - 120px); border-radius: 6px; display: block; }
+  .lightbox .cap { color: #E6E7EA; font-size: 12.5px; text-align: center; max-width: 60em; }
+  .lightbox .close {
+    position: absolute; top: 16px; right: 20px; appearance: none; border: 0; cursor: pointer;
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12);
+    color: #fff; font-size: 22px; line-height: 1;
+  }
+  .lightbox .close:hover { background: rgba(255,255,255,.22); }
+  .lightbox .close:focus-visible { outline: 2px solid var(--theme-sea-sub); outline-offset: 2px; }
+
   .tl-back {
     appearance: none; border: 1px solid rgba(0,0,0,.2); background: transparent; cursor: pointer;
     font-family: var(--font-map); font-size: 12px; color: var(--ink-soft);
@@ -627,8 +672,13 @@
     transition: width .45s cubic-bezier(.4,0,.2,1), border-left-width .45s cubic-bezier(.4,0,.2,1);
   }
   .panel.open { width: 380px; border-left-width: 1px; }
+  /*
+   * 中身の幅は .panel.open の幅（380px、ただし max-width: 40vw で頭打ち）と同じにする。
+   * 380px 固定だと、画面幅が950px未満でパネルだけ縮み、中身の右端が切れていた（2026-09-17に実測）。
+   * min-width を幅と同じにしてあるのは、開閉のあいだに中身が折り返し直さないため。
+   */
   .panel-inner {
-    width: 380px; min-width: 380px; flex: 1; min-height: 0; display: flex; flex-direction: column;
+    width: min(380px, 40vw); min-width: min(380px, 40vw); flex: 1; min-height: 0; display: flex; flex-direction: column;
     opacity: 0; transform: translateX(34px);
     transition: opacity .32s ease .08s, transform .38s cubic-bezier(.2,.7,.3,1) .08s;
   }
@@ -858,6 +908,13 @@
       <div class="panel-inner" id="panelInner"></div>
     </div>
   </div>
+</div>
+
+<!-- 時間軸の説明欄の写真を大きく見る（2026-09-17）。中身は開くときに入れる -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="写真を大きく見る" hidden>
+  <button type="button" class="close" id="lightboxClose" aria-label="閉じる">×</button>
+  <img id="lightboxImg" alt="">
+  <p class="cap" id="lightboxCap"></p>
 </div>
 
 <!--
@@ -1911,8 +1968,41 @@
   // 重なっているときは、手前にある窓から閉じる。
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (!lightbox.hidden) { closeLightbox(); return; }   // 写真の拡大がいちばん手前
     if (modalBackdrop.classList.contains("open")) { closeModal(); return; }
     closePanel();
+  });
+
+  /*
+   * 写真を大きく見る（時間軸の説明欄、2026-09-17）。
+   * 画面のどこを押しても閉じる。閉じたら、押した写真へフォーカスを戻す。
+   */
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImg = document.getElementById("lightboxImg");
+  const lightboxCap = document.getElementById("lightboxCap");
+  const lightboxClose = document.getElementById("lightboxClose");
+  let lightboxReturn = null;
+
+  function openLightbox(src, alt, caption, returnTo) {
+    lightboxImg.src = src;
+    lightboxImg.alt = alt;
+    lightboxCap.textContent = caption;
+    lightboxReturn = returnTo || null;
+    lightbox.hidden = false;
+    lightboxClose.focus();
+  }
+
+  function closeLightbox() {
+    if (lightbox.hidden) return;
+    lightbox.hidden = true;
+    if (lightboxReturn && document.body.contains(lightboxReturn)) lightboxReturn.focus();
+    lightboxReturn = null;
+  }
+
+  lightbox.addEventListener("click", closeLightbox);
+  // Tab でフォーカスが後ろの地図へ抜けないよう、閉じるボタンに留める（中で押せるものはこれだけ）
+  lightbox.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") { e.preventDefault(); lightboxClose.focus(); }
   });
 
   /* ================================================================
@@ -2161,7 +2251,7 @@
             主なもの：${srcLinks}
           </p>` : ""}
           ${TIMELINE.stations.length || TIMELINE.features.length
-            ? `<p class="tl-src">地図の駅や地物を押すと、その場所の3時点を並べて見られます。</p>`
+            ? `<p class="tl-src">地図の地物を押すと、この年の姿と写真を見られます。</p>`
             : ""}
         </div>
       </div>`;
@@ -2264,14 +2354,71 @@
       </details>`;
   }
 
-  /** 地物ひとつの3時点（＋空中写真） */
+  /*
+   * 地物の説明欄に出す写真（timeline.json の photos、2026-09-17）。
+   *
+   * 上の年のタブと写真の撮影年は一致しない（1923年の空中写真は存在しない）。そこで
+   * **年のタブは「最初にどの写真を出すか」だけを決め**、そこからは欄の中の撮影年の
+   * ボタンで自由に切り替える。写真そのものは essay.figures の図を使い回すので、
+   * 図題と出典も essay と同じものが出る。
+   */
+  function shotFigure(f, index) {
+    const item = f.photos.items[index];
+    return { item, fig: f.essay.figures[item.fig] };
+  }
+
+  function shotCaptionHTML(fig) {
+    return `${esc(fig.caption)}<br>${esc(fig.credit)}${
+      fig.link ? `　<a href="${esc(fig.link.url)}" target="_blank" rel="noopener">${esc(fig.link.label)}</a>` : ""}`;
+  }
+
+  function featureShotHTML(f) {
+    if (!f.photos || !f.essay) return "";
+    const start = f.photos.defaultFor[timePoint];
+    const { fig } = shotFigure(f, start);
+    const tabs = f.photos.items.length > 1
+      ? `<div class="tl-shot-tabs" role="group" aria-label="写真の撮影年">${f.photos.items.map((it, i) =>
+          `<button type="button" data-shot="${i}" aria-pressed="${i === start}">${esc(it.label)}</button>`).join("")}</div>`
+      : "";
+    const note = f.photos.notes && f.photos.notes[timePoint];
+    return `<div class="tl-shot" data-feature="${esc(f.id)}">
+        ${tabs}
+        <button type="button" class="tl-shot-open" aria-label="写真を大きく見る">
+          <img src="${esc(fig.src)}" alt="${esc(fig.caption)}">
+        </button>
+        <p class="tl-shot-cap">${shotCaptionHTML(fig)}</p>
+        ${note ? `<p class="tl-note">${esc(note)}</p>` : ""}
+      </div>`;
+  }
+
+  /** 撮影年のボタンと、写真を押して大きく開く操作をつなぐ（パネルを描き直すたびに呼ぶ） */
+  function wireFeatureShot(f) {
+    const box = panelInner.querySelector(".tl-shot");
+    if (!box || !f || !f.photos) return;
+    const img = box.querySelector(".tl-shot-open img");
+    const cap = box.querySelector(".tl-shot-cap");
+    const buttons = box.querySelectorAll(".tl-shot-tabs button");
+    let current = shotFigure(f, f.photos.defaultFor[timePoint]).fig;
+    buttons.forEach(b => b.addEventListener("click", () => {
+      current = shotFigure(f, Number(b.dataset.shot)).fig;
+      img.src = current.src;
+      img.alt = current.caption;
+      cap.innerHTML = shotCaptionHTML(current);
+      buttons.forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    }));
+    const opener = box.querySelector(".tl-shot-open");
+    // 欄の図題は <br> で2行にしてあるので、textContent を渡すと図題と出典がくっつく。図から組み直す
+    opener.addEventListener("click", () =>
+      openLightbox(current.src, current.caption, `${current.caption}　${current.credit}`, opener));
+  }
+
+  /** 地物ひとつの、いま選んでいる時点の姿（＋写真） */
   function featurePanelHTML(f) {
-    const states = TIMELINE.points.map(p => {
-      const s = f.states[p.id];
-      if (!s) return "";
-      const here = p.id === timePoint ? "（いま見ている時点）" : "";
-      return `<h3>${esc(p.label)}${here}</h3><p>${esc(s.text)}</p>`;
-    }).join("");
+    // 文は選んでいる時点のものだけを出す（2026-09-17。以前は3時点を縦に並べていた）
+    const p = POINT_BY_ID.get(timePoint);
+    const s = f.states[timePoint];
+    const states = `<h3>${esc(p.label)}</h3>` +
+      (s ? `<p>${esc(s.text)}</p>` : `<p class="tl-note">この時点の記述はまだありません。</p>`);
 
     // 空中写真。1923年は撮影という手段そのものが無いので出ない（無いものは出さない）
     const photos = TIMELINE.points.map(p => {
@@ -2297,19 +2444,21 @@
       <div class="panel-head">
         <div class="kicker">${esc(layerName)}</div>
         <h2>${esc(f.name)}</h2>
-        <p class="year">3つの時点で見る</p>
+        <p class="year">${esc(p.yearLabel)}の姿。上の年を切り替えると替わります</p>
       </div>
       <div class="panel-body tl-panel">
         <div>
-          <button type="button" class="tl-back" id="tlBack">← ${esc(POINT_BY_ID.get(timePoint).label)}の全体へ</button>
+          <button type="button" class="tl-back" id="tlBack">← ${esc(p.label)}の全体へ</button>
           ${states}
+          ${featureShotHTML(f)}
           ${cliffNote}
           ${essayHTML(f.essay)}
           ${photos ? `<h3>空から見ると</h3><div class="tl-photos">${photos}</div>` : ""}
           ${photos && f.photoNote ? `<p class="tl-note">${esc(f.photoNote)}</p>` : ""}
           <h3>出どころ</h3>
           <p class="tl-src">位置：${esc(f.source)}${certBadge(f.confidence)}<br>
-            空中写真：国土地理院。撮影年は写真ごとに書いてあります。<br>
+            ${photos ? "空中写真：国土地理院。撮影年は写真ごとに書いてあります。<br>" : ""}
+            ${f.photos ? "写真と図：出どころは図ごとに書いてあります。<br>" : ""}
             解説の根拠は <code>docs/時間軸_裏取り記録.md</code>。</p>
         </div>
       </div>`;
@@ -2318,16 +2467,18 @@
   function renderTimePanel() {
     if (mode !== "time") return;
     let html;
+    let feature = null;
     if (tlSelection && tlSelection.kind === "station") {
       const st = TIMELINE.stations.find(s => s.name === tlSelection.name);
       html = st ? stationPanelHTML(st) : yearPanelHTML(POINT_BY_ID.get(timePoint));
     } else if (tlSelection && tlSelection.kind === "feature") {
-      const f = TIMELINE.features.find(x => x.id === tlSelection.id);
-      html = f ? featurePanelHTML(f) : yearPanelHTML(POINT_BY_ID.get(timePoint));
+      feature = TIMELINE.features.find(x => x.id === tlSelection.id) || null;
+      html = feature ? featurePanelHTML(feature) : yearPanelHTML(POINT_BY_ID.get(timePoint));
     } else {
       html = yearPanelHTML(POINT_BY_ID.get(timePoint));
     }
     panelInner.innerHTML = html;
+    wireFeatureShot(feature);
     panel.classList.add("open");
     const back = document.getElementById("tlBack");
     if (back) back.addEventListener("click", () => selectTime(null, null));

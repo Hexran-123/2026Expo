@@ -92,6 +92,8 @@
 | 通ってきた側の尾（`.here-tail--paper` / `.here-tail--ink`） | **完了** | 車上モードで乗車中のみ出す／それ以外は出さない（`.here--still`・`.here--off`・測位待ち） | `--ink`（墨の帯）, 白（紙の帯）, `--k`（太さ） | 同上 | [shots/実装-尾-淡い地形.png](../artifacts/車上モード/mockups/shots/実装-尾-淡い地形.png) | 車上モードEpic |
 | 駅の時刻表（`.timetable`） | **完了** | 地図の駅（`.station`）を押すと開く。上り・下り別に一日ぶん一覧、過ぎた時刻は控えめ（`.timetable-row--past`）・次の1本は太く（`.timetable-row--next`）、終点は片方向のみ | `--paper`, `--ink`, `--ink-soft` | `css/style.css`「時刻表」節 | 未取得 | 駅の時刻表（追加要望） |
 | 押せる駅（`.station` ＋ `.station-hit`） | **完了** | `.spot`/`.spot-hit` と同じ考え方（見えない大きい丸で押しやすくする）。押すとその駅の時刻表を開く | `--ink`（フォーカス輪） | `css/style.css`「駅」節 | 未取得 | 駅の時刻表（追加要望） |
+| 撮影年の切り替え（`.tl-shot-tabs`、**絶景掲示板**） | **完了** | 押下中（`aria-pressed="true"`：`--theme-sea` の塗り＋白字）／通常／hover／フォーカス輪。写真が1枚のときは出さない | `--theme-sea`, `--ink`, `--ink-soft`, `--font-map` | `tools/board-template.html`「地物の説明欄の写真」節 | 未取得 | 絶景掲示板・時間軸（2026-09-17、案3） |
+| 写真の拡大（`.lightbox`、**絶景掲示板**） | **完了** | 閉（`hidden`）／開（暗幕＋写真＋図題、閉じるボタンにフォーカス、Tab は閉じるボタンに留める）。Esc・どこを押しても閉じ、押した写真へフォーカスを戻す | `--theme-sea-sub`（フォーカス輪） | 同上 | 未取得 | 絶景掲示板・時間軸（2026-09-17、案3） |
 
 （截圖は未取得。screenshotはwebapp-testing skillでの実機/ブラウザ確認時に追加する。）
 

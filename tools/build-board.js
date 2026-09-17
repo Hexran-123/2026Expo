@@ -331,6 +331,44 @@ for (const f of timeline.features) {
   }
 }
 
+/*
+ * 地物の説明欄の写真（timeline.json の photos、2026-09-17）。
+ * 書き間違いは画面では気づきにくい（写真が出ない・違う年の写真が出るだけ）ので、ここで止める。
+ */
+{
+  const pointIds = timeline.points.map(p => p.id);
+  const problems = [];
+  for (const f of timeline.features) {
+    if (!f.photos) continue;
+    const figures = (f.essay && f.essay.figures) || [];
+    const items = f.photos.items || [];
+    if (items.length === 0) problems.push(`${f.id}: photos.items が空`);
+    items.forEach((it, i) => {
+      if (!Number.isInteger(it.fig) || it.fig < 0 || it.fig >= figures.length) {
+        problems.push(`${f.id}: photos.items[${i}].fig=${it.fig} が essay.figures（${figures.length}枚）の範囲外`);
+      }
+      if (typeof it.label !== "string" || it.label.trim() === "") {
+        problems.push(`${f.id}: photos.items[${i}].label が無い`);
+      }
+    });
+    const defaults = f.photos.defaultFor || {};
+    for (const id of pointIds) {
+      const d = defaults[id];
+      if (!Number.isInteger(d) || d < 0 || d >= items.length) {
+        problems.push(`${f.id}: photos.defaultFor.${id}=${d} が無いか、items（${items.length}枚）の範囲外`);
+      }
+    }
+    for (const id of Object.keys(defaults).concat(Object.keys(f.photos.notes || {}))) {
+      if (!pointIds.includes(id)) problems.push(`${f.id}: photos に知らない時点 ${id} がある`);
+    }
+  }
+  if (problems.length) {
+    console.error("data/choshi/timeline.json の photos に書き間違いがある:");
+    for (const p of problems) console.error("  " + p);
+    process.exit(1);
+  }
+}
+
 fill("__TIMELINE_JS__", JSON.stringify(timeline));
 fill("__TIMELINE_GEO_JS__", JSON.stringify(timelineGeo));
 fill("__TIMELINE_PHOTOS_JS__", JSON.stringify(timelinePhotos));
