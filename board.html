@@ -2281,8 +2281,7 @@
           ${TIMELINE.sources.length ? `
           <h3>出どころ</h3>
           <p class="tl-src">
-            数字はすべて公的統計と査読論文から取っています。1件ずつの出典は
-            リポジトリの <code>docs/時間軸_裏取り記録.md</code> にあります。<br>
+            数字はすべて公的統計と査読論文から取っています。一覧は上の「出典」タブにあります。<br>
             主なもの：${srcLinks}
           </p>` : ""}
           ${TIMELINE.stations.length || TIMELINE.features.length
@@ -2494,7 +2493,7 @@
           <p class="tl-src">位置：${esc(f.source)}${certBadge(f.confidence)}<br>
             ${photos ? "空中写真：国土地理院。撮影年は写真ごとに書いてあります。<br>" : ""}
             ${f.photos ? "写真と図：出どころは図ごとに書いてあります。<br>" : ""}
-            解説の根拠は <code>docs/時間軸_裏取り記録.md</code>。</p>
+            解説の出どころは、上の「もっと詳しく読む」と「出典」タブにまとめてあります。</p>
         </div>
       </div>`;
   }

@@ -4,7 +4,7 @@
  * demo/*.html が css/・js/・data/ の今の中身と合っているか確かめる。
  * build-demo.js を同じ引数でもう一度走らせ、出てきた HTML を今 commit
  * されている demo/*.html と突き合わせるだけ。ずれていれば、直したのに
- * 1 枚デモへの作り直しを忘れているということ（README「作り直し忘れ」参照）。
+ * 1 枚デモへの作り直しを忘れているということ（開発の手引き「作り直し忘れ」参照）。
  *
  * 使い方:  node tools/check-demo-fresh.js
  * 終了コード: 0 = 4 枚とも最新、1 = 古いものがある
@@ -22,7 +22,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const BUILD_SCRIPT = path.join(ROOT, 'tools', 'build-demo.js');
 
-// README「作り直すとき」の 4 コマンドと同じ組み合わせ
+// 開発の手引き「作り直すとき」の 4 コマンドと同じ組み合わせ
 const TARGETS = [
   { lineId: 'all', flags: ['--switch'], out: 'demo/all.html' },
   { lineId: 'choshi', flags: ['--switch'], out: 'demo/choshi.html' },
@@ -58,7 +58,7 @@ if (stale.length > 0) {
   console.error('demo/ が css・js・data の今の中身と合っていない（作り直し忘れ）:');
   for (const f of stale) console.error(`  - ${f}`);
   console.error('');
-  console.error('直すには（README「作り直すとき」と同じ）:');
+  console.error('直すには:');
   console.error('  node tools/build-demo.js all       demo/all.html            --switch');
   console.error('  node tools/build-demo.js choshi    demo/choshi.html         --switch');
   console.error('  node tools/build-demo.js yurakucho demo/yurakucho.html      --switch');

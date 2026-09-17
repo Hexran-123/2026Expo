@@ -6,7 +6,7 @@
  *
  * なぜ焼き込むのか:
  *   もとになる格子 data/source/board-elevation-grid.json は 14.8MB あり、.gitignore
- *   してある（README「軽くするために入れてあるもの」と同じ理由）。そのため clone した
+ *   してある（開発の手引き「軽くするために入れてあるもの」と同じ理由）。そのため clone した
  *   ばかりの手元や GitHub Actions では格子が無く、tools/build-board.js が
  *   動かせない。必要なのは12点ぶんの数値だけなので、それだけを小さな JSON にして
  *   commit する。これで格子が無い環境でもプロトタイプを作り直せるようになり、

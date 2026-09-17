@@ -25,7 +25,7 @@
  * とっては重すぎた。不透明度 0.85 で重ねる背景の陰影なので、WebP の劣化は
  * 目に見えない。この道具は依存パッケージなしの Node で書いてあり
  * （ADR-0002）、WebP を書き出せないので、変換は別の一手にしてある。
- * 手順は README.md を参照。
+ * 手順は開発の手引きを参照。
  *
  * 出典: 国土地理院 陰影起伏図タイル
  *       https://maps.gsi.go.jp/development/ichiran.html#hillshademap
