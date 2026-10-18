@@ -962,6 +962,29 @@ button.line-name:active {
   margin-bottom: 0;
 }
 
+/* 絶景ごとの参考文献（js/main.js の renderSpotCredits）。一覧が長いので本文より一段小さく */
+.credits-ref-spot {
+  margin: 8px 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.credits-ref-spot:first-child {
+  margin-top: 0;
+}
+
+.credits-refs {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.credits-refs li {
+  margin-bottom: 3px;
+  overflow-wrap: anywhere;
+}
+
 /* 乗車区間（例:「銚子→外川」）。押すと選び直せる（feature-spec「乗車区間の設定」） */
 .plan-chip {
   margin: 0;

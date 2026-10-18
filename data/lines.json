@@ -1,5 +1,5 @@
 {
-  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。 陰影起伏図（terrain-hillshade.webp）を用意していない路線には \"hillshade\": false を書く。 透明な絵で代用してはいけない（mix-blend-mode: overlay が効いて地図全体に色被りが出る）。 role は展示での位置づけ: \"product\" が作品そのもの（設計書の対象路線）、 \"demo\" は「この仕組みは他の路線にも展開できる」ことを見せる実演用。 dataSource は中身が本物かどうか: \"real\" は実在の見どころ・実際のダイヤ、 \"synthetic\" は tools/make-test-line.js が作った作り物。 **synthetic のあいだは、その路線の数を累積人気に混ぜない**（js/main.js の showPopularity）。 実データに差し替えたら \"real\" に変えること。この 2 つは別の軸なので、まとめないこと。 credits は出典画面（ⓘ→出典）に出す、**その路線でしか使わない**出どころ。 timetable はその路線の時刻表を書き写した元、spots は絶景スポットの解説が寄りかかっている資料（無ければ null）。 OpenStreetMap・地理院タイル・気象庁・環境音は全路線で共通なので index.html に直接書いてあり、ここには書かない。 **路線を足すときは credits も書くこと。** 書かないと、出典画面がその路線について何も言わなくなる。",
+  "_comment": "路線の一覧。サイトはここを見て、どの路線のデータを読むかを決める。手で書くファイル。 陰影起伏図（terrain-hillshade.webp）を用意していない路線には \"hillshade\": false を書く。 透明な絵で代用してはいけない（mix-blend-mode: overlay が効いて地図全体に色被りが出る）。 role は展示での位置づけ: \"product\" が作品そのもの（設計書の対象路線）、 \"demo\" は「この仕組みは他の路線にも展開できる」ことを見せる実演用。 dataSource は中身が本物かどうか: \"real\" は実在の見どころ・実際のダイヤ、 \"synthetic\" は tools/make-test-line.js が作った作り物。 **synthetic のあいだは、その路線の数を累積人気に混ぜない**（js/main.js の showPopularity）。 実データに差し替えたら \"real\" に変えること。この 2 つは別の軸なので、まとめないこと。 credits は出典画面（ⓘ→出典）に出す、**その路線でしか使わない**出どころ。 timetable はその路線の時刻表を書き写した元、spots は絶景スポットの解説が寄りかかっている資料（無ければ null）。 spots は 1 行の文字でも、絶景ごとの参考文献の並び（[{ spots: 見出し, refs: [{ text, url, accessed }] }]）でもよい。 並びにすると、出典画面に絶景ごとの一覧として出る（js/main.js の renderSpotCredits）。銚子電鉄は、制作チームが書いた成因カードの元原稿の【引用・参考文献】をそのまま写してある。成因カードの本文を直して参考文献が変わったら、ここも直すこと。 OpenStreetMap・地理院タイル・気象庁・環境音は全路線で共通なので index.html に直接書いてあり、ここには書かない。 **路線を足すときは credits も書くこと。** 書かないと、出典画面がその路線について何も言わなくなる。",
   "default": "choshi",
   "lines": [
     {
@@ -13,7 +13,118 @@
       "note": "作品そのもの。設計書の対象路線（設計書 1 章）。",
       "credits": {
         "timetable": "銚子電気鉄道 公式サイト「全駅時刻表（印刷用）」（2024年3月16日改正）",
-        "spots": null
+        "spots": [
+          {
+            "spots": "ヤマサ醤油工場",
+            "refs": [
+              {
+                "text": "国土交通省関東地方整備局「利根川の東遷」利根川上流河川事務所",
+                "url": "https://www.ktr.mlit.go.jp/tonejo/tonejo00185.html",
+                "accessed": "2026年8月13日"
+              },
+              {
+                "text": "銚子ジオパーク「銚子のしょうゆ産業 Soy sause of Choshi」",
+                "url": "https://www.choshi-geopark.jp/geosite/01/index.html",
+                "accessed": "2026年8月13日"
+              },
+              {
+                "text": "銚子電気鉄道「銚電ストーリー（奇跡のぬれ煎餅）」",
+                "url": "https://www.choshi-dentetsu.jp/railway/1905/",
+                "accessed": "2026年8月13日"
+              },
+              {
+                "text": "日経クロストレンド（2019）「鉄道より『ぬれ煎餅』で稼いでる 銚子電鉄の生き残り方」",
+                "url": "https://xtrend.nikkei.com/atcl/contents/18/00151/00021/",
+                "accessed": "2026年8月13日"
+              },
+              {
+                "text": "ヤマサ醤油「工場見学のご案内」",
+                "url": "https://www.yamasa.com/enjoy/factory-visit/",
+                "accessed": "2026年8月13日"
+              }
+            ]
+          },
+          {
+            "spots": "遠くに見える海・森のトンネル",
+            "refs": [
+              {
+                "text": "地球の撮り方（2022）「まるで日本版『恋のトンネル』銚子電鉄の本銚子駅」",
+                "url": "https://www.chikyudori.com/japan/motochoshi-station/",
+                "accessed": "2026年8月14日"
+              },
+              {
+                "text": "銚子電気鉄道（2017）「Hello New 本銚子駅！ 皆様の笑顔に力をもらっています！」",
+                "url": "https://www.choshi-dentetsu.jp/news/1546/",
+                "accessed": "2026年8月14日"
+              },
+              {
+                "text": "トラベルjp（2019）「ウクライナの絶景『愛のトンネル』～緑に包まれた恋人たちの聖地」",
+                "url": "https://www.travel.co.jp/guide/article/39325/",
+                "accessed": "2026年8月14日"
+              }
+            ]
+          },
+          {
+            "spots": "キャベツ畑",
+            "refs": [
+              {
+                "text": "政府統計の総合窓口 e-Stat（2024）「作物統計調査 令和６年産野菜生産出荷統計 市町村別の作付面積、収穫量及び出荷量 キャベツ」",
+                "url": "https://www.e-stat.go.jp/dbview?sid=0004046003",
+                "accessed": "2026年8月17日"
+              },
+              {
+                "text": "銚子市観光協会（2021）「銚子の農産物」",
+                "url": "https://www.choshikanko.com/feature/%E9%8A%9A%E5%AD%90%E3%81%AE%E8%BE%B2%E7%94%A3%E7%89%A9/",
+                "accessed": "2026年8月17日"
+              }
+            ]
+          },
+          {
+            "spots": "ひまわり畑",
+            "refs": [
+              {
+                "text": "オレンジページnet（2025）「一面のひまわり畑が話題、生産者インタビュー【群馬県・埼玉県】」",
+                "url": "https://www.orangepage.net/news-daily/31542",
+                "accessed": "2026年8月19日"
+              },
+              {
+                "text": "高木潔「千葉）銚子でヒマワリ畑あちこちに 実はキャベツのため」朝日新聞 2019年8月10日",
+                "url": "https://www.asahi.com/articles/ASM874FT6M87UDCB006.html",
+                "accessed": "2026年8月19日"
+              },
+              {
+                "text": "銚子市観光協会（2019）「夏の銚子はヒマワリ畑も見どころ！？令和のヒマワリ畑がすごい！」",
+                "url": "https://www.choshikanko.com/article-137/",
+                "accessed": "2026年8月19日"
+              },
+              {
+                "text": "JA愛知西「連作障害の基礎知識｜家庭菜園」",
+                "url": "https://www.ja-aichinishi.or.jp/garden/garden_03/",
+                "accessed": "2026年8月19日"
+              }
+            ]
+          },
+          {
+            "spots": "河津桜・菜の花",
+            "refs": [
+              {
+                "text": "犬吠埼観光ホテル（2011）「『外川駅』の『河津桜』(銚子市)」",
+                "url": "http://www.inubou.co.jp/blog/index.php?e=366",
+                "accessed": "2026年8月20日"
+              },
+              {
+                "text": "銚子市観光協会（2021）「銚子電鉄の旅♪」",
+                "url": "https://www.choshikanko.com/feature/%e9%8a%9a%e5%ad%90%e9%9b%bb%e9%89%84%e3%81%ae%e6%97%85%e2%99%aa/",
+                "accessed": "2026年8月20日"
+              },
+              {
+                "text": "銚子電気鉄道（2019）「銚子電鉄の外川駅に桜並木をつくります！」",
+                "url": "https://www.choshi-dentetsu.jp/upload/files/20190218_syokujyu.pdf",
+                "accessed": "2026年8月20日"
+              }
+            ]
+          }
+        ]
       }
     },
     {

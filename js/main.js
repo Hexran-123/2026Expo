@@ -4554,6 +4554,41 @@ function setUpLineSwitch(registry, line) {
 // 組み立て
 // ------------------------------------------------------------------
 
+/**
+ * 絶景ごとの参考文献を、出典画面に一覧で並べる（data/lines.json の credits.spots）。
+ *
+ * 成因カードの本文は、制作チームが文献を当たって書いたもの。その文献が
+ * 画面のどこからも辿れないと、書いてあることの裏付けを読む人が確かめられない。
+ * 絶景掲示板が説明文の参考文献を出典タブに並べているのと、扱いを揃える。
+ *
+ * 文字はすべて textContent で入れる。リンク先は http(s) のものだけを開く。
+ */
+function renderSpotCredits(container, groups) {
+  container.replaceChildren();
+  for (const group of groups) {
+    const heading = document.createElement('p');
+    heading.className = 'credits-ref-spot';
+    heading.textContent = group.spots;
+
+    const list = document.createElement('ul');
+    list.className = 'credits-refs';
+    for (const ref of group.refs || []) {
+      const item = document.createElement('li');
+      item.append(ref.text);
+      if (ref.url && /^https?:\/\//.test(ref.url)) {
+        const link = document.createElement('a');
+        link.href = ref.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'リンク';
+        item.append('（', link, ref.accessed ? `、${ref.accessed}閲覧）` : '）');
+      }
+      list.appendChild(item);
+    }
+    container.append(heading, list);
+  }
+}
+
 async function main() {
   const mapElement = document.getElementById('map');
 
@@ -5109,7 +5144,8 @@ async function main() {
   const creditsSpotsTerm = document.getElementById('credits-spots-term');
   if (creditsSpots && creditsSpotsTerm) {
     const hasSpotCredits = Boolean(lineCredits.spots);
-    if (hasSpotCredits) creditsSpots.textContent = lineCredits.spots;
+    if (Array.isArray(lineCredits.spots)) renderSpotCredits(creditsSpots, lineCredits.spots);
+    else if (hasSpotCredits) creditsSpots.textContent = lineCredits.spots;
     creditsSpots.hidden = !hasSpotCredits;
     creditsSpotsTerm.hidden = !hasSpotCredits;
   }
